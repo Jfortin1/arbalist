@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // initialize_from_hdf5
 SEXP initialize_from_hdf5(std::string file, std::string name, size_t nrow, size_t ncol, bool byrow, bool forced);
-RcppExport SEXP _arbalest_initialize_from_hdf5(SEXP fileSEXP, SEXP nameSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP, SEXP forcedSEXP) {
+RcppExport SEXP _arbalist_initialize_from_hdf5(SEXP fileSEXP, SEXP nameSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP, SEXP forcedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< std::string >::type file(fileSEXP);
@@ -27,7 +27,7 @@ END_RCPP
 }
 // initialize_from_memory
 SEXP initialize_from_memory(Rcpp::RObject x, Rcpp::RObject i, Rcpp::RObject p, int nrow, int ncol, bool byrow);
-RcppExport SEXP _arbalest_initialize_from_memory(SEXP xSEXP, SEXP iSEXP, SEXP pSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP) {
+RcppExport SEXP _arbalist_initialize_from_memory(SEXP xSEXP, SEXP iSEXP, SEXP pSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
@@ -40,9 +40,41 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// tatami_dims
+Rcpp::IntegerVector tatami_dims(SEXP input);
+RcppExport SEXP _arbalist_tatami_dims(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(tatami_dims(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// tatami_column
+Rcpp::NumericVector tatami_column(SEXP input, int i);
+RcppExport SEXP _arbalist_tatami_column(SEXP inputSEXP, SEXP iSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< int >::type i(iSEXP);
+    rcpp_result_gen = Rcpp::wrap(tatami_column(input, i));
+    return rcpp_result_gen;
+END_RCPP
+}
+// tatami_row
+Rcpp::NumericVector tatami_row(SEXP input, int i);
+RcppExport SEXP _arbalist_tatami_row(SEXP inputSEXP, SEXP iSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< int >::type i(iSEXP);
+    rcpp_result_gen = Rcpp::wrap(tatami_row(input, i));
+    return rcpp_result_gen;
+END_RCPP
+}
 // apply_subset
 SEXP apply_subset(SEXP input, Rcpp::IntegerVector subset, bool row);
-RcppExport SEXP _arbalest_apply_subset(SEXP inputSEXP, SEXP subsetSEXP, SEXP rowSEXP) {
+RcppExport SEXP _arbalist_apply_subset(SEXP inputSEXP, SEXP subsetSEXP, SEXP rowSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
@@ -54,7 +86,7 @@ END_RCPP
 }
 // apply_transpose
 SEXP apply_transpose(SEXP input);
-RcppExport SEXP _arbalest_apply_transpose(SEXP inputSEXP) {
+RcppExport SEXP _arbalist_apply_transpose(SEXP inputSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
@@ -64,7 +96,7 @@ END_RCPP
 }
 // apply_bind
 SEXP apply_bind(Rcpp::List input, bool row);
-RcppExport SEXP _arbalest_apply_bind(SEXP inputSEXP, SEXP rowSEXP) {
+RcppExport SEXP _arbalist_apply_bind(SEXP inputSEXP, SEXP rowSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< Rcpp::List >::type input(inputSEXP);
@@ -75,7 +107,7 @@ END_RCPP
 }
 // apply_addition
 SEXP apply_addition(SEXP input, Rcpp::NumericVector val, bool row);
-RcppExport SEXP _arbalest_apply_addition(SEXP inputSEXP, SEXP valSEXP, SEXP rowSEXP) {
+RcppExport SEXP _arbalist_apply_addition(SEXP inputSEXP, SEXP valSEXP, SEXP rowSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
@@ -87,7 +119,7 @@ END_RCPP
 }
 // apply_multiplication
 SEXP apply_multiplication(SEXP input, Rcpp::NumericVector val, bool row);
-RcppExport SEXP _arbalest_apply_multiplication(SEXP inputSEXP, SEXP valSEXP, SEXP rowSEXP) {
+RcppExport SEXP _arbalist_apply_multiplication(SEXP inputSEXP, SEXP valSEXP, SEXP rowSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
@@ -99,7 +131,7 @@ END_RCPP
 }
 // apply_subtraction
 SEXP apply_subtraction(SEXP input, Rcpp::NumericVector val, bool right, bool row);
-RcppExport SEXP _arbalest_apply_subtraction(SEXP inputSEXP, SEXP valSEXP, SEXP rightSEXP, SEXP rowSEXP) {
+RcppExport SEXP _arbalist_apply_subtraction(SEXP inputSEXP, SEXP valSEXP, SEXP rightSEXP, SEXP rowSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
@@ -112,7 +144,7 @@ END_RCPP
 }
 // apply_division
 SEXP apply_division(SEXP input, Rcpp::NumericVector val, bool right, bool row);
-RcppExport SEXP _arbalest_apply_division(SEXP inputSEXP, SEXP valSEXP, SEXP rightSEXP, SEXP rowSEXP) {
+RcppExport SEXP _arbalist_apply_division(SEXP inputSEXP, SEXP valSEXP, SEXP rightSEXP, SEXP rowSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
@@ -125,19 +157,22 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_arbalest_initialize_from_hdf5", (DL_FUNC) &_arbalest_initialize_from_hdf5, 6},
-    {"_arbalest_initialize_from_memory", (DL_FUNC) &_arbalest_initialize_from_memory, 6},
-    {"_arbalest_apply_subset", (DL_FUNC) &_arbalest_apply_subset, 3},
-    {"_arbalest_apply_transpose", (DL_FUNC) &_arbalest_apply_transpose, 1},
-    {"_arbalest_apply_bind", (DL_FUNC) &_arbalest_apply_bind, 2},
-    {"_arbalest_apply_addition", (DL_FUNC) &_arbalest_apply_addition, 3},
-    {"_arbalest_apply_multiplication", (DL_FUNC) &_arbalest_apply_multiplication, 3},
-    {"_arbalest_apply_subtraction", (DL_FUNC) &_arbalest_apply_subtraction, 4},
-    {"_arbalest_apply_division", (DL_FUNC) &_arbalest_apply_division, 4},
+    {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
+    {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
+    {"_arbalist_tatami_dims", (DL_FUNC) &_arbalist_tatami_dims, 1},
+    {"_arbalist_tatami_column", (DL_FUNC) &_arbalist_tatami_column, 2},
+    {"_arbalist_tatami_row", (DL_FUNC) &_arbalist_tatami_row, 2},
+    {"_arbalist_apply_subset", (DL_FUNC) &_arbalist_apply_subset, 3},
+    {"_arbalist_apply_transpose", (DL_FUNC) &_arbalist_apply_transpose, 1},
+    {"_arbalist_apply_bind", (DL_FUNC) &_arbalist_apply_bind, 2},
+    {"_arbalist_apply_addition", (DL_FUNC) &_arbalist_apply_addition, 3},
+    {"_arbalist_apply_multiplication", (DL_FUNC) &_arbalist_apply_multiplication, 3},
+    {"_arbalist_apply_subtraction", (DL_FUNC) &_arbalist_apply_subtraction, 4},
+    {"_arbalist_apply_division", (DL_FUNC) &_arbalist_apply_division, 4},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_arbalest(DllInfo *dll) {
+RcppExport void R_init_arbalist(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

@@ -1,3 +1,3 @@
 #' @importFrom Rcpp sourceCpp
-#' @useDynLib arbalest
+#' @useDynLib arbalist
 NULL

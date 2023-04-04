@@ -2,38 +2,50 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 initialize_from_hdf5 <- function(file, name, nrow, ncol, byrow, forced) {
-    .Call('_arbalest_initialize_from_hdf5', PACKAGE = 'arbalest', file, name, nrow, ncol, byrow, forced)
+    .Call('_arbalist_initialize_from_hdf5', PACKAGE = 'arbalist', file, name, nrow, ncol, byrow, forced)
 }
 
 initialize_from_memory <- function(x, i, p, nrow, ncol, byrow) {
-    .Call('_arbalest_initialize_from_memory', PACKAGE = 'arbalest', x, i, p, nrow, ncol, byrow)
+    .Call('_arbalist_initialize_from_memory', PACKAGE = 'arbalist', x, i, p, nrow, ncol, byrow)
+}
+
+tatami_dims <- function(input) {
+    .Call('_arbalist_tatami_dims', PACKAGE = 'arbalist', input)
+}
+
+tatami_column <- function(input, i) {
+    .Call('_arbalist_tatami_column', PACKAGE = 'arbalist', input, i)
+}
+
+tatami_row <- function(input, i) {
+    .Call('_arbalist_tatami_row', PACKAGE = 'arbalist', input, i)
 }
 
 apply_subset <- function(input, subset, row) {
-    .Call('_arbalest_apply_subset', PACKAGE = 'arbalest', input, subset, row)
+    .Call('_arbalist_apply_subset', PACKAGE = 'arbalist', input, subset, row)
 }
 
 apply_transpose <- function(input) {
-    .Call('_arbalest_apply_transpose', PACKAGE = 'arbalest', input)
+    .Call('_arbalist_apply_transpose', PACKAGE = 'arbalist', input)
 }
 
 apply_bind <- function(input, row) {
-    .Call('_arbalest_apply_bind', PACKAGE = 'arbalest', input, row)
+    .Call('_arbalist_apply_bind', PACKAGE = 'arbalist', input, row)
 }
 
 apply_addition <- function(input, val, row) {
-    .Call('_arbalest_apply_addition', PACKAGE = 'arbalest', input, val, row)
+    .Call('_arbalist_apply_addition', PACKAGE = 'arbalist', input, val, row)
 }
 
 apply_multiplication <- function(input, val, row) {
-    .Call('_arbalest_apply_multiplication', PACKAGE = 'arbalest', input, val, row)
+    .Call('_arbalist_apply_multiplication', PACKAGE = 'arbalist', input, val, row)
 }
 
 apply_subtraction <- function(input, val, right, row) {
-    .Call('_arbalest_apply_subtraction', PACKAGE = 'arbalest', input, val, right, row)
+    .Call('_arbalist_apply_subtraction', PACKAGE = 'arbalist', input, val, right, row)
 }
 
 apply_division <- function(input, val, right, row) {
-    .Call('_arbalest_apply_division', PACKAGE = 'arbalest', input, val, right, row)
+    .Call('_arbalist_apply_division', PACKAGE = 'arbalist', input, val, right, row)
 }
 
