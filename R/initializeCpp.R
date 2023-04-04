@@ -5,8 +5,12 @@
 #'
 #' @param x A sparse matrix-like object, typically from the \pkg{Matrix} or \pkg{HDF5Array} packages.
 #' Alternatively, a \link{DelayedArray} wrapper around such objects.
-#' @param force.integer Logical scalar indicating whether double-precision \code{x} should be forced into integers.
+#' @param ... Further arguments used by specific methods.
+#' This includes:
+#' \itemize{
+#' \item \code{force.integer}: logical scalar indicating whether double-precision \code{x} should be forced into integers.
 #' Only used for loading a HDF5-backed matrix into memory.
+#' }
 #'
 #' @return An external pointer to a C++ object containing a tatami matrix.
 #'
@@ -35,7 +39,7 @@
 #' initializeCpp,H5SparseMatrixSeed-method
 #' flushFileBasedCache
 #' @import methods
-setGeneric("initializeCpp", function(x, force.integer=TRUE, ...) standardGeneric("initializeCpp"))
+setGeneric("initializeCpp", function(x, ...) standardGeneric("initializeCpp"))
 
 ####################################################################################
 ####################################################################################
@@ -45,14 +49,14 @@ setGeneric("initializeCpp", function(x, force.integer=TRUE, ...) standardGeneric
 setMethod("initializeCpp", "dgCMatrix", function(x, ...) initialize_from_memory(x@x, x@i, x@p, nrow(x), ncol(x), byrow=FALSE))
 
 #' @export
-setMethod("initializeCpp", "dgRMatrix", function(x, ...) initialize_from_memory(x@x, x@i, x@p, nrow(x), ncol(x), byrow=FALSE))
+setMethod("initializeCpp", "dgRMatrix", function(x, ...) initialize_from_memory(x@x, x@j, x@p, nrow(x), ncol(x), byrow=TRUE))
 
 ####################################################################################
 ####################################################################################
 
 #' @export
 #' @importFrom HDF5Array H5SparseMatrixSeed
-setMethod("initializeCpp", "H5SparseMatrixSeed", function(x, force.integer=TRUE, ...) {
+setMethod("initializeCpp", "H5SparseMatrixSeed", function(x, ..., force.integer=TRUE) {
     ikey <- as.character(force.integer)
 
     if (x@filepath %in% names(file.based.cache$cache)) {
@@ -104,6 +108,12 @@ flushFileBasedCache <- function() {
 
 ####################################################################################
 ####################################################################################
+
+#' @export
+#' @import DelayedArray 
+setMethod("initializeCpp", "DelayedMatrix", function(x, ...) {
+    initializeCpp(x@seed, ...)
+})
 
 #' @export
 #' @import DelayedArray 
