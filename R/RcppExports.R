@@ -49,3 +49,27 @@ apply_division <- function(input, val, right, row) {
     .Call('_arbalist_apply_division', PACKAGE = 'arbalist', input, val, right, row)
 }
 
+apply_log <- function(input, base) {
+    .Call('_arbalist_apply_log', PACKAGE = 'arbalist', input, base)
+}
+
+apply_log1p <- function(input) {
+    .Call('_arbalist_apply_log1p', PACKAGE = 'arbalist', input)
+}
+
+apply_abs <- function(input) {
+    .Call('_arbalist_apply_abs', PACKAGE = 'arbalist', input)
+}
+
+apply_sqrt <- function(input) {
+    .Call('_arbalist_apply_sqrt', PACKAGE = 'arbalist', input)
+}
+
+apply_round <- function(input) {
+    .Call('_arbalist_apply_round', PACKAGE = 'arbalist', input)
+}
+
+apply_exp <- function(input) {
+    .Call('_arbalist_apply_exp', PACKAGE = 'arbalist', input)
+}
+

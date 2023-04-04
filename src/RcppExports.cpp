@@ -155,6 +155,67 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// apply_log
+SEXP apply_log(SEXP input, double base);
+RcppExport SEXP _arbalist_apply_log(SEXP inputSEXP, SEXP baseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< double >::type base(baseSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_log(input, base));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_log1p
+SEXP apply_log1p(SEXP input);
+RcppExport SEXP _arbalist_apply_log1p(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_log1p(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_abs
+SEXP apply_abs(SEXP input);
+RcppExport SEXP _arbalist_apply_abs(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_abs(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_sqrt
+SEXP apply_sqrt(SEXP input);
+RcppExport SEXP _arbalist_apply_sqrt(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_sqrt(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_round
+SEXP apply_round(SEXP input);
+RcppExport SEXP _arbalist_apply_round(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_round(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_exp
+SEXP apply_exp(SEXP input);
+RcppExport SEXP _arbalist_apply_exp(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_exp(input));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
@@ -169,6 +230,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_apply_multiplication", (DL_FUNC) &_arbalist_apply_multiplication, 3},
     {"_arbalist_apply_subtraction", (DL_FUNC) &_arbalist_apply_subtraction, 4},
     {"_arbalist_apply_division", (DL_FUNC) &_arbalist_apply_division, 4},
+    {"_arbalist_apply_log", (DL_FUNC) &_arbalist_apply_log, 2},
+    {"_arbalist_apply_log1p", (DL_FUNC) &_arbalist_apply_log1p, 1},
+    {"_arbalist_apply_abs", (DL_FUNC) &_arbalist_apply_abs, 1},
+    {"_arbalist_apply_sqrt", (DL_FUNC) &_arbalist_apply_sqrt, 1},
+    {"_arbalist_apply_round", (DL_FUNC) &_arbalist_apply_round, 1},
+    {"_arbalist_apply_exp", (DL_FUNC) &_arbalist_apply_exp, 1},
     {NULL, NULL, 0}
 };
 

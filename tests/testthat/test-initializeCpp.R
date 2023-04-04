@@ -1,11 +1,11 @@
 # This checks the initialization procedure.
 # library(testthat); library(arbalist); source("test-initializeCpp.R")
 
-am_i_ok <- function(ref, ptr, mutate=identity) {
+am_i_ok <- function(ref, ptr, exact=TRUE) {
     expect_identical(dim(ref), arbalist:::tatami_dim(ptr))
+    test <- if (exact) expect_identical else expect_equal
     for (i in seq_len(ncol(ref))) {
-        expected <- mutate(ref[,i])
-        expect_identical(expected, arbalist:::tatami_column(ptr, i))
+        test(ref[,i], arbalist:::tatami_column(ptr, i))
     }
 }
 
@@ -152,18 +152,6 @@ test_that("initialization works correctly with scalar arithmetic", {
     am_i_ok(10 / y, ptr)
 })
 
-test_that("initialization works correctly with unary operations", {
-    z0 <- DelayedArray(y)
-
-    z <- +z0 
-    ptr <- initializeCpp(z)
-    am_i_ok(y, ptr)
-
-    z <- -z0 
-    ptr <- initializeCpp(z)
-    am_i_ok(-y, ptr)
-})
-
 test_that("initialization works correctly with vector arithmetic", {
     z0 <- DelayedArray(y)
 
@@ -216,4 +204,64 @@ test_that("initialization works correctly with vector arithmetic", {
     }
 })
 
+test_that("initialization works correctly with DelayedArray log-transforms", {
+    z0 <- DelayedArray(y)
 
+    # Adding a value to make sure it's not log-zero.
+    z <- log2(z0 + 2)
+    ptr <- initializeCpp(z)
+    am_i_ok(log2(y + 2), ptr, exact=FALSE)
+
+    z <- log10(z0 + 2)
+    ptr <- initializeCpp(z)
+    am_i_ok(log10(y + 2), ptr, exact=FALSE)
+
+    z <- log(z0 + 2)
+    ptr <- initializeCpp(z)
+    am_i_ok(log(y + 2), ptr, exact=FALSE)
+
+    z <- log(z0 + 2, 2.5)
+    ptr <- initializeCpp(z)
+    am_i_ok(log(y + 2, 2.5), ptr, exact=FALSE)
+})
+
+test_that("initialization works correctly with DelayedArray rounding", {
+    ref <- (DelayedArray(x) + 0.001) * 12.3 # avoid problems at 0.5.
+
+    x0 <- DelayedArray(ref)
+    z <- round(x0)
+    ptr <- initializeCpp(z)
+    am_i_ok(round(ref), ptr)
+
+    z <- round(x0, 2)
+    expect_error(initializeCpp(z), "digits = 0")
+})
+
+test_that("initialization works correctly with other DelayedArray unary operations", {
+    z0 <- DelayedArray(y)
+
+    z <- +z0 
+    ptr <- initializeCpp(z)
+    am_i_ok(y, ptr)
+
+    z <- -z0 
+    ptr <- initializeCpp(z)
+    am_i_ok(-y, ptr)
+
+    z <- log1p(z0)
+    ptr <- initializeCpp(z)
+    am_i_ok(log1p(y), ptr, exact=FALSE)
+
+    z <- sqrt(z0)
+    ptr <- initializeCpp(z)
+    am_i_ok(sqrt(y), ptr, exact=FALSE)
+
+    z <- exp(z0)
+    ptr <- initializeCpp(z)
+    am_i_ok(exp(y), ptr, exact=FALSE)
+
+    x0 <- DelayedArray(x)
+    z <- abs(x0)
+    ptr <- initializeCpp(z)
+    am_i_ok(abs(x), ptr)
+})

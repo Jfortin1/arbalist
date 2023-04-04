@@ -206,28 +206,62 @@ setMethod("initializeCpp", "DelayedUnaryIsoOpWithArgs", function(x, ...) {
 ####################################################################################
 ####################################################################################
 
+.unary_Math <- function(seed, OP) {
+    envir <- environment(OP)
+    generic <- envir$`.Generic`
+
+    if (!is.null(generic)) {
+        if (generic == "abs") {
+            return(apply_abs(seed))
+        } else if (generic == "sqrt") {
+            return(apply_sqrt(seed))
+        } else if (generic == "exp") {
+            return(apply_exp(seed))
+        } else if (generic == "log1p") {
+            return(apply_log1p(seed))
+        } else if (generic == "round") {
+            if (envir$digits != 0) {
+                stop("only 'digits = 0' support for delayed 'round' operations")
+            }
+            return(apply_round(seed))
+        }
+
+        log.base.support <- c(log2=2, log10=10)
+        if (generic %in% names(log.base.support)) {
+            return(apply_log(seed, log.base.support[[generic]]))
+        }
+    }
+
+    # Special case for the general case log.
+    if (isTRUE(all.equal(as.character(body(OP)), c("log", "a", "base")))) {
+        return(apply_log(seed, envir$base))
+    }
+}
+
 .unary_Ops <- function(seed, OP) {
     envir <- environment(OP)
     generic <- envir$`.Generic`
 
-    if (generic %in% supported.Ops) {
-        e1 <- envir$e1
-        e2 <- envir$e2
+    if (!is.null(generic)) {
+        if (generic %in% supported.Ops) {
+            e1 <- envir$e1
+            e2 <- envir$e2
 
-        if (missing(e2)) {
-            if (generic == "+") {
-                return(seed)
-            } else if (generic == "-") {
-                return(apply_multiplication(seed, -1, TRUE))
+            if (missing(e2)) {
+                if (generic == "+") {
+                    return(seed)
+                } else if (generic == "-") {
+                    return(apply_multiplication(seed, -1, TRUE))
+                } else {
+                    stop("second argument can only be missing for unary '+' or '-'")
+                }
             } else {
-                stop("second argument can only be missing for unary '+' or '-'")
-            }
-        } else {
-            right <- is(e1, "DelayedArray") # i.e., is the operation applied to the right of the seed?
-            val <- if (right) e2 else e1
+                right <- is(e1, "DelayedArray") # i.e., is the operation applied to the right of the seed?
+                val <- if (right) e2 else e1
 
-            # Just guessing that it's applied along the rows, if it's not a scalar.
-            return(.apply_arithmetic(seed, generic, val, right, TRUE))
+                # Just guessing that it's applied along the rows, if it's not a scalar.
+                return(.apply_arithmetic(seed, generic, val, right, TRUE))
+            }
         }
     }
 }
@@ -235,12 +269,19 @@ setMethod("initializeCpp", "DelayedUnaryIsoOpWithArgs", function(x, ...) {
 #' @export
 setMethod("initializeCpp", "DelayedUnaryIsoOpStack", function(x, ...) {
     seed <- initializeCpp(x@seed, ...)
-    for (i in rev(seq_along(x@OPS))) { # reverse order, as first operation is first applied (and thus needs to be closer to the leaf of the delayed tree).
+    for (i in seq_along(x@OPS)) { 
         OP <- x@OPS[[i]]
         status <- FALSE 
 
         if (!status) {
             info <- .unary_Ops(seed, OP)
+            if (status <- !is.null(info)) {
+                seed <- info
+            }
+        } 
+
+        if (!status) {
+            info <- .unary_Math(seed, OP)
             if (status <- !is.null(info)) {
                 seed <- info
             }
