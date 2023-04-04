@@ -9,8 +9,8 @@ initialize_from_memory <- function(x, i, p, nrow, ncol, byrow) {
     .Call('_arbalist_initialize_from_memory', PACKAGE = 'arbalist', x, i, p, nrow, ncol, byrow)
 }
 
-tatami_dims <- function(input) {
-    .Call('_arbalist_tatami_dims', PACKAGE = 'arbalist', input)
+tatami_dim <- function(input) {
+    .Call('_arbalist_tatami_dim', PACKAGE = 'arbalist', input)
 }
 
 tatami_column <- function(input, i) {

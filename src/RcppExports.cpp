@@ -40,13 +40,13 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// tatami_dims
-Rcpp::IntegerVector tatami_dims(SEXP input);
-RcppExport SEXP _arbalist_tatami_dims(SEXP inputSEXP) {
+// tatami_dim
+Rcpp::IntegerVector tatami_dim(SEXP input);
+RcppExport SEXP _arbalist_tatami_dim(SEXP inputSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
-    rcpp_result_gen = Rcpp::wrap(tatami_dims(input));
+    rcpp_result_gen = Rcpp::wrap(tatami_dim(input));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -159,7 +159,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
     {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
-    {"_arbalist_tatami_dims", (DL_FUNC) &_arbalist_tatami_dims, 1},
+    {"_arbalist_tatami_dim", (DL_FUNC) &_arbalist_tatami_dim, 1},
     {"_arbalist_tatami_column", (DL_FUNC) &_arbalist_tatami_column, 2},
     {"_arbalist_tatami_row", (DL_FUNC) &_arbalist_tatami_row, 2},
     {"_arbalist_apply_subset", (DL_FUNC) &_arbalist_apply_subset, 3},
