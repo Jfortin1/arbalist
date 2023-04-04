@@ -71,4 +71,149 @@ test_that("initialization works correctly with H5SparseMatrices", {
     am_i_ok(A, z)
 })
 
+test_that("initialization works correctly with DelayedArray", {
+    z <- DelayedArray(y)
+    ptr <- initializeCpp(z)
+    am_i_ok(y, ptr)
+})
+
+test_that("initialization works correctly with DelayedArray transposition", {
+    z0 <- DelayedArray(y)
+    z <- t(z0)
+    ptr <- initializeCpp(z)
+    am_i_ok(t(y), ptr)
+})
+
+test_that("initialization works correctly with DelayedArray subsetting", {
+    z0 <- DelayedArray(y)
+
+    rkeep <- sample(nrow(y), 100)
+    z <- z0[rkeep,]
+    ptr <- initializeCpp(z)
+    am_i_ok(y[rkeep,], ptr)
+
+    ckeep <- sample(ncol(y), 10)
+    z <- z0[,ckeep]
+    ptr <- initializeCpp(z)
+    am_i_ok(y[,ckeep], ptr)
+
+    z <- z0[rkeep,ckeep]
+    ptr <- initializeCpp(z)
+    am_i_ok(y[rkeep,ckeep], ptr)
+
+    rkeep <- 100:200
+    ckeep <- 5:30
+    z <- z0[rkeep,ckeep]
+    ptr <- initializeCpp(z)
+    am_i_ok(y[rkeep,ckeep], ptr)
+})
+
+test_that("initialization works correctly with DelayedArray combining", {
+    z0 <- DelayedArray(y)
+
+    x2 <- Matrix::rsparsematrix(99, 100, 0.1)
+    y2 <- round(abs(x)*10)
+    z <- rbind(z0, DelayedArray(y2))
+    ptr <- initializeCpp(z)
+    am_i_ok(rbind(y, y2), ptr)
+
+    x2 <- Matrix::rsparsematrix(1000, 50, 0.1)
+    y2 <- round(abs(x)*10)
+    z <- cbind(z0, DelayedArray(y2))
+    ptr <- initializeCpp(z)
+    am_i_ok(cbind(y, y2), ptr)
+})
+
+test_that("initialization works correctly with scalar arithmetic", {
+    z0 <- DelayedArray(y)
+
+    z <- z0 + 1
+    ptr <- initializeCpp(z)
+    am_i_ok(y + 1, ptr)
+
+    z <- z0 * 10
+    ptr <- initializeCpp(z)
+    am_i_ok(y * 10, ptr)
+
+    z <- z0 - 1
+    ptr <- initializeCpp(z)
+    am_i_ok(y - 1, ptr)
+
+    z <- 1 - z0
+    ptr <- initializeCpp(z)
+    am_i_ok(1 - y, ptr)
+
+    z <- z0 / 10
+    ptr <- initializeCpp(z)
+    am_i_ok(y / 10, ptr)
+
+    z <- 10 / z0
+    ptr <- initializeCpp(z)
+    am_i_ok(10 / y, ptr)
+})
+
+test_that("initialization works correctly with unary operations", {
+    z0 <- DelayedArray(y)
+
+    z <- +z0 
+    ptr <- initializeCpp(z)
+    am_i_ok(y, ptr)
+
+    z <- -z0 
+    ptr <- initializeCpp(z)
+    am_i_ok(-y, ptr)
+})
+
+test_that("initialization works correctly with vector arithmetic", {
+    z0 <- DelayedArray(y)
+
+    {
+        vr <- runif(nrow(y))
+
+        z <- z0 + vr
+        ptr <- initializeCpp(z)
+        am_i_ok(y + vr, ptr)
+
+        z <- z0 * vr
+        ptr <- initializeCpp(z)
+        am_i_ok(y * vr, ptr)
+
+        z <- z0 - vr
+        ptr <- initializeCpp(z)
+        am_i_ok(y - vr, ptr)
+
+        z <- vr - z0
+        ptr <- initializeCpp(z)
+        am_i_ok(vr - y, ptr)
+
+        z <- z0 / vr
+        ptr <- initializeCpp(z)
+        am_i_ok(y / vr, ptr)
+
+        z <- vr / z0
+        ptr <- initializeCpp(z)
+        am_i_ok(vr / y, ptr)
+    }
+
+    {
+        vc <- runif(ncol(y))
+
+        z <- sweep(z0, 2, vc, "+")
+        ptr <- initializeCpp(z)
+        am_i_ok(t(t(y) + vc), ptr)
+
+        z <- sweep(z0, 2, vc, "*")
+        ptr <- initializeCpp(z)
+        am_i_ok(t(t(y) * vc), ptr)
+
+        z <- sweep(z0, 2, vc, "-")
+        ptr <- initializeCpp(z)
+        am_i_ok(t(t(y) - vc), ptr)
+
+        z <- sweep(z0, 2, vc, "/")
+        ptr <- initializeCpp(z)
+        am_i_ok(t(t(y) / vc), ptr)
+    }
+})
+
 

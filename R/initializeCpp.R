@@ -119,13 +119,13 @@ setMethod("initializeCpp", "DelayedMatrix", function(x, ...) {
 #' @import DelayedArray 
 setMethod("initializeCpp", "DelayedAbind", function(x, ...) {
     collected <- lapply(x@seeds, initializeCpp, ...)
-    apply_combine(collected, x@along == 1L)
+    apply_bind(collected, x@along == 1L)
 })
 
 #' @export
 setMethod("initializeCpp", "DelayedAperm", function(x, ...) {
     seed <- initializeCpp(x@seed, ...)
-    if (x@perm[1] == 2L && x@parm[2] == 1L) {
+    if (x@perm[1] == 2L && x@perm[2] == 1L) {
         apply_transpose(seed)
     } else {
         seed
@@ -200,7 +200,7 @@ setMethod("initializeCpp", "DelayedUnaryIsoOpWithArgs", function(x, ...) {
     }
     row <- along == 1L
 
-    .apply_arithmetic(seed, op, args, right, row)
+    .apply_arithmetic(seed, chosen, args, right, row)
 })
 
 ####################################################################################
@@ -211,7 +211,6 @@ setMethod("initializeCpp", "DelayedUnaryIsoOpWithArgs", function(x, ...) {
     generic <- envir$`.Generic`
 
     if (generic %in% supported.Ops) {
-        delayed_op <- NULL
         e1 <- envir$e1
         e2 <- envir$e2
 
@@ -225,10 +224,7 @@ setMethod("initializeCpp", "DelayedUnaryIsoOpWithArgs", function(x, ...) {
             }
         } else {
             right <- is(e1, "DelayedArray") # i.e., is the operation applied to the right of the seed?
-            left <- is(e2, "DelayedArray") # i.e., is the operation applied to the left of the seed?
-
-            write_string_scalar(file, name, "side", if (left) "left" else "right")
-            val <- if (left) e1 else e2
+            val <- if (right) e2 else e1
 
             # Just guessing that it's applied along the rows, if it's not a scalar.
             return(.apply_arithmetic(seed, generic, val, right, TRUE))

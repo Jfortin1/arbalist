@@ -16,8 +16,8 @@ SEXP apply_subset(SEXP input, Rcpp::IntegerVector subset, bool row) {
     }
 
     if (consecutive) {
-        int start = (subset.size() ? subset[0] : 0);
-        int end = (subset.size() ? subset[subset.size() - 1] + 1 : 0);
+        int start = (subset.size() ? subset[0] - 1 : 0);
+        int end = (subset.size() ? subset[subset.size() - 1] : 0);
         if (row) {
             return new_MatrixChan(tatami::make_DelayedSubsetBlock<0>(shared, start, end));
         } else {
@@ -79,13 +79,13 @@ SEXP apply_addition(SEXP input, Rcpp::NumericVector val, bool row) {
 SEXP apply_multiplication(SEXP input, Rcpp::NumericVector val, bool row) {
     auto shared = extract_NumericMatrix_shared(input);
     if (val.size() == 1) {
-        return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedAddScalarHelper(val[0])));
+        return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedMultiplyScalarHelper(val[0])));
     }
 
     if (row) {
-        return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedAddVectorHelper<0>(std::move(val))));
+        return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedMultiplyVectorHelper<0>(std::move(val))));
     } else {
-        return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedAddVectorHelper<1>(std::move(val))));
+        return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedMultiplyVectorHelper<1>(std::move(val))));
     }
 }
 
@@ -104,11 +104,11 @@ SEXP apply_subtraction(SEXP input, Rcpp::NumericVector val, bool right, bool row
         if (row) {
             return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedSubtractVectorHelper<true, 0>(std::move(val))));
         } else {
-            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedSubtractVectorHelper<false, 1>(std::move(val))));
+            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedSubtractVectorHelper<true, 1>(std::move(val))));
         }
     } else {
         if (row) {
-            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedSubtractVectorHelper<true, 0>(std::move(val))));
+            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedSubtractVectorHelper<false, 0>(std::move(val))));
         } else {
             return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedSubtractVectorHelper<false, 1>(std::move(val))));
         }
@@ -130,11 +130,11 @@ SEXP apply_division(SEXP input, Rcpp::NumericVector val, bool right, bool row) {
         if (row) {
             return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedDivideVectorHelper<true, 0>(std::move(val))));
         } else {
-            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedDivideVectorHelper<false, 1>(std::move(val))));
+            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedDivideVectorHelper<true, 1>(std::move(val))));
         }
     } else {
         if (row) {
-            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedDivideVectorHelper<true, 0>(std::move(val))));
+            return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedDivideVectorHelper<false, 0>(std::move(val))));
         } else {
             return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::make_DelayedDivideVectorHelper<false, 1>(std::move(val))));
         }
