@@ -1,0 +1,22 @@
+Package: arbalest
+Version: 0.1.0
+Date: 2023-04-04
+Title: Bringing ArchR to Bioconductor
+Description: 
+    Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
+    in preparation for submission to Bioconductor.
+Authors@R: person("Aaron", "Lun", role=c("aut", "cre"), email="infinite.monkeys.with.keyboards@gmail.com")
+Imports:
+    Rcpp,
+    Matrix,
+    DelayedArray,
+    HDF5Array
+LinkingTo:
+    Rcpp,
+    Rhdf5lib
+VignetteBuilder: 
+    knitr
+SystemRequirements: 
+    GNU make, 
+    C++17
+RoxygenNote: 7.2.3

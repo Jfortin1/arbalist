@@ -1,0 +1,6 @@
+inst/include/source-*
+*.swp
+*.o
+*.so
+*.html
+*.tmp
