@@ -145,35 +145,35 @@ SEXP apply_division(SEXP input, Rcpp::NumericVector val, bool right, bool row) {
 //[[Rcpp::export(rng=false)]]
 SEXP apply_log(SEXP input, double base) {
     auto shared = extract_NumericMatrix_shared(input);
-    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedLogHelper(base)));
+    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedLogHelper<>(base)));
 }
 
 //[[Rcpp::export(rng=false)]]
 SEXP apply_log1p(SEXP input) {
     auto shared = extract_NumericMatrix_shared(input);
-    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedLog1pHelper()));
+    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedLog1pHelper<>()));
 }
 
 //[[Rcpp::export(rng=false)]]
 SEXP apply_abs(SEXP input) {
     auto shared = extract_NumericMatrix_shared(input);
-    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedAbsHelper()));
+    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedAbsHelper<>()));
 }
 
 //[[Rcpp::export(rng=false)]]
 SEXP apply_sqrt(SEXP input) {
     auto shared = extract_NumericMatrix_shared(input);
-    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedSqrtHelper()));
+    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedSqrtHelper<>()));
 }
 
 //[[Rcpp::export(rng=false)]]
 SEXP apply_round(SEXP input) {
     auto shared = extract_NumericMatrix_shared(input);
-    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedRoundHelper()));
+    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedRoundHelper<>()));
 }
 
 //[[Rcpp::export(rng=false)]]
 SEXP apply_exp(SEXP input) {
     auto shared = extract_NumericMatrix_shared(input);
-    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedExpHelper()));
+    return new_MatrixChan(tatami::make_DelayedIsometricOp(shared, tatami::DelayedExpHelper<>()));
 }
