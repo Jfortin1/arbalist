@@ -191,16 +191,17 @@ private:
         size_t other = get_other_dimension<column>();
 
         for (size_t x = 0; x < end; ++x) {
+            auto mult = rhs.coeff(x);
+
             if constexpr(sparse) {
                 auto found = get_sparse_range<column>(x, vbuffer, ibuffer, current.get());
                 for (size_t i = 0; i < found.number; ++i) {
-                    auto index = found.index[i];
-                    output.coeffRef(index) += found.value[i] * rhs.coeff(index);
+                    output.coeffRef(found.index[i]) += found.value[i] * mult;
                 }
             } else {
                 auto found = get_dense<column>(x, vbuffer, current.get());
                 for (size_t i = 0; i < other; ++i) {
-                    output.coeffRef(i) += found[i] * rhs.coeff(i);
+                    output.coeffRef(i) += found[i] * mult;
                 }
             }
         }
@@ -225,16 +226,17 @@ private:
                 const auto& pos = current->block();
 
                 for (size_t x = 0; x < end; ++x) {
+                    auto mult = rhs.coeff(x);
+
                     if constexpr(sparse) {
                         auto found = get_sparse_range<column>(x, vbuffer, ibuffer, current.get());
                         for (size_t i = 0; i < found.number; ++i) {
-                            auto index = found.index[i];
-                            sums[index] += found.value[i] * rhs.coeff(index);
+                            sums[found.index[i]] += found.value[i] * mult;
                         }
                     } else {
                         auto found = get_dense<column>(x, vbuffer, current.get());
                         for (size_t i = 0; i < pos.second; ++i) {
-                            output.coeffRef(i) += found[i] * rhs.coeff(i + pos.first);
+                            sums[pos.first + i] += found[i] * mult;
                         }
                     }
                 }

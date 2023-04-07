@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <iostream>
 
 // STOLEN FROM LIBSCRAN:
 
@@ -24,34 +25,15 @@ SparseComponents sparse_by_row(const tatami::Matrix<T, IDX>* mat, int nthreads) 
     ptrs.resize(NR + 1);
 
     /*** First round, to fetch the number of zeros in each row. ***/
-#ifndef ARBALIST_CUSTOM_PARALLEL
-    #pragma omp parallel num_threads(nthreads)
-    {
-#else
     ARBALIST_CUSTOM_PARALLEL(NR, [&](size_t start, size_t end) -> void {
-#endif
-
         std::vector<double> xbuffer(NC);
         std::vector<int> ibuffer(NC);
         auto wrk = mat->new_row_workspace();
-
-#ifndef ARBALIST_CUSTOM_PARALLEL
-        #pragma omp for
-        for (size_t r = 0; r < NR; ++r) {
-#else
         for (size_t r = start; r < end; ++r) {
-#endif
-
             auto range = mat->sparse_row(r, xbuffer.data(), ibuffer.data(), wrk.get());
             ptrs[r + 1] = range.number;
-
-#ifndef ARBALIST_CUSTOM_PARALLEL
-        }
-    }
-#else
         }
     }, nthreads);
-#endif
 
     /*** Second round, to populate the vectors. ***/
     for (size_t r = 0; r < NR; ++r) {
@@ -60,32 +42,13 @@ SparseComponents sparse_by_row(const tatami::Matrix<T, IDX>* mat, int nthreads) 
     output.values.resize(ptrs.back());
     output.indices.resize(ptrs.back());
 
-#ifndef ARBALIST_CUSTOM_PARALLEL
-    #pragma omp parallel num_threads(nthreads)
-    {
-#else
     ARBALIST_CUSTOM_PARALLEL(NR, [&](size_t start, size_t end) -> void {
-#endif
-
         auto wrk = mat->new_row_workspace();
-
-#ifndef ARBALIST_CUSTOM_PARALLEL
-        #pragma omp for
-        for (size_t r = 0; r < NR; ++r) {
-#else
         for (size_t r = start; r < end; ++r) {
-#endif
-
             auto offset = ptrs[r];
             mat->sparse_row_copy(r, output.values.data() + offset, output.indices.data() + offset, wrk.get(), tatami::SPARSE_COPY_BOTH);
-
-#ifndef ARBALIST_CUSTOM_PARALLEL
-        }
-    }
-#else
         }
     }, nthreads);
-#endif
 
     return output;
 }
@@ -98,36 +61,25 @@ SparseComponents sparse_by_column(const tatami::Matrix<T, IDX>* mat, int nthread
     size_t cols_per_thread = std::ceil(static_cast<double>(NC) / nthreads);
     std::vector<std::vector<size_t> > threaded_nonzeros_per_row(nthreads);
 
-#ifndef ARBALIST_CUSTOM_PARALLEL
-    #pragma omp parallel for num_threads(nthreads)
-    for (int t = 0; t < nthreads; ++t) {
-#else
     ARBALIST_CUSTOM_PARALLEL(nthreads, [&](int start, int end) -> void { // Trivial allocation of one job per thread.
-    for (int t = start; t < end; ++t) {
-#endif
+        for (int t = start; t < end; ++t) {
+            size_t startcol = cols_per_thread * t, endcol = std::min(startcol + cols_per_thread, NC);
+            if (startcol < endcol) {
+                std::vector<size_t>& nonzeros_per_row = threaded_nonzeros_per_row[t];
+                nonzeros_per_row.resize(NR);
+                std::vector<double> xbuffer(NR);
+                std::vector<int> ibuffer(NR);
+                auto wrk = mat->new_column_workspace();
 
-        size_t startcol = cols_per_thread * t, endcol = std::min(startcol + cols_per_thread, NC);
-        if (startcol < endcol) {
-            std::vector<size_t>& nonzeros_per_row = threaded_nonzeros_per_row[t];
-            nonzeros_per_row.resize(NR);
-            std::vector<double> xbuffer(NR);
-            std::vector<int> ibuffer(NR);
-            auto wrk = mat->new_column_workspace();
-
-            for (size_t c = startcol; c < endcol; ++c) {
-                auto range = mat->sparse_column(c, xbuffer.data(), ibuffer.data(), wrk.get());
-                for (size_t i = 0; i < range.number; ++i) {
-                    ++(nonzeros_per_row[range.index[i]]);
+                for (size_t c = startcol; c < endcol; ++c) {
+                    auto range = mat->sparse_column(c, xbuffer.data(), ibuffer.data(), wrk.get());
+                    for (size_t i = 0; i < range.number; ++i) {
+                        ++(nonzeros_per_row[range.index[i]]);
+                    }
                 }
             }
         }
-
-#ifndef ARBALIST_CUSTOM_PARALLEL
-    }
-#else
-    }
     }, nthreads);
-#endif
 
     // There had better be at least one thread!
     std::vector<size_t> nonzeros_per_row = std::move(threaded_nonzeros_per_row[0]);
@@ -146,27 +98,25 @@ SparseComponents sparse_by_column(const tatami::Matrix<T, IDX>* mat, int nthread
     for (size_t r = 0; r < NR; ++r) {
         total_nzeros += nonzeros_per_row[r];
         output.ptrs[r + 1] = total_nzeros;
+
     }
     output.values.resize(total_nzeros);
     output.indices.resize(total_nzeros);
 
     // Splitting by row this time, because columnar extraction can't be done safely.
+    nthreads = 1;
     size_t rows_per_thread = std::ceil(static_cast<double>(NR) / nthreads);
     auto ptr_copy = output.ptrs;
 
-#ifndef ARBALIST_CUSTOM_PARALLEL
-    #pragma omp parallel for num_threads(nthreads)
-    for (int t = 0; t < nthreads; ++t) {
-#else
     ARBALIST_CUSTOM_PARALLEL(nthreads, [&](int start, int end) -> void { // Trivial allocation of one job per thread.
     for (int t = start; t < end; ++t) {
-#endif
-
         size_t startrow = rows_per_thread * t, endrow = std::min(startrow + rows_per_thread, NR);
+
         if (startrow < endrow) {
-            auto wrk = mat->new_column_workspace(startrow, endrow);
-            std::vector<double> xbuffer(endrow - startrow);
-            std::vector<int> ibuffer(endrow - startrow);
+            size_t length = endrow - startrow;
+            auto wrk = mat->new_column_workspace(startrow, length);
+            std::vector<double> xbuffer(length);
+            std::vector<int> ibuffer(length);
 
             for (size_t c = 0; c < NC; ++c) {
                 auto range = mat->sparse_column(c, xbuffer.data(), ibuffer.data(), wrk.get());
@@ -179,13 +129,8 @@ SparseComponents sparse_by_column(const tatami::Matrix<T, IDX>* mat, int nthread
                 }
             }
         }
-
-#ifndef ARBALIST_CUSTOM_PARALLEL
-    }
-#else
     }
     }, nthreads);
-#endif
 
     return output;
 }
