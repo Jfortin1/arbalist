@@ -7,6 +7,8 @@
 
 #include <vector>
 #include <algorithm>
+#include <cmath>
+#include <thread>
 
 struct TatamiWrapper {
     TatamiWrapper(const tatami::NumericMatrix* m, int n) : mat(m), nthreads(n) {}
@@ -25,8 +27,8 @@ public:
     }
 
 public:
-    class Workspace {
-        Workspace(const tatami::NumericMatrx* mat, int nthreads, bool multiply) : 
+    struct Workspace {
+        Workspace(const tatami::NumericMatrix* mat, int nthreads, bool multiply) : 
             values(nthreads), indices(nthreads) // make sure nthreads entries are available in indices, even if empty, as the dense methods still access them.
         { 
             if (mat->prefer_rows()) {
@@ -35,7 +37,7 @@ public:
                 if (multiply || nthreads == 1) {
                     rowwork.reserve(nthreads);
                     for (int t = 0; t < nthreads; ++t) {
-                        rowwork.push_back(mat->new_row_workspace(true));
+                        rowwork.push_back(mat->new_row_workspace());
                         values[t].resize(NC);
                         if (mat->sparse()) {
                             indices[t].resize(NC);
@@ -44,11 +46,11 @@ public:
 
                 } else {
                     size_t start = 0;
-                    size_t per_thread = std::ceiling(static_cast<double>(NC) / nthreads);
+                    size_t per_thread = std::ceil(static_cast<double>(NC) / nthreads);
                     rowbwork.reserve(nthreads);
                     staging.resize(nthreads);
 
-                    for (int i = 0; i < nthreads; ++i) {
+                    for (int t = 0; t < nthreads; ++t) {
                         size_t end = std::min(NC, start + per_thread);
                         size_t length = end - start;
                         rowbwork.push_back(mat->new_row_workspace(start, length, true));
@@ -67,7 +69,7 @@ public:
 
                 if (!multiply || nthreads == 1) {
                     colwork.reserve(nthreads);
-                    for (int i = 0; i < nthreads; ++i) {
+                    for (int t = 0; t < nthreads; ++t) {
                         colwork.push_back(mat->new_column_workspace(true));
                         values[t].resize(NR);
                         if (mat->sparse()) {
@@ -77,11 +79,11 @@ public:
 
                 } else {
                     size_t start = 0;
-                    size_t per_thread = std::ceiling(static_cast<double>(NR) / nthreads);
+                    size_t per_thread = std::ceil(static_cast<double>(NR) / nthreads);
                     colbwork.reserve(nthreads);
                     staging.resize(nthreads);
 
-                    for (int i = 0; i < nthreads; ++i) {
+                    for (int t = 0; t < nthreads; ++t) {
                         size_t end = std::min(NR, start + per_thread);
                         size_t length = end - start;
                         colbwork.push_back(mat->new_column_workspace(start, length, true));
@@ -97,7 +99,7 @@ public:
             }
 
             if (nthreads > 1) {
-                jobs.resize(nthreads);
+                jobs.reserve(nthreads);
             }
         }
 
@@ -124,7 +126,7 @@ public:
 
 private:
     template<bool column>
-    static auto& get_work(Workspace&) {
+    static auto& get_work(Workspace& work) {
         if constexpr(column) {
             return work.colwork;
         } else {
@@ -146,7 +148,7 @@ private:
         if constexpr(column) {
             return mat->ncol();
         } else {
-            mat->nrow();
+            return mat->nrow();
         }
     }
 
@@ -155,11 +157,11 @@ private:
         if constexpr(column) {
             return mat->nrow();
         } else {
-            mat->ncol();
+            return mat->ncol();
         }
     }
 
-    template<class TatamiWork>
+    template<bool column, class TatamiWork>
     auto get_sparse_range(size_t x, double* vbuffer, int* ibuffer, TatamiWork* work) const {
         if constexpr(column) {
             return mat->sparse_column(x, vbuffer, ibuffer, work);
@@ -168,7 +170,7 @@ private:
         }
     }
 
-    template<class TatamiWork>
+    template<bool column, class TatamiWork>
     auto get_dense(size_t x, double* vbuffer, TatamiWork* work) const {
         if constexpr(column) {
             return mat->column(x, vbuffer, work);
@@ -210,9 +212,10 @@ private:
         auto& currentwork = get_block_work<column>(work);
         output.setZero();
         size_t end = get_dimension<column>();
+        jobs.clear();
 
         for (int t = 0; t < nthreads; ++t) {
-            jobs[t] = std::thread([&](int thread) -> void {
+            jobs.emplace_back([&](int thread) -> void {
                 auto& current = currentwork[thread];
                 auto vbuffer = work.values[thread].data();
                 auto ibuffer = work.indices[thread].data();
@@ -236,7 +239,7 @@ private:
                     }
                 }
 
-                std::copy_n(sums.begin() + pos.first, pos.second, output.begin() + pos.start);
+                std::copy_n(sums.begin() + pos.first, pos.second, output.begin() + pos.first);
             }, t);
         }
 
@@ -248,15 +251,15 @@ private:
     template<bool column, bool sparse, class Right>
     void running(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
         if (nthreads == 1) {
-            running_serial(rhs, output, work);
+            running_serial<column, sparse>(rhs, output, work);
         } else {
-            running_parallel(rhs, output, work);
+            running_parallel<column, sparse>(rhs, output, work);
         }
     }
 
 private:
     template<bool column, bool sparse, class Right, class TatamiWork>
-    void direct_raw(const Right& rhs, size_t x, double* vbuffer, int* ibuffer, TatamiWork* current) {
+    double direct_raw(const Right& rhs, size_t x, double* vbuffer, int* ibuffer, TatamiWork* current) const {
         double total = 0;
 
         if constexpr(sparse) {
@@ -296,12 +299,13 @@ private:
         output.setZero();
         size_t start = 0;
         size_t ntasks = get_dimension<column>();
-        size_t per_thread = std::ceiling(static_cast<double>(ntasks) / nthreads);
+        size_t per_thread = std::ceil(static_cast<double>(ntasks) / nthreads);
+        jobs.clear();
 
         for (int t = 0; t < nthreads; ++t) {
-            end = std::min(ntasks, start + per_thread);
+            auto end = std::min(ntasks, start + per_thread);
 
-            jobs[t] = std::thread([&](int thread, size_t s, size_t e) -> void {
+            jobs.emplace_back([&](int thread, size_t s, size_t e) -> void {
                 auto& current = currentwork[thread];
                 auto vbuffer = work.values[thread].data();
                 auto ibuffer = work.indices[thread].data();
@@ -321,15 +325,15 @@ private:
     template<bool column, bool sparse, class Right>
     void direct(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
         if (nthreads == 1) {
-            direct_serial(rhs, output, work);
+            direct_serial<column, sparse>(rhs, output, work);
         } else {
-            direct_parallel(rhs, output, work);
+            direct_parallel<column, sparse>(rhs, output, work);
         }
     }
 
 public:
     template<class Right>
-    void multiply(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
+    void multiply(const Right& rhs, Workspace& work, Eigen::VectorXd& output) const {
         if (mat->prefer_rows()) {
             if (mat->sparse()) {
                 direct<false, true>(rhs, output, work);
@@ -346,7 +350,7 @@ public:
     }
 
     template<class Right>
-    void adjoint_multiply(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
+    void adjoint_multiply(const Right& rhs, Workspace& work, Eigen::VectorXd& output) const {
         if (mat->prefer_rows()) {
             if (mat->sparse()) {
                 running<false, true>(rhs, output, work);
@@ -375,9 +379,8 @@ Rcpp::List irlba_tatami(SEXP input, int rank, int nthreads) {
     size_t NR = shared->nrow();
     size_t NC = shared->ncol();
 
-    // Extracting as row-major sparse matrix and transposing it.
-    auto info = extract_sparse_for_pca(shared.get(), nthreads);
-    irlba::ParallelSparseMatrix<> mat(NC, NR, std::move(info.values), std::move(info.indices), std::move(info.ptrs), nthreads);
+    auto trans = tatami::make_DelayedTranspose(std::move(shared));
+    TatamiWrapper mat(trans.get(), nthreads);
 
     irlba::EigenThreadScope t(nthreads);
     irlba::Irlba runner;

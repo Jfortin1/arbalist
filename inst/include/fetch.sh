@@ -18,7 +18,7 @@ else
 fi
 
 cd source-tatami
-git checkout 488a14ad9fabc62c6cf88d79aab8d34bb5778a4a
+git checkout 2243b5ff46a8947adf4c95cb48a1c15e2226ccb6 
 rm -rf ../tatami
 cp -r include/tatami/ ../tatami
 git checkout master
