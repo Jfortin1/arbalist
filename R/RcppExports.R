@@ -9,6 +9,14 @@ initialize_from_memory <- function(x, i, p, nrow, ncol, byrow) {
     .Call('_arbalist_initialize_from_memory', PACKAGE = 'arbalist', x, i, p, nrow, ncol, byrow)
 }
 
+irlba_realized <- function(input, rank, nthreads, seed) {
+    .Call('_arbalist_irlba_realized', PACKAGE = 'arbalist', input, rank, nthreads, seed)
+}
+
+irlba_tatami <- function(input, rank, nthreads, seed) {
+    .Call('_arbalist_irlba_tatami', PACKAGE = 'arbalist', input, rank, nthreads, seed)
+}
+
 tatami_dim <- function(input) {
     .Call('_arbalist_tatami_dim', PACKAGE = 'arbalist', input)
 }

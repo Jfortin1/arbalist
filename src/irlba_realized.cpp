@@ -200,7 +200,7 @@ SparseComponents extract_sparse_for_pca(const tatami::Matrix<T, IDX>* mat, int n
 }
 
 //[[Rcpp::export(rng=false)]]
-Rcpp::List irlba_realized(SEXP input, int rank, int nthreads) {
+Rcpp::List irlba_realized(SEXP input, int rank, int nthreads, int seed) {
     auto shared = extract_NumericMatrix_shared(input);
     size_t NR = shared->nrow();
     size_t NC = shared->ncol();
@@ -212,6 +212,7 @@ Rcpp::List irlba_realized(SEXP input, int rank, int nthreads) {
     irlba::EigenThreadScope t(nthreads);
     irlba::Irlba runner;
     runner.set_number(rank);
+    runner.set_seed(seed);
 
     Eigen::MatrixXd u;
     Eigen::MatrixXd v;
