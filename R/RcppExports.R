@@ -17,6 +17,10 @@ irlba_tatami <- function(input, rank, nthreads, seed) {
     .Call('_arbalist_irlba_tatami', PACKAGE = 'arbalist', input, rank, nthreads, seed)
 }
 
+lsi_matrix_stats <- function(mat, nthreads) {
+    .Call('_arbalist_lsi_matrix_stats', PACKAGE = 'arbalist', mat, nthreads)
+}
+
 tatami_dim <- function(input) {
     .Call('_arbalist_tatami_dim', PACKAGE = 'arbalist', input)
 }

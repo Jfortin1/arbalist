@@ -66,6 +66,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// lsi_matrix_stats
+Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads);
+RcppExport SEXP _arbalist_lsi_matrix_stats(SEXP matSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(lsi_matrix_stats(mat, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // tatami_dim
 Rcpp::IntegerVector tatami_dim(SEXP input);
 RcppExport SEXP _arbalist_tatami_dim(SEXP inputSEXP) {
@@ -248,6 +259,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
     {"_arbalist_irlba_tatami", (DL_FUNC) &_arbalist_irlba_tatami, 4},
+    {"_arbalist_lsi_matrix_stats", (DL_FUNC) &_arbalist_lsi_matrix_stats, 2},
     {"_arbalist_tatami_dim", (DL_FUNC) &_arbalist_tatami_dim, 1},
     {"_arbalist_tatami_column", (DL_FUNC) &_arbalist_tatami_column, 2},
     {"_arbalist_tatami_row", (DL_FUNC) &_arbalist_tatami_row, 2},
