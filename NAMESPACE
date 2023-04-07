@@ -2,10 +2,13 @@
 
 export(flushFileBasedCache)
 export(initializeCpp)
+export(iterativeLSI)
 exportMethods(initializeCpp)
 import(DelayedArray)
 import(Matrix)
+import(matrixStats)
 import(methods)
+import(rowVars)
 importFrom(HDF5Array,H5SparseMatrixSeed)
 importFrom(Rcpp,sourceCpp)
 useDynLib(arbalist)

@@ -9,6 +9,7 @@ Authors@R: person("Aaron", "Lun", role=c("aut", "cre"), email="infinite.monkeys.
 Imports:
     Rcpp,
     Matrix,
+    matrixStats,
     DelayedArray,
     HDF5Array
 LinkingTo:
