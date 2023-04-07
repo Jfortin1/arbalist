@@ -1,5 +1,4 @@
 #' @export
-#' @importFrom utils head
 #' @importFrom matrixStats rowVars
 iterativeLSI <- function(x, 
     rank = 30, 
@@ -30,7 +29,7 @@ iterativeLSI <- function(x,
 
     # Initial calculation on the full matrix. 
     transformed <- apply_division(ptr, sf, right = TRUE, row = FALSE)
-    transformed <- apply_multiplication(transformed, idf, right = TRUE, row = TRUE)
+    transformed <- apply_multiplication(transformed, idf, row = TRUE)
     transformed <- apply_log1p(transformed)
     current <- irlba_tatami(transformed, rank = rank, nthreads = num.threads, seed = seed)
     embedding <- t(t(current$u) * current$d)
@@ -58,7 +57,7 @@ iterativeLSI <- function(x,
         # Re-normalizing on the subset.
         sf <- center_sf(tatami_colsums(subset, nthreads = num.threads))
         transformed <- apply_division(subset, sf, right = TRUE, row = FALSE)
-        transformed <- apply_multiplication(transformed, idf[indices], right = TRUE, row = TRUE)
+        transformed <- apply_multiplication(transformed, idf[indices], row = TRUE)
         transformed <- apply_log1p(transformed)
 
         # Computing the next iteration.
