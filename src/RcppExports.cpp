@@ -109,6 +109,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// tatami_colsums
+Rcpp::NumericVector tatami_colsums(SEXP input, int nthreads);
+RcppExport SEXP _arbalist_tatami_colsums(SEXP inputSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(tatami_colsums(input, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // apply_subset
 SEXP apply_subset(SEXP input, Rcpp::IntegerVector subset, bool row);
 RcppExport SEXP _arbalist_apply_subset(SEXP inputSEXP, SEXP subsetSEXP, SEXP rowSEXP) {
@@ -263,6 +274,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_tatami_dim", (DL_FUNC) &_arbalist_tatami_dim, 1},
     {"_arbalist_tatami_column", (DL_FUNC) &_arbalist_tatami_column, 2},
     {"_arbalist_tatami_row", (DL_FUNC) &_arbalist_tatami_row, 2},
+    {"_arbalist_tatami_colsums", (DL_FUNC) &_arbalist_tatami_colsums, 2},
     {"_arbalist_apply_subset", (DL_FUNC) &_arbalist_apply_subset, 3},
     {"_arbalist_apply_transpose", (DL_FUNC) &_arbalist_apply_transpose, 1},
     {"_arbalist_apply_bind", (DL_FUNC) &_arbalist_apply_bind, 2},

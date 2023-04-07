@@ -29,3 +29,10 @@ Rcpp::NumericVector tatami_row(SEXP input, int i) {
     shared->row_copy(i-1, static_cast<double*>(output.begin()), wrk.get());
     return output;
 }
+
+//[[Rcpp::export(rng=false)]]
+Rcpp::NumericVector tatami_colsums(SEXP input, int nthreads) {
+    auto shared = extract_NumericMatrix_shared(input);
+    auto sums = tatami::column_sums(shared.get(), nthreads);
+    return Rcpp::NumericVector(sums.begin(), sums.end());
+}

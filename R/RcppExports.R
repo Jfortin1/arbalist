@@ -33,6 +33,10 @@ tatami_row <- function(input, i) {
     .Call('_arbalist_tatami_row', PACKAGE = 'arbalist', input, i)
 }
 
+tatami_colsums <- function(input, nthreads) {
+    .Call('_arbalist_tatami_colsums', PACKAGE = 'arbalist', input, nthreads)
+}
+
 apply_subset <- function(input, subset, row) {
     .Call('_arbalist_apply_subset', PACKAGE = 'arbalist', input, subset, row)
 }
