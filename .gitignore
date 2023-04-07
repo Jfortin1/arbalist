@@ -1,4 +1,6 @@
 inst/include/source-*
+inst/include/Eigen
+inst/source-*
 *.swp
 *.o
 *.so

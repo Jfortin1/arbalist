@@ -40,6 +40,32 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// irlba_realized
+Rcpp::List irlba_realized(SEXP input, int rank, int nthreads, int seed);
+RcppExport SEXP _arbalist_irlba_realized(SEXP inputSEXP, SEXP rankSEXP, SEXP nthreadsSEXP, SEXP seedSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< int >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< int >::type seed(seedSEXP);
+    rcpp_result_gen = Rcpp::wrap(irlba_realized(input, rank, nthreads, seed));
+    return rcpp_result_gen;
+END_RCPP
+}
+// irlba_tatami
+Rcpp::List irlba_tatami(SEXP input, int rank, int nthreads, int seed);
+RcppExport SEXP _arbalist_irlba_tatami(SEXP inputSEXP, SEXP rankSEXP, SEXP nthreadsSEXP, SEXP seedSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< int >::type rank(rankSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    Rcpp::traits::input_parameter< int >::type seed(seedSEXP);
+    rcpp_result_gen = Rcpp::wrap(irlba_tatami(input, rank, nthreads, seed));
+    return rcpp_result_gen;
+END_RCPP
+}
 // tatami_dim
 Rcpp::IntegerVector tatami_dim(SEXP input);
 RcppExport SEXP _arbalist_tatami_dim(SEXP inputSEXP) {
@@ -220,6 +246,8 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
     {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
+    {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
+    {"_arbalist_irlba_tatami", (DL_FUNC) &_arbalist_irlba_tatami, 4},
     {"_arbalist_tatami_dim", (DL_FUNC) &_arbalist_tatami_dim, 1},
     {"_arbalist_tatami_column", (DL_FUNC) &_arbalist_tatami_column, 2},
     {"_arbalist_tatami_row", (DL_FUNC) &_arbalist_tatami_row, 2},
