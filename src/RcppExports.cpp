@@ -10,6 +10,22 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// dump_fragments_to_files
+Rcpp::IntegerVector dump_fragments_to_files(std::string fragment_file, int tile_size, std::string output_file, std::string output_group, Rcpp::NumericVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::CharacterVector cellnames);
+RcppExport SEXP _arbalist_dump_fragments_to_files(SEXP fragment_fileSEXP, SEXP tile_sizeSEXP, SEXP output_fileSEXP, SEXP output_groupSEXP, SEXP seqlengthsSEXP, SEXP seqnamesSEXP, SEXP cellnamesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< std::string >::type fragment_file(fragment_fileSEXP);
+    Rcpp::traits::input_parameter< int >::type tile_size(tile_sizeSEXP);
+    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< std::string >::type output_group(output_groupSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type seqlengths(seqlengthsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type seqnames(seqnamesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type cellnames(cellnamesSEXP);
+    rcpp_result_gen = Rcpp::wrap(dump_fragments_to_files(fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames));
+    return rcpp_result_gen;
+END_RCPP
+}
 // initialize_from_hdf5
 SEXP initialize_from_hdf5(std::string file, std::string name, size_t nrow, size_t ncol, bool byrow, bool forced);
 RcppExport SEXP _arbalist_initialize_from_hdf5(SEXP fileSEXP, SEXP nameSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP, SEXP forcedSEXP) {
@@ -255,6 +271,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_arbalist_dump_fragments_to_files", (DL_FUNC) &_arbalist_dump_fragments_to_files, 7},
     {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
     {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},

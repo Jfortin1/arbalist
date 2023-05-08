@@ -26,6 +26,43 @@ cd -
 
 ##########################################################
 
+if [ ! -e source-byteme ]
+then 
+    git clone https://github.com/LTLA/byteme source-byteme
+else 
+    cd source-tatami
+    git pull
+    cd -
+fi
+
+cd source-byteme
+git checkout c638112d307eb873ec0c719046cf202d061dc4d0
+rm -rf ../byteme
+cp -r include/byteme/ ../byteme
+git checkout master
+cd -
+
+##########################################################
+
+if [ ! -e source-tatami ]
+then 
+    git clone https://github.com/LTLA/tatami source-tatami
+else 
+    cd source-tatami
+    git pull
+    cd -
+fi
+
+cd source-tatami
+git checkout 0a19ec6d0b3b460e2e069cdcec6c7b7e8fda09eb
+rm -rf ../tatami
+cp -r include/tatami/ ../tatami
+git checkout master
+cd -
+
+
+##########################################################
+
 if [ ! -e source-irlba ]
 then 
     git clone https://github.com/LTLA/CppIrlba source-irlba

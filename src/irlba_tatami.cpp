@@ -10,6 +10,7 @@
 #include <cmath>
 #include <thread>
 
+// TODO: move back to libscran.
 struct TatamiWrapper {
     TatamiWrapper(const tatami::NumericMatrix* m, int n) : mat(m), nthreads(n) {}
 
