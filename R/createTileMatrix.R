@@ -1,7 +1,8 @@
 #' @export
-createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengths=NULL, tile.size = 500, max.count = 255, chunk.dim = 20000) {
-    # Obtaining the sequence lengths, if they weren't already available.
+#' @importFrom utils read.delim
+createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengths=NULL, cell.names=NULL, tile.size = 500, max.count = 255, chunk.dim = 20000) {
     if (is.null(seq.lengths)) {
+        # Obtaining the sequence lengths, if they weren't already available.
         out <- lapply(fragment.files, .process_fragment_header)
         everything <- unique(lapply(out, function(x) x$reference_path))
         if (length(everything) != 1) {
@@ -14,7 +15,12 @@ createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengt
         names(seq.lengths) <- fai.info[,1]
     }
 
-    # Determining the maximimum count.
+    if (!is.null(cell.names)) {
+        if (length(cell.names) != length(fragment.files)) {
+            stop("'cell.names' should have the same length as 'fragment.files'")
+        }
+    }
+
     if (max.index < 2^8) {
         dtype <- "H5T_NATIVE_UINT8"
     } else if (max.index < 2^16) {
@@ -22,20 +28,19 @@ createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengt
     } else {
         dtype <- "H5T_NATIVE_UINT32"
     }
-    
-    # Setting up the file.
-    if (!file.exists(file)) {
-        h5createFile(file)
+
+    if (!file.exists(output.path)) {
+        h5createFile(output.path)
     }
 
     (function() {
-        handle <- H5Fopen(file)
+        handle <- H5Fopen(output.path)
         on.exit(H5Fclose(handle))
-        h5createGroup(handle, name)
+        h5createGroup(handle, output.name)
 
         h5createDataset(
             handle,
-            file.path(name, "data"),
+            paste0(output.name, "/data"),
             dims = 0,
             maxdims = H5Sunlimited(),
             H5type = dtype,
@@ -44,19 +49,50 @@ createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengt
 
         h5createDataset(
             handle,
-            file.path(name, "indices"),
+            paste0(output.name, "/indices"),
             dims    = 0,
             maxdims = H5Sunlimited(),
-            H5type  = itype,
+            H5type  = "H5T_NATIVE_UINT32",
             chunk   = chunk.dim
+        )
+
+        h5createDataset(
+            handle,
+            paste0(output.name, "/indptr"),
+            dims    = 1,
+            maxdims = H5Sunlimited(),
+            H5type = "H5T_NATIVE_UINT64",
+            fillValue = 0,
+            chunk = chunk.dim 
         )
     })()
 
-    for (x in fragment.files) {
-
-
-
+    collected <- vector("list", length(fragment.files))
+    last <- 0
+    for (i in seq_along(fragment.files)) {
+        output <- tryCatch(
+            dump_fragments_to_files(
+                fragment_file=fragment.files[i], 
+                tile_size=tile.size, 
+                output_file=output.path, 
+                output_name=output.name, 
+                seq_lengths=seq.lengths, 
+                seq_names=names(seq.lengths), 
+                cell_names=cell.names[[i]], 
+                previous_nonzero=last
+            ),
+            error = function(e) stop("failed to parse fragment file '", fragment.files[i], "'\n- ", err$message)
+        )
+        last <- output[[1]]
+        collected[[i]] <- output[[2]]
     }
+
+    output <- NULL
+    if (is.null(cell.names)) {
+        output <- collected
+        names(output) <- fragment.files
+    }
+    invisible(output)
 }
 
 .process_fragment_header <- function(file) {
@@ -78,9 +114,3 @@ createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengt
     value <- sub("[^=]+=", all.headers)
     split(value, field)
 }
-
-.fragments_to_tiles <- function(file) {
-    contents <- read.delim(file, header=FALSE, sep="\t", colClasses=list("string", "integer", "integer", "string", NULL))
-}
-
-

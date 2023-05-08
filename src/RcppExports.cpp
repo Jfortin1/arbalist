@@ -11,18 +11,19 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // dump_fragments_to_files
-Rcpp::IntegerVector dump_fragments_to_files(std::string fragment_file, int tile_size, std::string output_file, std::string output_group, Rcpp::NumericVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::CharacterVector cellnames);
-RcppExport SEXP _arbalist_dump_fragments_to_files(SEXP fragment_fileSEXP, SEXP tile_sizeSEXP, SEXP output_fileSEXP, SEXP output_groupSEXP, SEXP seqlengthsSEXP, SEXP seqnamesSEXP, SEXP cellnamesSEXP) {
+Rcpp::List dump_fragments_to_files(std::string fragment_file, int tile_size, std::string output_file, std::string output_group, Rcpp::IntegerVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::Nullable<Rcpp::CharacterVector> cellnames, double previous_nonzero);
+RcppExport SEXP _arbalist_dump_fragments_to_files(SEXP fragment_fileSEXP, SEXP tile_sizeSEXP, SEXP output_fileSEXP, SEXP output_groupSEXP, SEXP seqlengthsSEXP, SEXP seqnamesSEXP, SEXP cellnamesSEXP, SEXP previous_nonzeroSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< std::string >::type fragment_file(fragment_fileSEXP);
     Rcpp::traits::input_parameter< int >::type tile_size(tile_sizeSEXP);
     Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< std::string >::type output_group(output_groupSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type seqlengths(seqlengthsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type seqlengths(seqlengthsSEXP);
     Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type seqnames(seqnamesSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type cellnames(cellnamesSEXP);
-    rcpp_result_gen = Rcpp::wrap(dump_fragments_to_files(fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames));
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type cellnames(cellnamesSEXP);
+    Rcpp::traits::input_parameter< double >::type previous_nonzero(previous_nonzeroSEXP);
+    rcpp_result_gen = Rcpp::wrap(dump_fragments_to_files(fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, previous_nonzero));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -271,7 +272,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_arbalist_dump_fragments_to_files", (DL_FUNC) &_arbalist_dump_fragments_to_files, 7},
+    {"_arbalist_dump_fragments_to_files", (DL_FUNC) &_arbalist_dump_fragments_to_files, 8},
     {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
     {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},

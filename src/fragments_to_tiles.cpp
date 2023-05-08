@@ -1,30 +1,49 @@
 #include "Rcpp.h"
-#include "byteme/GzipFileReader.hpp"
+#include "byteme/SomeFileReader.hpp"
+#include "H5Cpp.h"
 
 #include <unordered_map>
 #include <vector>
 #include <queue>
 
-class TileParser {
-    TileParser(int ts, Rcpp::IntegerVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::CharacterVector cellnames) : tile_size(ts) {
-        for (size_t i = 0, end = cellnames.size(); i < end; ++i) {
-            cell_to_id[Rcpp::as<std::string>(cellnames[i])] = i;
+struct TileParser {
+    TileParser(int ts, Rcpp::IntegerVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::Nullable<Rcpp::CharacterVector> cellnames) : tile_size(ts) {
+        known_cells = cellnames.isNotNull();
+        if (known_cells) {
+            Rcpp::CharacterVector my_cellnames(cellnames);
+            for (size_t i = 0, end = my_cellnames.size(); i < end; ++i) {
+                cell_to_id[Rcpp::as<std::string>(my_cellnames[i])] = i;
+            }
+            collected.resize(my_cellnames.size());
         }
-        collected.resize(cellnames.size());
 
         if (seqlengths.size() != seqnames.size()) {
             throw std::runtime_error("'seqlengths' and 'seqnames' should be of the same length");
         }
-        for (size_t i = 0, end = cellnames.size(); i < end; ++i) {
-            seq_to_id[Rcpp::as<std::string>(seqnames[i])] = std::pair<int, int>(i, std::ceil(static_cast<double>(seqlengths[i]) / tile_size));
+
+        int offset = 0;
+        for (size_t i = 0, end = seqnames.size(); i < end; ++i) {
+            seq_to_id[Rcpp::as<std::string>(seqnames[i])] = Sequence(i, seqlengths[i], offset);
+            offset += std::ceil(static_cast<double>(seqlengths[i]) / tile_size);
         }
     }
 
 public:
     int tile_size;
-    std::unordered_map<std::string, int> cell_to_id;
-    std::unordered_map<std::string, std::pair<int, int> > seq_to_id;
 
+    bool known_cells;
+    std::unordered_map<std::string, int> cell_to_id;
+
+    struct Sequence {
+        Sequence() = default;
+        Sequence(int s, int l, int o) : seq_id(s), length(l), offset(o) {}
+        int seq_id;
+        int length;
+        int offset;
+    };
+    std::unordered_map<std::string, Sequence> seq_to_id;
+
+public:
     struct Position {
         Position(int c, int t) : cell_id(c), tile_id(t) {}
         int cell_id;
@@ -46,14 +65,21 @@ public:
         int tile_id;
         int count;
     };
+
     std::vector<std::vector<Tile> > collected;
 
 public:
     unsigned char field = 0;
+    bool empty = true; 
+
     std::string seq_name;
     int start_pos = 0;
     int end_pos = 0;
     std::string cell_name;
+
+    int current_tile_seq = -1;
+    int current_tile_start = -1;
+    int current_tile_end = -1;
 
     void add_tile(int cell_id, int tile_id) {
         auto& vec = collected[cell_id];
@@ -73,25 +99,38 @@ public:
     }
 
     void add_record() {
-        auto cIt = cellnames.find(cell_name);
-        if (cIt == cellnames.end()) {
-            throw std::runtime_error("unrecognized cell name '" + cell_name + "' in fragment file '" + fragment_file + "'");
+        int cid;
+        if (known_cells) {
+            auto cIt = cell_to_id.find(cell_name);
+            if (cIt == cell_to_id.end()) {
+                throw std::runtime_error("unrecognized cell name '" + cell_name + "'");
+            }
+            cid = cIt->second;
+        } else {
+            cid = collected.size();
+            collected.resize(collected.size() + 1);
+            cell_to_id[cell_name] = cid;
         }
 
-        auto sIt = seqnames.find(seq_name);
-        if (sIt == seqnames.end()) {
-            throw std::runtime_error("unrecognized sequence name '" + seq_name + "' in fragment file '" + fragment_file + "'");
+        auto sIt = seq_to_id.find(seq_name);
+        if (sIt == seq_to_id.end()) {
+            throw std::runtime_error("unrecognized sequence name '" + seq_name + "'");
         }
-        auto sid = (sIt->second).first;
-        auto soffset = (sIt->second).second;
+        auto sid = (sIt->second).seq_id;
+        auto soffset = (sIt->second).offset;
+
+        auto slength = (sIt->second).length;
+        if (slength <= start_pos || slength <= end_pos) {
+            throw std::runtime_error("fragment boundaries out of range of the sequence length");
+        }
 
         int local_tile_id = (start_pos / tile_size);
         int global_tile_id = local_tile_id + soffset;
 
         // Adding the start position.
-        if (current_tile_seq_id != sid) {
+        if (current_tile_seq != sid) {
             flush_all_leftovers(); // from the previous seqname, if any exists.
-            current_tile_seq_id = sid;
+            current_tile_seq = sid;
             current_tile_start = local_tile_id * tile_size;
             current_tile_end = current_tile_start + tile_size;
 
@@ -101,7 +140,7 @@ public:
             } 
 
             if (start_pos < current_tile_end) {
-                add_tile(cIt->second, global_tile_id);
+                add_tile(cid, global_tile_id);
             } else {
                 // Processing the leftovers up to and including the current tile.
                 while (leftovers.size() && leftovers.top().tile_id <= global_tile_id) {
@@ -110,7 +149,7 @@ public:
                     leftovers.pop();
                 }
 
-                add_tile(cIt->second, global_tile_id);
+                add_tile(cid, global_tile_id);
                 current_tile_start = local_tile_id * tile_size;
                 current_tile_end = current_tile_start + tile_size;
             }
@@ -121,9 +160,9 @@ public:
             throw std::runtime_error("fragment end should be greater than the fragment start");
         }
         if (end_pos < current_tile_end) {
-            add_tile(cIt->second, global_tile_id);
+            add_tile(cid, global_tile_id);
         } else {
-            leftovers.emplace_back(cIt->second, (end_pos / tile_size) + soffset);
+            leftovers.emplace(cid, (end_pos / tile_size) + soffset);
         }
    }
 
@@ -132,20 +171,26 @@ public:
         for (size_t i = 0; i < available; ++i) {
             switch(ptr[i]) {
                 case '\n':
-                    if (field != 4) {
-                        throw std::runtime_error("expected 4 fields per non-comment line");
+                    if (field != 4 || empty) {
+                        throw std::runtime_error("expected 5 non-empty fields per non-comment line");
                     }
                     add_record();
 
                     // Setting everything back.
                     field = 0;
+                    empty = true;
+
                     seq_name.clear();
                     start_pos = 0;
                     end_pos = 0;
                     cell_name.clear();
                     break;
                 case '\t':
+                    if (empty) {
+                        throw std::runtime_error("expected non-empty field in the fragment file");
+                    }
                     ++field;
+                    empty = true;
                     break;
                 default:
                     switch (field) {
@@ -161,7 +206,7 @@ public:
                             break;
                         case 2:
                             if (!std::isdigit(ptr[i])) {
-                                throw std::runtime_error("only digits should be present in the start position field");
+                                throw std::runtime_error("only digits should be present in the end position field");
                             }
                             end_pos *= 10;
                             end_pos += ptr[i] - '0';
@@ -170,6 +215,7 @@ public:
                             cell_name += ptr[i];
                             break;
                     }
+                    empty = false;
                     break;
             }
         }
@@ -177,19 +223,20 @@ public:
 };
 
 // [[Rcpp::export(rng=false)]]
-Rcpp::IntegerVector dump_fragments_to_files(
+Rcpp::List dump_fragments_to_files(
     std::string fragment_file, 
     int tile_size, 
     std::string output_file, 
     std::string output_group, 
-    Rcpp::NumericVector seqlengths, 
+    Rcpp::IntegerVector seqlengths, 
     Rcpp::CharacterVector seqnames, 
-    Rcpp::CharacterVector cellnames) 
+    Rcpp::Nullable<Rcpp::CharacterVector> cellnames,
+    double previous_nonzero) 
 {
     TileParser parser(tile_size, seqlengths, seqnames, cellnames);
 
     {
-        byteme::GzipFileReader gzreader(fragment_file);
+        byteme::SomeFileReader gzreader(fragment_file);
         bool remaining = false;
 
         /*** Reading through all the comments at the start. ***/
@@ -227,37 +274,55 @@ Rcpp::IntegerVector dump_fragments_to_files(
             parser.parse_buffer(ptr, available);
         } while (remaining);
 
-        if (seqname) {
-            parser.add_record(); // add the last record if there's no trailing newline.
+        if (parser.seq_name.size()) { // add the last record manually, when there's no trailing newline.
+            if (parser.field != 4 || parser.empty) {
+                throw std::runtime_error("last line does not have 5 fields");
+            } else {
+                parser.add_record(); 
+            }
         }
-        parser.flush_leftovers();
+        parser.flush_all_leftovers();
     }
 
     // Finally, dumping it all to HDF5.
-    H5::H5File fhandle(output_file);
-    H5::Group ghandle = fhandle.openGroup(output_name);
-    H5::DataSet dhandle = ghandle.openDataSet("data");
-    H5::DataSet ihandle = ghandle.openDataSet("indices");
+    H5::H5File fhandle(output_file, H5F_ACC_RDWR);
+    H5::Group ghandle = fhandle.openGroup(output_group);
 
     const auto& collected = parser.collected;
-    Rcpp::IntegerVector gathered(collected.size());
-    size_t extension = 0;
+    std::vector<hsize_t> gathered(collected.size());
+    hsize_t extension = 0, shift = previous_nonzero;
     for (size_t i = 0, end = collected.size(); i < end; ++i) {
-        gathered[i] = x.size();
-        extension += x.size();
+        size_t n = collected[i].size();
+        extension += n;
+        gathered[i] = extension + shift;
     }
 
+    {
+        H5::DataSet phandle = ghandle.openDataSet("indptr");
+        hsize_t sofar = 0;
+        phandle.getSpace().getSimpleExtentDims(&sofar);
+        hsize_t count = gathered.size();
+        hsize_t combined = sofar + gathered.size();
+        phandle.extend(&combined);
+
+        H5::DataSpace dataspace(1, &combined), memspace(1, &count);
+        dataspace.selectHyperslab(H5S_SELECT_SET, &count, &sofar);
+        phandle.write(gathered.data(), H5::PredType::NATIVE_HSIZE, memspace, dataspace);
+    }
+
+    H5::DataSet dhandle = ghandle.openDataSet("data");
     hsize_t sofar = 0;
     dhandle.getSpace().getSimpleExtentDims(&sofar);
     hsize_t combined = sofar + extension;
-    dhandle.extend(combined);
+    dhandle.extend(&combined);
 
+    H5::DataSet ihandle = ghandle.openDataSet("indices");
     hsize_t isofar = 0;
     ihandle.getSpace().getSimpleExtentDims(&isofar);
     if (sofar != isofar) {
         throw std::runtime_error("lengths of index and data HDF5 datasets should be the same");
     }
-    ihandle.extend(combined);
+    ihandle.extend(&combined);
 
     std::vector<int> ibuffer;
     std::vector<int> dbuffer;
@@ -276,11 +341,22 @@ Rcpp::IntegerVector dump_fragments_to_files(
             dbuffer.push_back(y.count);
         }
 
-        dataspace.setHyperslab(H5S_SELECT_SET, &count, &sofar);
+        dataspace.selectHyperslab(H5S_SELECT_SET, &count, &sofar);
         memspace.setExtentSimple(1, &count);
         dhandle.write(dbuffer.data(), H5::PredType::NATIVE_INT, memspace, dataspace);
         ihandle.write(ibuffer.data(), H5::PredType::NATIVE_INT, memspace, dataspace);
     }
 
-    return gathered;
+    Rcpp::List output(2);
+    output[0] = static_cast<double>(extension + shift);
+    if (cellnames.isNotNull()) {
+        output[1] = R_NilValue;
+    } else {
+        Rcpp::CharacterVector names(parser.cell_to_id.size());
+        for (const auto& x : parser.cell_to_id) {
+            names[x.second] = x.first;
+        }
+        output[1] = names;
+    }
+    return output;
 }
