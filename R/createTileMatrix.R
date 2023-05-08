@@ -1,5 +1,6 @@
 #' @export
 #' @importFrom utils read.delim
+#' @importFrom rhdf5 H5Fopen H5Fclose h5createFile h5createGroup h5createDataset H5Sunlimited
 createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengths=NULL, cell.names=NULL, tile.size = 500, max.count = 255, chunk.dim = 20000) {
     if (is.null(seq.lengths)) {
         # Obtaining the sequence lengths, if they weren't already available.
@@ -9,7 +10,7 @@ createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengt
             stop("all fragment files should be generated with the same 'reference_path' if 'seq.lengths' is not supplied")
         }
 
-        fai <- file.path(everything[[1]], "genome.fa.fai")
+        fai <- file.path(everything[[1]], "fasta", "genome.fa.fai")
         fai.info <- read.delim(fai, sep="\t", header=FALSE)[,1:2]
         seq.lengths <- fai.info[,2]
         names(seq.lengths) <- fai.info[,1]
@@ -21,9 +22,9 @@ createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengt
         }
     }
 
-    if (max.index < 2^8) {
+    if (max.count < 2^8) {
         dtype <- "H5T_NATIVE_UINT8"
-    } else if (max.index < 2^16) {
+    } else if (max.count < 2^16) {
         dtype <- "H5T_NATIVE_UINT16"
     } else {
         dtype <- "H5T_NATIVE_UINT32"
@@ -72,14 +73,14 @@ createTileMatrix <- function(fragment.files, output.path, output.name, seq.lengt
     for (i in seq_along(fragment.files)) {
         output <- tryCatch(
             dump_fragments_to_files(
-                fragment_file=fragment.files[i], 
-                tile_size=tile.size, 
-                output_file=output.path, 
-                output_name=output.name, 
-                seq_lengths=seq.lengths, 
-                seq_names=names(seq.lengths), 
-                cell_names=cell.names[[i]], 
-                previous_nonzero=last
+                fragment_file = fragment.files[i], 
+                tile_size = tile.size, 
+                output_file = output.path, 
+                output_group = output.name, 
+                seqlengths = seq.lengths, 
+                seqnames = names(seq.lengths), 
+                cellnames = cell.names[[i]], 
+                previous_nonzero = last
             ),
             error = function(e) stop("failed to parse fragment file '", fragment.files[i], "'\n- ", err$message)
         )
