@@ -11,6 +11,7 @@ saveTileMatrix(
   seq.lengths = NULL,
   barcodes = NULL,
   tile.size = 500,
+  compress.level = 6,
   chunk.dim = 20000
 )
 }
@@ -30,6 +31,8 @@ If \code{NULL}, this is obtained from the reference genome used by Cellranger (i
 If \code{NULL}, all barcodes are extracted, though this is usually undesirable as not all barcodes correspond to cell-containing droplets.}
 
 \item{tile.size}{Integer scalar specifying the size of the tiles in base pairs.}
+
+\item{compress.level}{Integer scalar specifying the Zlib compression level to use.}
 
 \item{chunk.dim}{Integer scalar specifying the size of the chunks (in terms of the number of elements) inside the HDF5 file.}
 }

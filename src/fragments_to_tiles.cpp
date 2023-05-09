@@ -342,7 +342,9 @@ SEXP dump_fragments_to_files(
     }
 
     // Finally, dumping it all to HDF5.
-    H5::H5File fhandle(output_file, H5F_ACC_RDWR);
+    H5::FileAccPropList fapl(H5::FileAccPropList::DEFAULT.getId());
+    fapl.setCache(0, 511, chunk_dim * sizeof(int), 1);
+    H5::H5File fhandle(output_file, H5F_ACC_RDWR, H5::FileCreatPropList::DEFAULT, fapl);
     H5::Group ghandle = fhandle.openGroup(output_group);
 
     const auto& collected = parser.collected;

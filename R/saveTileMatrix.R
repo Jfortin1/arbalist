@@ -14,6 +14,7 @@
 #' If \code{NULL}, all barcodes are extracted, though this is usually undesirable as not all barcodes correspond to cell-containing droplets.
 #' @param tile.size Integer scalar specifying the size of the tiles in base pairs.
 #' @param chunk.dim Integer scalar specifying the size of the chunks (in terms of the number of elements) inside the HDF5 file.
+#' @param compress.level Integer scalar specifying the Zlib compression level to use.
 #'
 #' @return A sparse matrix is saved to \code{output.file} using the 10X HDF5 format.
 #' If \code{cell.names=NULL}, a character vector is invisibly returned, containing the cell barcodes corresponding to the columns of the matrix.
@@ -24,7 +25,7 @@
 #' @export
 #' @importFrom utils read.delim
 #' @importFrom rhdf5 h5createFile h5createGroup
-saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=NULL, barcodes=NULL, tile.size = 500, chunk.dim = 20000) {
+saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=NULL, barcodes=NULL, tile.size = 500, compress.level = 6, chunk.dim = 20000) {
     if (is.null(seq.lengths)) {
         # Obtaining the sequence lengths, if they weren't already available.
         info <- .process_fragment_header(fragment.file)
@@ -47,7 +48,7 @@ saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=
         seqlengths = seq.lengths, 
         seqnames = names(seq.lengths), 
         cellnames = barcodes,
-        deflate_level = 6,
+        deflate_level = compress.level,
         chunk_dim = chunk.dim
     )
 
