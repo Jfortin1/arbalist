@@ -316,7 +316,6 @@ Rcpp::List dump_fragments_to_files(
         extension += n;
         gathered[i] = extension + baseline;
     }
-    std::cout << "Gathered " << gathered.size() << std::endl;
 
     {
         H5::DataSet phandle = ghandle.openDataSet("indptr");
