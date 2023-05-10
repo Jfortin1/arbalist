@@ -10,6 +10,24 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// dump_fragments_to_files
+SEXP dump_fragments_to_files(std::string fragment_file, int tile_size, std::string output_file, std::string output_group, Rcpp::IntegerVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::Nullable<Rcpp::CharacterVector> cellnames, int deflate_level, int chunk_dim);
+RcppExport SEXP _arbalist_dump_fragments_to_files(SEXP fragment_fileSEXP, SEXP tile_sizeSEXP, SEXP output_fileSEXP, SEXP output_groupSEXP, SEXP seqlengthsSEXP, SEXP seqnamesSEXP, SEXP cellnamesSEXP, SEXP deflate_levelSEXP, SEXP chunk_dimSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< std::string >::type fragment_file(fragment_fileSEXP);
+    Rcpp::traits::input_parameter< int >::type tile_size(tile_sizeSEXP);
+    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< std::string >::type output_group(output_groupSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type seqlengths(seqlengthsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type seqnames(seqnamesSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type cellnames(cellnamesSEXP);
+    Rcpp::traits::input_parameter< int >::type deflate_level(deflate_levelSEXP);
+    Rcpp::traits::input_parameter< int >::type chunk_dim(chunk_dimSEXP);
+    rcpp_result_gen = Rcpp::wrap(dump_fragments_to_files(fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim));
+    return rcpp_result_gen;
+END_RCPP
+}
 // initialize_from_hdf5
 SEXP initialize_from_hdf5(std::string file, std::string name, size_t nrow, size_t ncol, bool byrow, bool forced);
 RcppExport SEXP _arbalist_initialize_from_hdf5(SEXP fileSEXP, SEXP nameSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP, SEXP forcedSEXP) {
@@ -255,6 +273,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_arbalist_dump_fragments_to_files", (DL_FUNC) &_arbalist_dump_fragments_to_files, 9},
     {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
     {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
