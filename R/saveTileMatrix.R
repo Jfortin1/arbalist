@@ -8,7 +8,7 @@
 #' If none exists, one will be created.
 #' @param output.name String containing the name of the group inside \code{output.file}, in which to save the matrix contents.
 #' @param seq.lengths Named integer vector containing the lengths of the reference sequences used for alignment.
-#' Names should correspond to the names of the sequences, in the same order of occurrence as in the fragment file.
+#' Vector names should correspond to the names of the sequences, in the same order of occurrence as in the fragment file.
 #' If \code{NULL}, this is obtained from the reference genome used by Cellranger (itself located by scanning the header of the fragment file).
 #' @param barcodes Character vector of cell barcodes to extract, e.g., based on the filtered cells reported by Cellranger.
 #' If \code{NULL}, all barcodes are extracted, though this is usually undesirable as not all barcodes correspond to cell-containing droplets.

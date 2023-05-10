@@ -51,31 +51,8 @@ public:
     std::unordered_map<std::string, Sequence> seq_to_id;
 
 public:
-    struct Position {
-        Position(int c, int t) : cell_id(c), tile_id(t) {}
-        int cell_id;
-        int tile_id;
-    };
+    std::vector<std::vector<int> > collected;
 
-    struct Compare {
-        // Returns true if left > right, so that the priority queue
-        // sorts in increasing order.
-        bool operator()(const Position& left, const Position& right) const {
-            return left.tile_id > right.tile_id;
-        }
-    };
-
-    std::priority_queue<Position, std::vector<Position>, Compare> leftovers;
-
-    struct Tile {
-        Tile(int t, int c) : tile_id(t), count(c) {}
-        int tile_id;
-        int count;
-    };
-
-    std::vector<std::vector<Tile> > collected;
-
-public:
     unsigned char field = 0;
     bool empty = true; 
 
@@ -86,24 +63,6 @@ public:
     bool cycle = false;
 
     std::unordered_map<std::string, Sequence>::const_iterator current_tile_seq_it;
-    int last_start_pos = 0;
-
-    void add_tile(int cell_id, int tile_id) {
-        auto& vec = collected[cell_id];
-        if (vec.empty() || vec.back().tile_id != tile_id) {
-            vec.emplace_back(tile_id, 1);
-        } else {
-            ++(vec.back().count);
-        }
-    }
-
-    void flush_all_leftovers() {
-        while (leftovers.size()) {
-            const auto& top = leftovers.top();
-            add_tile(top.cell_id, top.tile_id);
-            leftovers.pop();
-        }
-    }
 
     void add_record() {
         int cid;
@@ -123,16 +82,13 @@ public:
             }
         }
 
-        bool sameseq = true;
         if (current_tile_seq_it == seq_to_id.end()) {
-            sameseq = false; // for the start.
             current_tile_seq_it = seq_to_id.find(seq_name);
             if (current_tile_seq_it == seq_to_id.end()) {
                 throw std::runtime_error("unrecognized sequence name '" + seq_name + "'");
             }
 
         } else if (current_tile_seq_it->first != seq_name) {
-            sameseq = false;
             auto sIt = seq_to_id.find(seq_name);
             if (sIt == seq_to_id.end()) {
                 throw std::runtime_error("unrecognized sequence name '" + seq_name + "'");
@@ -143,32 +99,12 @@ public:
                 throw std::runtime_error("order of sequences in fragment file differs from that in 'seqlengths'");
             }
 
-            flush_all_leftovers(); // from the previous seqname, if any exists.
             current_tile_seq_it = sIt;
-            last_start_pos = start_pos;
         }
 
         auto slength = (current_tile_seq_it->second).length;
         if (slength <= start_pos || slength <= end_pos) {
             throw std::runtime_error("fragment boundaries out of range of the sequence length");
-        }
-
-        int local_tile_id = (start_pos / tile_size);
-        auto soffset = (current_tile_seq_it->second).offset;
-        int global_tile_id = local_tile_id + soffset;
-
-        if (sameseq) {
-            if (start_pos < last_start_pos) {
-                throw std::runtime_error("fragment file should be ordered by start position");
-            }
-            last_start_pos = start_pos;
-
-            // Processing the leftovers up to and including the current tile.
-            while (leftovers.size() && leftovers.top().tile_id <= global_tile_id) {
-                const auto& top = leftovers.top();
-                add_tile(top.cell_id, top.tile_id);
-                leftovers.pop();
-            }
         }
 
         if (end_pos <= start_pos) {
@@ -180,16 +116,13 @@ public:
         // correlations when both ends are treated as "independent". Also ensures that the
         // total count for each cell is equal to the number of fragments.
         cycle = !cycle;
+        int global_tile_id = (current_tile_seq_it->second).offset;
         if (cycle) {
-            add_tile(cid, global_tile_id);
+            global_tile_id += (start_pos / tile_size);
         } else {
-            int global_end_tile_id = (end_pos / tile_size) + soffset;
-            if (global_end_tile_id == global_tile_id) {
-                add_tile(cid, global_tile_id);
-            } else {
-                leftovers.emplace(cid, global_end_tile_id);
-            }
+            global_tile_id += (end_pos / tile_size);
         }
+        collected[cid].push_back(global_tile_id);
    }
 
 public:
@@ -338,25 +271,37 @@ SEXP dump_fragments_to_files(
                 parser.add_record(); 
             }
         }
-        parser.flush_all_leftovers();
     }
 
     // Finally, dumping it all to HDF5.
     H5::FileAccPropList fapl(H5::FileAccPropList::DEFAULT.getId());
-    fapl.setCache(0, 511, chunk_dim * sizeof(int), 1);
+    fapl.setCache(0, 511, chunk_dim * 10 * sizeof(int), 1);
     H5::H5File fhandle(output_file, H5F_ACC_RDWR, H5::FileCreatPropList::DEFAULT, fapl);
     H5::Group ghandle = fhandle.openGroup(output_group);
 
-    const auto& collected = parser.collected;
+    auto& collected = parser.collected;
     std::vector<hsize_t> gathered(collected.size() + 1);
     int max_count = 0;
     for (size_t i = 0, end = collected.size(); i < end; ++i) {
-        size_t n = collected[i].size();
-        gathered[i + 1] = gathered[i] + n;
-        for (const auto& x : collected[i]) {
-            if (x.count > max_count) {
-                max_count = x.count;
+        auto& x = collected[i];
+        std::sort(x.begin(), x.end());
+
+        int nunique = 0;
+        int last = -1;
+        int count = 0;
+        for (auto y : x) {
+            if (y > last) {
+                ++nunique;
+                count = 1;
+                last = y;
+            } else {
+                ++count;
             }
+        }
+
+        gathered[i + 1] = gathered[i] + nunique;
+        if (count > max_count) {
+            max_count = count;
         }
     }
 
@@ -381,7 +326,8 @@ SEXP dump_fragments_to_files(
         shandle.write(shape, H5::PredType::NATIVE_HSIZE, memspace, dataspace);
     }
 
-    H5::DataSet ihandle = create_1d_compressed_hdf5_dataset(ghandle, H5::PredType::NATIVE_UINT32, "indices", gathered.back(), deflate_level, chunk_dim);
+    hsize_t total = gathered.back();
+    H5::DataSet ihandle = create_1d_compressed_hdf5_dataset(ghandle, H5::PredType::NATIVE_UINT32, "indices", total, deflate_level, chunk_dim);
 
     const H5::PredType* dtype;
     if (max_count <= 255) {
@@ -391,26 +337,28 @@ SEXP dump_fragments_to_files(
     } else {
         dtype = &(H5::PredType::NATIVE_UINT32);
     }
-    H5::DataSet dhandle = create_1d_compressed_hdf5_dataset(ghandle, *dtype, "data", gathered.back(), deflate_level, chunk_dim);
+    H5::DataSet dhandle = create_1d_compressed_hdf5_dataset(ghandle, *dtype, "data", total, deflate_level, chunk_dim);
 
     std::vector<int> ibuffer;
     std::vector<int> dbuffer;
-    H5::DataSpace dataspace(1, &(gathered.back())), memspace;
+    H5::DataSpace dataspace(1, &total), memspace;
     hsize_t sofar = 0;
 
-    for (const auto& x : collected) {
+    for (auto& x : collected) {
         ibuffer.clear();
         dbuffer.clear();
 
-        hsize_t count = x.size();
-        ibuffer.reserve(count);
-        dbuffer.reserve(count);
-
-        for (const auto& y : x) {
-            ibuffer.push_back(y.tile_id);
-            dbuffer.push_back(y.count); // (y.count + 1)/2); // Avoid bias towards even counts by dividing by 2, see https://www.biorxiv.org/content/10.1101/2022.05.04.490536v1.full.
+        // Saving the damn thing in reverse order, like an idiot.
+        for (auto y : x) {
+            if (ibuffer.empty() || y != ibuffer.back()) {
+                ibuffer.push_back(y);
+                dbuffer.push_back(1);
+            } else {
+                ++(dbuffer.back());
+            }
         }
 
+        hsize_t count = ibuffer.size();
         dataspace.selectHyperslab(H5S_SELECT_SET, &count, &sofar);
         memspace.setExtentSimple(1, &count);
         memspace.selectAll();

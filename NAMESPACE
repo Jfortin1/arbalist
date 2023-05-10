@@ -2,6 +2,7 @@
 
 export(flushFileBasedCache)
 export(initializeCpp)
+export(mockFragmentFile)
 export(saveTileMatrix)
 exportMethods(initializeCpp)
 import(DelayedArray)
