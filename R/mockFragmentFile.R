@@ -42,7 +42,7 @@ mockFragmentFile <- function(output.file, seq.lengths, num.fragments, cell.names
     on.exit(close(handle))
 
     if (length(comments)) {
-        write(file=file, paste("# ", comments))
+        writeLines(con=handle, paste("# ", comments), sep="\n")
     }
     write.table(file=handle, df, row.names=FALSE, col.names=FALSE, sep="\t", quote=FALSE, eol="\n")
 

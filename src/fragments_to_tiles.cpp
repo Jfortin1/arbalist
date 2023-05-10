@@ -292,6 +292,9 @@ SEXP dump_fragments_to_files(
         for (auto y : x) {
             if (y > last) {
                 ++nunique;
+                if (count > max_count) {
+                    max_count = count;
+                }
                 count = 1;
                 last = y;
             } else {
