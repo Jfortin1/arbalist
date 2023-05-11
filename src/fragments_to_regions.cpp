@@ -4,10 +4,9 @@
 
 #include <unordered_map>
 #include <vector>
-#include <queue>
 
 struct RegionCounter {
-    RegionCounter(int ts, Rcpp::CharacterVector seqnames, Rcpp::List region_ids, Rcpp::List region_starts, Rcpp::List region_ends, Rcpp::Nullable<Rcpp::CharacterVector> cellnames) : tile_size(ts) {
+    RegionCounter(Rcpp::CharacterVector seqnames, Rcpp::List region_ids, Rcpp::List region_starts, Rcpp::List region_ends, Rcpp::Nullable<Rcpp::CharacterVector> cellnames) {
         known_cells = cellnames.isNotNull();
         if (known_cells) {
             Rcpp::CharacterVector my_cellnames(cellnames);
@@ -26,7 +25,7 @@ struct RegionCounter {
             );
         }
 
-        current_tile_seq_it = seq_to_id.end();
+        current_seq_it = seq_to_id.end();
     }
 
 public:
@@ -48,20 +47,6 @@ public:
     std::unordered_map<std::string, Sequence>::const_iterator current_seq_it;
 
 public:
-    struct EndPosition {
-        EndPosition(int c, int s, int e) : cell_id(c), start_id(s), end_pos(e) {}
-        int cell_id;
-        int start_id;
-        int end_pos;
-    };
-
-    struct CompareEndPosition {
-        bool operator()(const EndPosition& left, const EndPosition& right) const {
-            return left.end_pos > right.end_pos;
-        }
-    }
-
-    std::priority_queue<Ends, std::vector<Ends>, CompareEndPosition> end_positions;
     int start_region_index = 0, end_region_index = 0;
 
 public:
@@ -111,9 +96,9 @@ public:
             throw std::runtime_error("fragment end (" + std::to_string(end_pos) + ") should be greater than the fragment start (" + std::to_string(start_pos) +") on line " + std::to_string(line_number));
         }
 
-        const auto& ids = current_seq_it->ids;
-        const auto& starts = current_seq_it->starts;
-        const auto& ends = current_seq_it->ends;
+        const auto& ids = (current_seq_it->second).ids;
+        const auto& starts = (current_seq_it->second).starts;
+        const auto& ends = (current_seq_it->second).ends;
 
         int nregions = ends.size();
         if (start_region_index == nregions) {
@@ -121,6 +106,7 @@ public:
         }
 
         // Jumping ahead to the first region that ends after the fragment start.
+        // 'start_region_index' should only ever increase, as the fragments are sorted by starts.
         if (ends[start_region_index] <= start_pos) {
             do {
                 ++start_region_index;
@@ -157,9 +143,16 @@ public:
             }
         }
 
-        // See logic in fragment_to_tiles.cpp.
-        cycle = !cycle;
-        if (cycle) {
+        // Not counting a fragment twice if it overlaps the same gene.
+        bool has_start = starts[start_region_index] <= start_pos;
+        int start_id = (has_start ? ids[start_region_index] : -1);
+
+        if (has_start && has_end) {
+            collected[cid].push_back(start_id);
+            if (start_id != end_id) {
+                collected[cid].push_back(end_id);
+            }
+        } else if (has_start) {
             collected[cid].push_back(start_id);
         } else if (has_end) {
             collected[cid].push_back(end_id);
@@ -170,7 +163,6 @@ public:
 // [[Rcpp::export(rng=false)]]
 SEXP dump_fragments_to_files(
     std::string fragment_file, 
-    int tile_size, 
     std::string output_file, 
     std::string output_group, 
     Rcpp::CharacterVector seqnames, 
@@ -178,10 +170,11 @@ SEXP dump_fragments_to_files(
     Rcpp::List region_starts, 
     Rcpp::List region_ends, 
     Rcpp::Nullable<Rcpp::CharacterVector> cellnames,
+    int num_regions,
     int deflate_level,
     int chunk_dim)
 {
-    RegionCounter counter(tile_size, seqlengths, seqnames, cellnames);
+    RegionCounter counter(seqnames, region_ids, region_starts, region_ends, cellnames);
     {
         FragmentParser parser(&counter);
         parser.run(fragment_file);
@@ -238,7 +231,7 @@ SEXP dump_fragments_to_files(
         dataspace.selectAll();
         memspace.selectAll();
         hsize_t shape[2];
-        shape[0] = counter.number_of_bins;
+        shape[0] = num_regions;
         shape[1] = collected.size();
         shandle.write(shape, H5::PredType::NATIVE_HSIZE, memspace, dataspace);
     }
