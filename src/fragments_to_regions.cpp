@@ -1,12 +1,13 @@
 #include "Rcpp.h"
-#include "H5Cpp.h"
 #include "FragmentParser.hpp"
+#include "hdf5_utils.hpp"
 
 #include <unordered_map>
 #include <vector>
+#include <queue>
 
-struct TileCounter {
-    TileCounter(int ts, Rcpp::IntegerVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::Nullable<Rcpp::CharacterVector> cellnames) : tile_size(ts) {
+struct RegionCounter {
+    RegionCounter(int ts, Rcpp::CharacterVector seqnames, Rcpp::List region_ids, Rcpp::List region_starts, Rcpp::List region_ends, Rcpp::Nullable<Rcpp::CharacterVector> cellnames) : tile_size(ts) {
         known_cells = cellnames.isNotNull();
         if (known_cells) {
             Rcpp::CharacterVector my_cellnames(cellnames);
@@ -16,37 +17,52 @@ struct TileCounter {
             collected.resize(my_cellnames.size());
         }
 
-        if (seqlengths.size() != seqnames.size()) {
-            throw std::runtime_error("'seqlengths' and 'seqnames' should be of the same length");
-        }
-
-        number_of_bins = 0;
         for (size_t i = 0, end = seqnames.size(); i < end; ++i) {
-            seq_to_id[Rcpp::as<std::string>(seqnames[i])] = Sequence(i, seqlengths[i], number_of_bins);
-            number_of_bins += std::ceil(static_cast<double>(seqlengths[i]) / tile_size);
+            seq_to_id[Rcpp::as<std::string>(seqnames[i])] = Sequence(
+                i,
+                Rcpp::IntegerVector(region_ids[i]),
+                Rcpp::IntegerVector(region_starts[i]),
+                Rcpp::IntegerVector(region_ends[i])
+            );
         }
 
         current_tile_seq_it = seq_to_id.end();
     }
 
 public:
-    int tile_size;
-    int number_of_bins;
     bool known_cells;
     std::unordered_map<std::string, int> cell_to_id;
 
     struct Sequence {
         Sequence() = default;
-        Sequence(int s, int l, int o) : seq_id(s), length(l), offset(o) {}
+        Sequence(int id, Rcpp::IntegerVector ri, Rcpp::IntegerVector rs, Rcpp::IntegerVector re) : 
+            seq_id(id), ids(std::move(ri)), starts(std::move(rs)), ends(std::move(re)) {}
+
         int seq_id;
-        int length;
-        int offset;
+        Rcpp::IntegerVector ids, starts, ends;
     };
     std::unordered_map<std::string, Sequence> seq_to_id;
 
     std::vector<std::vector<int> > collected;
     bool cycle = false;
-    std::unordered_map<std::string, Sequence>::const_iterator current_tile_seq_it;
+    std::unordered_map<std::string, Sequence>::const_iterator current_seq_it;
+
+public:
+    struct EndPosition {
+        EndPosition(int c, int s, int e) : cell_id(c), start_id(s), end_pos(e) {}
+        int cell_id;
+        int start_id;
+        int end_pos;
+    };
+
+    struct CompareEndPosition {
+        bool operator()(const EndPosition& left, const EndPosition& right) const {
+            return left.end_pos > right.end_pos;
+        }
+    }
+
+    std::priority_queue<Ends, std::vector<Ends>, CompareEndPosition> end_positions;
+    int start_region_index = 0, end_region_index = 0;
 
 public:
     void add(const std::string& seq_name, int start_pos, int end_pos, const std::string& cell_name, int, size_t line_number) {
@@ -67,69 +83,93 @@ public:
             }
         }
 
-        if (current_tile_seq_it == seq_to_id.end()) {
-            current_tile_seq_it = seq_to_id.find(seq_name);
-            if (current_tile_seq_it == seq_to_id.end()) {
+        if (current_seq_it == seq_to_id.end()) {
+            current_seq_it = seq_to_id.find(seq_name);
+            if (current_seq_it == seq_to_id.end()) {
                 throw std::runtime_error("unrecognized sequence name '" + seq_name + "' on line " + std::to_string(line_number));
             }
+            start_region_index = 0;
+            end_region_index = 0;
 
-        } else if (current_tile_seq_it->first != seq_name) {
+        } else if (current_seq_it->first != seq_name) {
             auto sIt = seq_to_id.find(seq_name);
             if (sIt == seq_to_id.end()) {
                 throw std::runtime_error("unrecognized sequence name '" + seq_name + "' on line " + std::to_string(line_number));
             }
 
             auto sid = (sIt->second).seq_id;
-            if ((current_tile_seq_it->second).seq_id > sid) {
+            if ((current_seq_it->second).seq_id > sid) {
                 throw std::runtime_error("order of sequences in fragment file differs from that in 'seqlengths' (line "  + std::to_string(line_number) + ")");
             }
 
-            current_tile_seq_it = sIt;
-        }
-
-        auto slength = (current_tile_seq_it->second).length;
-        if (slength <= start_pos || slength <= end_pos) {
-            throw std::runtime_error("fragment boundaries (" + std::to_string(start_pos) + ":" + std::to_string(end_pos) + ") out of range of the sequence length on line " + std::to_string(line_number));
+            current_seq_it = sIt;
+            start_region_index = 0;
+            end_region_index = 0;
         }
 
         if (end_pos <= start_pos) {
             throw std::runtime_error("fragment end (" + std::to_string(end_pos) + ") should be greater than the fragment start (" + std::to_string(start_pos) +") on line " + std::to_string(line_number));
         }
 
-        // Avoid auto-correlations between adjacent tiles and over-representation of even counts
-        // by only counting one end of each fragment. This avoids the problems from effective
-        // correlations when both ends are treated as "independent". Also ensures that the
-        // total count for each cell is equal to the number of fragments.
-        cycle = !cycle;
-        int global_tile_id = (current_tile_seq_it->second).offset;
-        if (cycle) {
-            global_tile_id += (start_pos / tile_size);
-        } else {
-            global_tile_id += (end_pos / tile_size);
+        const auto& ids = current_seq_it->ids;
+        const auto& starts = current_seq_it->starts;
+        const auto& ends = current_seq_it->ends;
+
+        int nregions = ends.size();
+        if (start_region_index == nregions) {
+            return;
         }
-        collected[cid].push_back(global_tile_id);
+
+        if (ends[start_region_index] <= start_pos) {
+            do {
+                ++start_region_index;
+            } while (start_region_index < nregions && ends[start_region_index] <= start_pos);
+
+            end_region_index = start_region_index;
+            if (start_region_index == nregions) {
+                return;
+            }
+        }
+
+        bool has_end = false;
+        int end_id = -1;
+
+        if (end_region_index == nregions || starts[end_region_index] > end_pos) {
+            // Walking backwards.
+            do { 
+                --end_region_index;
+            } while (end_region_index > start_region_index && starts[end_region_index] > end_pos);
+
+            if (ends[end_region_index] > end_pos) {
+                has_end = true;
+                end_id = ends[end_region_index];
+            }
+        } else {
+            // Walking forwards.
+            while (end_region_index < nregions && ends[end_region_index] <= end_pos) {
+                ++end_region_index;
+            }
+
+            if (end_region_index < nregions && starts[end_region_index] <= end_pos) {
+                has_end = true;
+                end_id = ends[end_region_index];
+            }
+        }
+
+        bool has_start = starts[start_region_index] <= start_pos;
+        int start_id = (has_? ids[start_region_index] : -1);
+
+        if (has_start && has_end) {
+            if (start_id == end_id) {
+                collected[cid].push_back(start_id);
+            }
+        } else if (has_start) {
+            collected[cid].push_back(start_id);
+        } else if (has_end) {
+            collected[cid].push_back(end_id);
+        }
     }
 };
-
-inline H5::DataSet create_1d_compressed_hdf5_dataset(H5::Group& location, const H5::DataType& dtype, const std::string& name, hsize_t length, int deflate_level, hsize_t chunk) {
-    H5::DataSpace dspace(1, &length);
- 	H5::DSetCreatPropList plist;
-
-    if (deflate_level >= 0 && length) {
-        plist.setDeflate(deflate_level);
-        if (chunk > length) {
-            plist.setChunk(1, &length);
-        } else {
-            plist.setChunk(1, &chunk);
-        }
-    }
-
-    return location.createDataSet(name, dtype, dspace, plist);
-}
-
-/*************************
- *** Exported function ***
- *************************/
 
 // [[Rcpp::export(rng=false)]]
 SEXP dump_fragments_to_files(
@@ -137,13 +177,15 @@ SEXP dump_fragments_to_files(
     int tile_size, 
     std::string output_file, 
     std::string output_group, 
-    Rcpp::IntegerVector seqlengths, 
     Rcpp::CharacterVector seqnames, 
+    Rcpp::List region_ids, 
+    Rcpp::List region_starts, 
+    Rcpp::List region_ends, 
     Rcpp::Nullable<Rcpp::CharacterVector> cellnames,
     int deflate_level,
     int chunk_dim)
 {
-    TileCounter counter(tile_size, seqlengths, seqnames, cellnames);
+    RegionCounter counter(tile_size, seqlengths, seqnames, cellnames);
     {
         FragmentParser parser(&counter);
         parser.run(fragment_file);
