@@ -120,6 +120,7 @@ public:
             return;
         }
 
+        // Jumping ahead to the first region that ends after the fragment start.
         if (ends[start_region_index] <= start_pos) {
             do {
                 ++start_region_index;
@@ -135,7 +136,7 @@ public:
         int end_id = -1;
 
         if (end_region_index == nregions || starts[end_region_index] > end_pos) {
-            // Walking backwards.
+            // Moving backwards: searching for the fragment that starts before the fragment end.
             do { 
                 --end_region_index;
             } while (end_region_index > start_region_index && starts[end_region_index] > end_pos);
@@ -145,7 +146,7 @@ public:
                 end_id = ends[end_region_index];
             }
         } else {
-            // Walking forwards.
+            // Moving forwards: searching for the fragment that ends after the fragment end.
             while (end_region_index < nregions && ends[end_region_index] <= end_pos) {
                 ++end_region_index;
             }
@@ -156,14 +157,9 @@ public:
             }
         }
 
-        bool has_start = starts[start_region_index] <= start_pos;
-        int start_id = (has_? ids[start_region_index] : -1);
-
-        if (has_start && has_end) {
-            if (start_id == end_id) {
-                collected[cid].push_back(start_id);
-            }
-        } else if (has_start) {
+        // See logic in fragment_to_tiles.cpp.
+        cycle = !cycle;
+        if (cycle) {
             collected[cid].push_back(start_id);
         } else if (has_end) {
             collected[cid].push_back(end_id);
