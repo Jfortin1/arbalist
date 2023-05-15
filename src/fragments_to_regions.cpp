@@ -1,6 +1,6 @@
 #include "Rcpp.h"
 #include "FragmentParser.hpp"
-#include "hdf5_utils.hpp"
+#include "hdf5_utils.h"
 
 #include <unordered_map>
 #include <vector>
@@ -122,7 +122,7 @@ public:
         int end_id = -1;
 
         if (end_region_index == nregions || starts[end_region_index] > end_pos) {
-            // Moving backwards: searching for the fragment that starts before the fragment end.
+            // Moving backwards: searching for the region that starts before the fragment end.
             do { 
                 --end_region_index;
             } while (end_region_index > start_region_index && starts[end_region_index] > end_pos);
@@ -132,7 +132,7 @@ public:
                 end_id = ends[end_region_index];
             }
         } else {
-            // Moving forwards: searching for the fragment that ends after the fragment end.
+            // Moving forwards: searching for the region that ends after the fragment end.
             while (end_region_index < nregions && ends[end_region_index] <= end_pos) {
                 ++end_region_index;
             }
@@ -161,7 +161,7 @@ public:
 };
 
 // [[Rcpp::export(rng=false)]]
-SEXP dump_fragments_to_files(
+SEXP fragments_to_regions(
     std::string fragment_file, 
     std::string output_file, 
     std::string output_group, 
@@ -180,103 +180,7 @@ SEXP dump_fragments_to_files(
         parser.run(fragment_file);
     }
 
-    // Dumping it all to HDF5.
-    H5::FileAccPropList fapl(H5::FileAccPropList::DEFAULT.getId());
-    fapl.setCache(0, 511, chunk_dim * 10 * sizeof(int), 1);
-    H5::H5File fhandle(output_file, H5F_ACC_RDWR, H5::FileCreatPropList::DEFAULT, fapl);
-    H5::Group ghandle = fhandle.openGroup(output_group);
-
-    auto& collected = counter.collected;
-    std::vector<hsize_t> gathered(collected.size() + 1);
-    int max_count = 0;
-    for (size_t i = 0, end = collected.size(); i < end; ++i) {
-        auto& x = collected[i];
-        std::sort(x.begin(), x.end());
-
-        int nunique = 0;
-        int last = -1;
-        int count = 0;
-        for (auto y : x) {
-            if (y > last) {
-                ++nunique;
-                if (count > max_count) {
-                    max_count = count;
-                }
-                count = 1;
-                last = y;
-            } else {
-                ++count;
-            }
-        }
-
-        gathered[i + 1] = gathered[i] + nunique;
-        if (count > max_count) {
-            max_count = count;
-        }
-    }
-
-    {
-        H5::DataSet phandle = create_1d_compressed_hdf5_dataset(ghandle, H5::PredType::NATIVE_UINT64, "indptr", gathered.size(), deflate_level, chunk_dim);
-        hsize_t len = gathered.size();
-        H5::DataSpace dataspace(1, &len), memspace(1, &len);
-        dataspace.selectAll();
-        memspace.selectAll();
-        phandle.write(gathered.data(), H5::PredType::NATIVE_HSIZE, memspace, dataspace);
-    }
-
-    {
-        H5::DataSet shandle = create_1d_compressed_hdf5_dataset(ghandle, H5::PredType::NATIVE_UINT64, "shape", 2, deflate_level, chunk_dim);
-        hsize_t len = 2;
-        H5::DataSpace dataspace(1, &len), memspace(1, &len);
-        dataspace.selectAll();
-        memspace.selectAll();
-        hsize_t shape[2];
-        shape[0] = num_regions;
-        shape[1] = collected.size();
-        shandle.write(shape, H5::PredType::NATIVE_HSIZE, memspace, dataspace);
-    }
-
-    hsize_t total = gathered.back();
-    H5::DataSet ihandle = create_1d_compressed_hdf5_dataset(ghandle, H5::PredType::NATIVE_UINT32, "indices", total, deflate_level, chunk_dim);
-
-    const H5::PredType* dtype;
-    if (max_count <= 255) {
-        dtype = &(H5::PredType::NATIVE_UINT8);
-    } else if (max_count <= 65535) {
-        dtype = &(H5::PredType::NATIVE_UINT16);
-    } else {
-        dtype = &(H5::PredType::NATIVE_UINT32);
-    }
-    H5::DataSet dhandle = create_1d_compressed_hdf5_dataset(ghandle, *dtype, "data", total, deflate_level, chunk_dim);
-
-    std::vector<int> ibuffer;
-    std::vector<int> dbuffer;
-    H5::DataSpace dataspace(1, &total), memspace;
-    hsize_t sofar = 0;
-
-    for (auto& x : collected) {
-        ibuffer.clear();
-        dbuffer.clear();
-
-        // Saving the damn thing in reverse order, like an idiot.
-        for (auto y : x) {
-            if (ibuffer.empty() || y != ibuffer.back()) {
-                ibuffer.push_back(y);
-                dbuffer.push_back(1);
-            } else {
-                ++(dbuffer.back());
-            }
-        }
-
-        hsize_t count = ibuffer.size();
-        dataspace.selectHyperslab(H5S_SELECT_SET, &count, &sofar);
-        memspace.setExtentSimple(1, &count);
-        memspace.selectAll();
-        dhandle.write(dbuffer.data(), H5::PredType::NATIVE_INT, memspace, dataspace);
-        ihandle.write(ibuffer.data(), H5::PredType::NATIVE_INT, memspace, dataspace);
-
-        sofar += count;
-    }
+    dump_sparse_matrix(output_file, output_group, counter.collected, num_regions, deflate_level, chunk_dim);
 
     if (cellnames.isNotNull()) {
         return R_NilValue;
