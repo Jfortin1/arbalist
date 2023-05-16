@@ -16,15 +16,42 @@
 #' @param chunk.dim Integer scalar specifying the size of the chunks (in terms of the number of elements) inside the HDF5 file.
 #' @param compress.level Integer scalar specifying the Zlib compression level to use.
 #'
+#' @details
+#' We count the overlap with the start/end positions of each fragment, not the overlap with the fragment interval itself.
+#' This is because the fragment start/ends represent the transposase cleavage events, while the fragment interval has no real biological significance.
+#'
+#' If the start and end for the same fragment overlap different tiles, the counts for both tiles are incremented by 1. 
+#' This reflects the fact that these positions represent distinct transposase cleavage events for different features.
+#' However, if the start and end for the same fragment overlap the same tile, the tile's count is only incremented by 1. 
+#' This ensures that the count for each entry of \code{regions} still follows Poisson noise and avoids an artificial enrichment of even counts. 
+#'
 #' @return A sparse matrix is saved to \code{output.file} using the 10X HDF5 format.
-#' If \code{cell.names=NULL}, a character vector is invisibly returned, containing the cell barcodes corresponding to the columns of the matrix.
-#' Otherwise, \code{NULL} is invisibly returned.
+#' A list is returned containing:
+#' \itemize{
+#' \item \code{tiles}, a GRanges object containing the tile coordinates.
+#' \item \code{counts} A \linkS4class{H5SparseMatrix} referencing the \code{outputfile}, where the rows correspond to entries of \code{tiles}.
+#' Column names are set to the cell barcodes - if \code{barcodes} is supplied, this is directly used as the column names.
+#' }
 #' 
 #' @author Aaron Lun
+#' @examples
+#' # Mocking up the fragment file.
+#' seq.lengths <- c(chrA = 2000, chrB = 10000)
+#' temp <- tempfile(fileext = ".gz")
+#' mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS)
+#'
+#' # Running the counter
+#' out <- tempfile(fileext=".h5")
+#' counted <- saveTileMatrix(temp, output.file=out, output.name="WHEE", seq.lengths=seq.lengths)
+#' counted
 #'
 #' @export
 #' @importFrom utils read.delim
 #' @importFrom rhdf5 h5createFile h5createGroup
+#' @importFrom HDF5Array H5SparseMatrix
+#' @importFrom GenomicRanges GRanges
+#' @importFrom GenomeInfoDb Seqinfo
+#' @importFrom IRanges IRanges
 saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=NULL, barcodes=NULL, tile.size = 500, compress.level = 6, chunk.dim = 20000) {
     if (is.null(seq.lengths)) {
         # Obtaining the sequence lengths, if they weren't already available.
@@ -52,7 +79,20 @@ saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=
         chunk_dim = chunk.dim
     )
 
-    invisible(output)
+    nbins <- ceiling(seq.lengths / tile.size)
+    seqs <- rep(names(seq.lengths), nbins)
+    ends <- sequence(nbins) * tile.size
+    starts <- ends - tile.size + 1L
+    ends <- pmin(ends, rep(seq.lengths, nbins))
+    tiles <- GRanges(seqs, IRanges(starts, ends), seqinfo=Seqinfo(names(seq.lengths), seq.lengths))
+
+    counts <- H5SparseMatrix(output.file, output.name)
+    if (is.null(barcodes)) {
+        barcodes <- output
+    }
+    colnames(counts) <- barcodes
+
+    list(tiles = tiles, counts = counts)
 }
 
 .process_fragment_header <- function(file) {

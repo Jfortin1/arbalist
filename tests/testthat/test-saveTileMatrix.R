@@ -27,6 +27,7 @@ reference_counter <- function(fname, seq.lengths, allowed.cells, tile.size) {
     return(out)
 }
 
+library(GenomeInfoDb)
 test_that("saveTileMatrix compares correctly to the reference", {
     seq.lengths <- c(chrA = 10000, chrB = 100000, chrC = 1000)
     temp <- tempfile(fileext = ".gz")
@@ -34,11 +35,11 @@ test_that("saveTileMatrix compares correctly to the reference", {
     ref <- reference_counter(temp, seq.lengths, allowed.cells = LETTERS, tile.size = 500)
 
     temp.h5 <- tempfile(fileext = ".h5")
-    saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS)
-    obs <- H5SparseMatrix(temp.h5, "WHEE")
-    colnames(obs) <- LETTERS
+    obs <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS)
 
-    expect_identical(as(obs, "dgCMatrix"), ref)
+    expect_identical(nrow(obs$counts), length(obs$tiles))
+    expect_identical(as.character(runValue(seqnames(obs$tiles))), names(seq.lengths))
+    expect_identical(as(obs$counts, "dgCMatrix"), ref)
 })
 
 test_that("saveTileMatrix handles comments correctly", {
@@ -48,11 +49,11 @@ test_that("saveTileMatrix handles comments correctly", {
     ref <- reference_counter(temp, seq.lengths, allowed.cells = LETTERS, tile.size = 500)
 
     temp.h5 <- tempfile(fileext = ".h5")
-    saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS)
-    obs <- H5SparseMatrix(temp.h5, "WHEE")
-    colnames(obs) <- LETTERS
+    obs <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS)
 
-    expect_identical(as(obs, "dgCMatrix"), ref)
+    expect_identical(nrow(obs$counts), length(obs$tiles))
+    expect_identical(as.character(runValue(seqnames(obs$tiles))), names(seq.lengths))
+    expect_identical(as(obs$counts, "dgCMatrix"), ref)
 })
 
 test_that("saveTileMatrix works correctly with all cells", {
@@ -62,11 +63,11 @@ test_that("saveTileMatrix works correctly with all cells", {
     ref <- reference_counter(temp, seq.lengths, allowed.cells = NULL, tile.size = 500)
 
     temp.h5 <- tempfile(fileext = ".h5")
-    names <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = NULL)
-    obs <- H5SparseMatrix(temp.h5, "WHEE")
-    colnames(obs) <- names
+    obs <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = NULL)
 
-    expect_identical(as(obs, "dgCMatrix"), ref)
+    expect_identical(nrow(obs$counts), length(obs$tiles))
+    expect_identical(as.character(runValue(seqnames(obs$tiles))), names(seq.lengths))
+    expect_identical(as(obs$counts, "dgCMatrix"), ref)
 })
 
 test_that("saveTileMatrix works correctly with restricted cells", {
@@ -76,11 +77,11 @@ test_that("saveTileMatrix works correctly with restricted cells", {
     ref <- reference_counter(temp, seq.lengths, allowed.cells = LETTERS[1:5], tile.size = 500)
 
     temp.h5 <- tempfile(fileext = ".h5")
-    saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS[1:5])
-    obs <- H5SparseMatrix(temp.h5, "WHEE")
-    colnames(obs) <- LETTERS[1:5]
+    obs <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS[1:5])
 
-    expect_identical(as(obs, "dgCMatrix"), ref)
+    expect_identical(nrow(obs$counts), length(obs$tiles))
+    expect_identical(as.character(runValue(seqnames(obs$tiles))), names(seq.lengths))
+    expect_identical(as(obs$counts, "dgCMatrix"), ref)
 })
 
 test_that("saveTileMatrix looks up the sequence lengths", {
@@ -93,9 +94,9 @@ test_that("saveTileMatrix looks up the sequence lengths", {
     ref <- reference_counter(temp, seq.lengths, allowed.cells = NULL, tile.size = 500)
 
     temp.h5 <- tempfile(fileext = ".h5")
-    named <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = NULL)
-    obs <- H5SparseMatrix(temp.h5, "WHEE")
-    colnames(obs) <- named
+    obs <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = NULL)
 
-    expect_identical(as(obs, "dgCMatrix"), ref)
+    expect_identical(nrow(obs$counts), length(obs$tiles))
+    expect_identical(as.character(runValue(seqnames(obs$tiles))), names(seq.lengths))
+    expect_identical(as(obs$counts, "dgCMatrix"), ref)
 })
