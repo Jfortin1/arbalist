@@ -70,18 +70,19 @@ reference_counter <- function(fname, regions, allowed.cells) {
     }
 
     sanitized <- arbalist:::sanitize_regions(regions, decompose = FALSE)
-    starts <- GRanges(info[,1], IRanges(info[,2], info[,2]))
+    starts <- GRanges(info[,1], IRanges(info[,2] + 1L, info[,2] + 1L)) # get back to 1-based.
     start.overlap <- findOverlaps(starts, sanitized$regions, select="first")
-    ends <- GRanges(info[,1], IRanges(info[,3], info[,3]))
+    ends <- GRanges(info[,1], IRanges(info[,3] + 1L, info[,3] + 1L))
     end.overlap <- findOverlaps(ends, sanitized$regions, select="first")
 
-    keep <- is.na(end.overlap) != is.na(start.overlap) | end.overlap == start.overlap
-    keep[is.na(keep)] <- FALSE
-    start.overlap <- start.overlap[keep]
-    end.overlap <- end.overlap[keep]
-    fid <- ifelse(is.na(start.overlap), end.overlap, start.overlap)
+    start.ids <- sanitized$ids[start.overlap]
+    end.ids <- sanitized$ids[end.overlap]
+    keep.start <- !is.na(start.overlap)
+    keep.end <- !is.na(end.overlap) & (!keep.start | start.ids != end.ids)
+    fid <- c(start.ids[keep.start], end.ids[keep.end])
 
-    cid <- match(info[keep,4], allowed.cells)
+    raw.cid <- match(info[,4], allowed.cells)
+    cid <- c(raw.cid[keep.start], raw.cid[keep.end])
     out <- Matrix::sparseMatrix(i=fid, j=cid, x=rep(1, length(cid)), dims=c(length(regions), length(allowed.cells)))
     colnames(out) <- allowed.cells
 
@@ -96,7 +97,7 @@ mockRegions <- function(num.fragments, seq.lengths, width.range, num.groups = NU
 
     regions <- sort(GRanges(seq, IRanges(starts, ends)))
     if (!is.null(num.groups)) {
-        g <- sample(num.groups, num.fragments, replace=TRUE)
+        g <- sort(sample(num.groups, num.fragments, replace=TRUE))
         regions <- splitAsList(regions, g)
     }
 
@@ -104,7 +105,7 @@ mockRegions <- function(num.fragments, seq.lengths, width.range, num.groups = NU
 }
 
 library(HDF5Array)
-test_that("saveTileMatrix compares correctly to the reference with GRanges and no restriction", {
+test_that("saveRegionMatrix compares correctly to the reference with GRanges and restricted cells", {
     seq.lengths <- c(chrA = 10000, chrB = 100000, chrC = 1000)
     temp <- tempfile(fileext = ".gz")
     mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS)
@@ -113,9 +114,63 @@ test_that("saveTileMatrix compares correctly to the reference with GRanges and n
     ref <- reference_counter(temp, regions, allowed.cells = LETTERS)
 
     temp.h5 <- tempfile(fileext = ".h5")
-    saveRegionMatrix(temp, regions, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS)
-    obs <- H5SparseMatrix(temp.h5, "WHEE")
-    colnames(obs) <- LETTERS
+    obs <- saveRegionMatrix(temp, regions, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS)
+
+    expect_identical(as(obs, "dgCMatrix"), ref)
+})
+
+test_that("saveRegionMatrix compares correctly to the reference with GRangesList and restricted cells", {
+    seq.lengths <- c(chrA = 10000, chrB = 100000, chrC = 1000)
+    temp <- tempfile(fileext = ".gz")
+    mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS)
+
+    regions <- mockRegions(50, seq.lengths, c(10, 50), num.groups=20)
+    ref <- reference_counter(temp, regions, allowed.cells = LETTERS)
+
+    temp.h5 <- tempfile(fileext = ".h5")
+    obs <- saveRegionMatrix(temp, regions, output.file=temp.h5, output.name="WHEE", barcodes = LETTERS)
+
+    expect_identical(as(obs, "dgCMatrix"), ref)
+})
+
+test_that("saveRegionMatrix compares correctly to the reference with GRanges and no restriction", {
+    seq.lengths <- c(chrC = 2000, chrA = 200000, chrB = 5000)
+    temp <- tempfile(fileext = ".gz")
+    mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS)
+
+    regions <- mockRegions(200, seq.lengths, c(10, 50))
+    ref <- reference_counter(temp, regions, allowed.cells = NULL)
+
+    temp.h5 <- tempfile(fileext = ".h5")
+    obs <- saveRegionMatrix(temp, regions, output.file=temp.h5, output.name="WHEE")
+
+    expect_identical(as(obs, "dgCMatrix"), ref)
+})
+
+test_that("saveRegionMatrix compares correctly to the reference with more sparse fragments/regions", {
+    seq.lengths <- c(chrC = 2000, chrA = 200000, chrB = 5000)
+    temp <- tempfile(fileext = ".gz")
+    mockFragmentFile(temp, seq.lengths, 1e2, cell.names = LETTERS)
+
+    regions <- mockRegions(50, seq.lengths, c(10, 50))
+    ref <- reference_counter(temp, regions, allowed.cells = NULL)
+
+    temp.h5 <- tempfile(fileext = ".h5")
+    obs <- saveRegionMatrix(temp, regions, output.file=temp.h5, output.name="WHEE")
+
+    expect_identical(as(obs, "dgCMatrix"), ref)
+})
+
+test_that("saveRegionMatrix compares correctly to the reference with more larger regions", {
+    seq.lengths <- c(chrC = 2000, chrA = 200000, chrB = 5000)
+    temp <- tempfile(fileext = ".gz")
+    mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS)
+
+    regions <- mockRegions(50, seq.lengths, c(100, 500))
+    ref <- reference_counter(temp, regions, allowed.cells = NULL)
+
+    temp.h5 <- tempfile(fileext = ".h5")
+    obs <- saveRegionMatrix(temp, regions, output.file=temp.h5, output.name="WHEE")
 
     expect_identical(as(obs, "dgCMatrix"), ref)
 })

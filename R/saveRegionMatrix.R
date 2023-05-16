@@ -15,14 +15,15 @@
 #' @param compress.level Integer scalar specifying the Zlib compression level to use.
 #'
 #' @return A sparse matrix is saved to \code{output.file} using the 10X HDF5 format.
-#' If \code{cell.names=NULL}, a character vector is invisibly returned, containing the cell barcodes corresponding to the columns of the matrix.
-#' Otherwise, \code{NULL} is invisibly returned.
-#' 
+#' A \linkS4class{H5SparseMatrix} referencing this file is returned where the rows correspond to entries of \code{regions}.
+#' Column names are set to the cell barcodes - if \code{barcodes} is supplied, this is directly used as the column names.
+#'
 #' @author Aaron Lun
 #'
 #' @export
 #' @importFrom utils read.delim
 #' @importFrom rhdf5 h5createFile h5createGroup
+#' @importFrom HDF5Array H5SparseMatrix
 saveRegionMatrix <- function(fragment.file, output.file, output.name, regions, barcodes=NULL, compress.level = 6, chunk.dim = 20000) {
     if (!file.exists(output.file)) {
         h5createFile(output.file)
@@ -45,7 +46,13 @@ saveRegionMatrix <- function(fragment.file, output.file, output.name, regions, b
         chunk_dim = chunk.dim
     )
 
-    invisible(output)
+    obs <- H5SparseMatrix(output.file, output.name)
+    if (is.null(barcodes)) {
+        barcodes <- output
+    }
+    colnames(obs) <- barcodes
+
+    obs
 }
 
 #' @import methods

@@ -126,7 +126,7 @@ public:
                 --end_region_index;
             } while (end_region_index > start_region_index && starts[end_region_index] > end_pos);
 
-            if (ends[end_region_index] > end_pos) {
+            if (starts[end_region_index] <= end_pos && ends[end_region_index] > end_pos) {
                 has_end = true;
                 end_id = ids[end_region_index];
             }
