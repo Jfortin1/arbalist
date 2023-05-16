@@ -108,7 +108,7 @@ public:
 };
 
 // [[Rcpp::export(rng=false)]]
-SEXP dump_fragments_to_files(
+SEXP fragments_to_tiles(
     std::string fragment_file, 
     int tile_size, 
     std::string output_file, 

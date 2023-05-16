@@ -5,8 +5,8 @@ fragments_to_regions <- function(fragment_file, output_file, output_group, seqna
     .Call('_arbalist_fragments_to_regions', PACKAGE = 'arbalist', fragment_file, output_file, output_group, seqnames, region_ids, region_starts, region_ends, cellnames, num_regions, deflate_level, chunk_dim)
 }
 
-dump_fragments_to_files <- function(fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim) {
-    .Call('_arbalist_dump_fragments_to_files', PACKAGE = 'arbalist', fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim)
+fragments_to_tiles <- function(fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim) {
+    .Call('_arbalist_fragments_to_tiles', PACKAGE = 'arbalist', fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim)
 }
 
 initialize_from_hdf5 <- function(file, name, nrow, ncol, byrow, forced) {

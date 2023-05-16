@@ -67,7 +67,7 @@ saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=
     }
     h5createGroup(output.file, output.name)
 
-    output <- dump_fragments_to_files(
+    output <- fragments_to_tiles(
         fragment_file = fragment.file,
         tile_size = tile.size, 
         output_file = output.file, 
