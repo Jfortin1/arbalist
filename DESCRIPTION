@@ -10,7 +10,13 @@ Imports:
     Rcpp,
     Matrix,
     DelayedArray,
-    HDF5Array
+    HDF5Array,
+    methods,
+    stats,
+    BiocGenerics,
+    IRanges,
+    GenomeInfoDb,
+    GenomicRanges
 LinkingTo:
     Rcpp,
     Rhdf5lib
