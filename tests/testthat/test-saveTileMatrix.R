@@ -6,22 +6,23 @@ reference_counter <- function(fname, seq.lengths, allowed.cells, tile.size) {
     info <- read.delim(fname, header=FALSE, sep="\t", comment.char="#")
     if (!is.null(allowed.cells)) {
         info <- info[info[,4] %in% allowed.cells,,drop=FALSE]
-    }
-
-    positions <- ifelse(seq_len(nrow(info)) %% 2 == 1, info[,2], info[,3]) # alternate between start and end.
-
-    nbins <- ceiling(seq.lengths / tile.size)
-    offsets <- cumsum(c(0L, nbins))
-    m <- match(info[,1], names(seq.lengths))
-    bin.id <- offsets[m] + floor(positions / tile.size)
-
-    if (is.null(allowed.cells)) {
+    } else {
         allowed.cells <- info[,4]
         allowed.cells <- allowed.cells[!duplicated(allowed.cells)]
     }
 
-    cid <- match(info[,4], allowed.cells)
-    out <- Matrix::sparseMatrix(i=bin.id + 1L, j=cid, x=rep(1, length(cid)), dims=c(sum(nbins), length(allowed.cells)))
+    nbins <- ceiling(seq.lengths / tile.size)
+    offsets <- cumsum(c(0L, nbins))
+    m <- match(info[,1], names(seq.lengths))
+    start.id <- offsets[m] + floor(info[,2] / tile.size)
+    end.id <- offsets[m] + floor(info[,3] / tile.size)
+
+    keep.end <- end.id != start.id
+    fid <- c(start.id, end.id[keep.end])
+
+    raw.cid <- match(info[,4], allowed.cells)
+    cid <- c(raw.cid, raw.cid[keep.end])
+    out <- Matrix::sparseMatrix(i=fid + 1L, j=cid, x=rep(1, length(cid)), dims=c(sum(nbins), length(allowed.cells)))
     colnames(out) <- allowed.cells
 
     return(out)

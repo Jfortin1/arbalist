@@ -46,7 +46,6 @@ public:
     std::unordered_map<std::string, Sequence> seq_to_id;
 
     std::vector<std::vector<int> > collected;
-    bool cycle = false;
     std::unordered_map<std::string, Sequence>::const_iterator current_tile_seq_it;
 
 public:
@@ -97,18 +96,14 @@ public:
             throw std::runtime_error("fragment end (" + std::to_string(end_pos) + ") should be greater than the fragment start (" + std::to_string(start_pos) +") on line " + std::to_string(line_number));
         }
 
-        // Avoid auto-correlations between adjacent tiles and over-representation of even counts
-        // by only counting one end of each fragment. This avoids the problems from effective
-        // correlations when both ends are treated as "independent". Also ensures that the
-        // total count for each cell is equal to the number of fragments.
-        cycle = !cycle;
-        int global_tile_id = (current_tile_seq_it->second).offset;
-        if (cycle) {
-            global_tile_id += (start_pos / tile_size);
-        } else {
-            global_tile_id += (end_pos / tile_size);
+        int offset = (current_tile_seq_it->second).offset;
+        int start_id = (start_pos / tile_size) + offset;
+        collected[cid].push_back(start_id);
+
+        int end_id = (end_pos / tile_size) + offset;
+        if (start_id != end_id) {
+            collected[cid].push_back(end_id);
         }
-        collected[cid].push_back(global_tile_id);
     }
 };
 
