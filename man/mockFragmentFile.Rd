@@ -11,7 +11,7 @@ mockFragmentFile(
   cell.names,
   width.range = c(10, 1000),
   read.range = c(1, 10),
-  comments = TRUE,
+  comments = NULL,
   compressed = TRUE
 )
 }
@@ -30,7 +30,7 @@ The length of this vector is used as the total number of cells.}
 
 \item{read.range}{Integer vector of length 2, containing the range of the read count supporting each fragment.}
 
-\item{comments}{Whether to add comments to the file, to test the parser.}
+\item{comments}{Character vector of comments to be added to the start of the file.}
 
 \item{compressed}{Logical scalar indicating whether the output file should be compressed.}
 }
@@ -39,7 +39,7 @@ A fragment file is created at \code{output.file}.
 \code{NULL} is invisibly returned.
 }
 \description{
-Mock up a fragment file, mostly for examples and testing.
+Mock up a fragment file for examples and testing.
 }
 \examples{
 temp <- tempfile(fileext=".fragments.gz")

@@ -1,3 +1,4 @@
+#include "hdf5_utils.h"
 #include "H5Cpp.h"
 #include <algorithm>
 #include <vector>

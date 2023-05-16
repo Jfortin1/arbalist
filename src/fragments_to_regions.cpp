@@ -18,7 +18,6 @@ struct RegionCounter {
 
         for (size_t i = 0, end = seqnames.size(); i < end; ++i) {
             seq_to_id[Rcpp::as<std::string>(seqnames[i])] = Sequence(
-                i,
                 Rcpp::IntegerVector(region_ids[i]),
                 Rcpp::IntegerVector(region_starts[i]),
                 Rcpp::IntegerVector(region_ends[i])
@@ -34,16 +33,13 @@ public:
 
     struct Sequence {
         Sequence() = default;
-        Sequence(int id, Rcpp::IntegerVector ri, Rcpp::IntegerVector rs, Rcpp::IntegerVector re) : 
-            seq_id(id), ids(std::move(ri)), starts(std::move(rs)), ends(std::move(re)) {}
-
-        int seq_id;
+        Sequence(Rcpp::IntegerVector ri, Rcpp::IntegerVector rs, Rcpp::IntegerVector re) : ids(std::move(ri)), starts(std::move(rs)), ends(std::move(re)) {}
+        bool visited = false;
         Rcpp::IntegerVector ids, starts, ends;
     };
     std::unordered_map<std::string, Sequence> seq_to_id;
 
     std::vector<std::vector<int> > collected;
-    bool cycle = false;
     std::unordered_map<std::string, Sequence>::const_iterator current_seq_it;
 
 public:
@@ -69,10 +65,13 @@ public:
         }
 
         if (current_seq_it == seq_to_id.end()) {
-            current_seq_it = seq_to_id.find(seq_name);
-            if (current_seq_it == seq_to_id.end()) {
+            auto sIt = seq_to_id.find(seq_name);
+            if (sIt == seq_to_id.end()) {
                 throw std::runtime_error("unrecognized sequence name '" + seq_name + "' on line " + std::to_string(line_number));
             }
+            sIt->second.visited = true;
+
+            current_seq_it = sIt;
             start_region_index = 0;
             end_region_index = 0;
 
@@ -82,10 +81,10 @@ public:
                 throw std::runtime_error("unrecognized sequence name '" + seq_name + "' on line " + std::to_string(line_number));
             }
 
-            auto sid = (sIt->second).seq_id;
-            if ((current_seq_it->second).seq_id > sid) {
-                throw std::runtime_error("order of sequences in fragment file differs from that in 'seqlengths' (line "  + std::to_string(line_number) + ")");
+            if ((sIt->second).visited) {
+                throw std::runtime_error("entries in the fragment file have unordered sequence names (line "  + std::to_string(line_number) + ")");
             }
+            sIt->second.visited = true;
 
             current_seq_it = sIt;
             start_region_index = 0;
@@ -129,7 +128,7 @@ public:
 
             if (ends[end_region_index] > end_pos) {
                 has_end = true;
-                end_id = ends[end_region_index];
+                end_id = ids[end_region_index];
             }
         } else {
             // Moving forwards: searching for the region that ends after the fragment end.
@@ -139,7 +138,7 @@ public:
 
             if (end_region_index < nregions && starts[end_region_index] <= end_pos) {
                 has_end = true;
-                end_id = ends[end_region_index];
+                end_id = ids[end_region_index];
             }
         }
 
