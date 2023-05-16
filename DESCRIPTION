@@ -6,6 +6,7 @@ Description:
     Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
     in preparation for submission to Bioconductor.
 Authors@R: person("Aaron", "Lun", role=c("aut", "cre"), email="infinite.monkeys.with.keyboards@gmail.com")
+License: MIT + file LICENSE
 Imports:
     Rcpp,
     Matrix,
