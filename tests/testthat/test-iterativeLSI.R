@@ -7,7 +7,7 @@ test_that("LSI-related utilities work as expected", {
     set.seed(1000)
     x <- Matrix::rsparsematrix(1000, 500, 0.1)
     y <- round(abs(x)*10)
-    ptr <- initializeCpp(y)
+    ptr <- beachmat::initializeCpp(y)
 
     info <- arbalist:::lsi_matrix_stats(ptr, nthreads=1)
     expect_equal(info$sums, Matrix::colSums(y))

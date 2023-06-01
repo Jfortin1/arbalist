@@ -48,36 +48,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// initialize_from_hdf5
-SEXP initialize_from_hdf5(std::string file, std::string name, size_t nrow, size_t ncol, bool byrow, bool forced);
-RcppExport SEXP _arbalist_initialize_from_hdf5(SEXP fileSEXP, SEXP nameSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP, SEXP forcedSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< std::string >::type file(fileSEXP);
-    Rcpp::traits::input_parameter< std::string >::type name(nameSEXP);
-    Rcpp::traits::input_parameter< size_t >::type nrow(nrowSEXP);
-    Rcpp::traits::input_parameter< size_t >::type ncol(ncolSEXP);
-    Rcpp::traits::input_parameter< bool >::type byrow(byrowSEXP);
-    Rcpp::traits::input_parameter< bool >::type forced(forcedSEXP);
-    rcpp_result_gen = Rcpp::wrap(initialize_from_hdf5(file, name, nrow, ncol, byrow, forced));
-    return rcpp_result_gen;
-END_RCPP
-}
-// initialize_from_memory
-SEXP initialize_from_memory(Rcpp::RObject x, Rcpp::RObject i, Rcpp::RObject p, int nrow, int ncol, bool byrow);
-RcppExport SEXP _arbalist_initialize_from_memory(SEXP xSEXP, SEXP iSEXP, SEXP pSEXP, SEXP nrowSEXP, SEXP ncolSEXP, SEXP byrowSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< Rcpp::RObject >::type x(xSEXP);
-    Rcpp::traits::input_parameter< Rcpp::RObject >::type i(iSEXP);
-    Rcpp::traits::input_parameter< Rcpp::RObject >::type p(pSEXP);
-    Rcpp::traits::input_parameter< int >::type nrow(nrowSEXP);
-    Rcpp::traits::input_parameter< int >::type ncol(ncolSEXP);
-    Rcpp::traits::input_parameter< bool >::type byrow(byrowSEXP);
-    rcpp_result_gen = Rcpp::wrap(initialize_from_memory(x, i, p, nrow, ncol, byrow));
-    return rcpp_result_gen;
-END_RCPP
-}
 // irlba_realized
 Rcpp::List irlba_realized(SEXP input, int rank, int nthreads, int seed);
 RcppExport SEXP _arbalist_irlba_realized(SEXP inputSEXP, SEXP rankSEXP, SEXP nthreadsSEXP, SEXP seedSEXP) {
@@ -295,8 +265,6 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_fragments_to_regions", (DL_FUNC) &_arbalist_fragments_to_regions, 11},
     {"_arbalist_fragments_to_tiles", (DL_FUNC) &_arbalist_fragments_to_tiles, 9},
-    {"_arbalist_initialize_from_hdf5", (DL_FUNC) &_arbalist_initialize_from_hdf5, 6},
-    {"_arbalist_initialize_from_memory", (DL_FUNC) &_arbalist_initialize_from_memory, 6},
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
     {"_arbalist_irlba_tatami", (DL_FUNC) &_arbalist_irlba_tatami, 4},
     {"_arbalist_lsi_matrix_stats", (DL_FUNC) &_arbalist_lsi_matrix_stats, 2},

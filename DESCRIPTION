@@ -10,8 +10,10 @@ License: MIT + file LICENSE
 Imports:
     Rcpp,
     Matrix,
+    beachmat,
     DelayedArray,
     HDF5Array,
+    rhdf5,
     methods,
     stats,
     BiocGenerics,
@@ -22,7 +24,9 @@ LinkingTo:
     Rcpp,
     Rhdf5lib
 Suggests:
-    testthat
+    testthat,
+    knitr,
+    rmarkdown
 VignetteBuilder: 
     knitr
 SystemRequirements: 

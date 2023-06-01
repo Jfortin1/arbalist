@@ -6,11 +6,11 @@ library(testthat); library(arbalist);
 set.seed(1000)
 x <- Matrix::rsparsematrix(1000, 500, 0.1)
 y <- round(abs(x)*10)
-ptr <- initializeCpp(y)
+ptr <- beachmat::initializeCpp(y)
 
 yr <- Matrix::t(y)
 r <- new("dgRMatrix", x=yr@x, j=yr@i, p=yr@p, Dim=dim(y))
-rptr <- initializeCpp(r)
+rptr <- beachmat::initializeCpp(r)
 
 test_that("IRLBA works for a realized matrix", {
     serial <- arbalist:::irlba_realized(ptr, rank=10, nthreads=1, seed=42)

@@ -9,14 +9,6 @@ fragments_to_tiles <- function(fragment_file, tile_size, output_file, output_gro
     .Call('_arbalist_fragments_to_tiles', PACKAGE = 'arbalist', fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim)
 }
 
-initialize_from_hdf5 <- function(file, name, nrow, ncol, byrow, forced) {
-    .Call('_arbalist_initialize_from_hdf5', PACKAGE = 'arbalist', file, name, nrow, ncol, byrow, forced)
-}
-
-initialize_from_memory <- function(x, i, p, nrow, ncol, byrow) {
-    .Call('_arbalist_initialize_from_memory', PACKAGE = 'arbalist', x, i, p, nrow, ncol, byrow)
-}
-
 irlba_realized <- function(input, rank, nthreads, seed) {
     .Call('_arbalist_irlba_realized', PACKAGE = 'arbalist', input, rank, nthreads, seed)
 }

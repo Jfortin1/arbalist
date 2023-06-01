@@ -66,7 +66,7 @@ mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS)
 
 # Running the counter
 out <- tempfile(fileext=".h5")
-counted <- saveTileMatrix(temp, output.file=out, output.name="WHEE")
+counted <- saveTileMatrix(temp, output.file=out, output.name="WHEE", seq.lengths=seq.lengths)
 counted
 
 }
