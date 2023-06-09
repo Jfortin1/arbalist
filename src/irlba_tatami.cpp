@@ -3,7 +3,6 @@
 #include "Rcpp.h"
 #include "irlba/irlba.hpp"
 #include "irlba/parallel.hpp"
-#include "tatamize.h"
 
 #include <vector>
 #include <algorithm>
@@ -29,94 +28,262 @@ public:
 
 public:
     struct Workspace {
-        Workspace(const tatami::NumericMatrix* mat, int nthreads, bool multiply) : 
-            values(nthreads), indices(nthreads) // make sure nthreads entries are available in indices, even if empty, as the dense methods still access them.
-        { 
-            if (mat->prefer_rows()) {
-                size_t NC = mat->ncol();
+    private:
+        template<bool row_, bool sparse_>
+        void initialize(
+            const tatami::NumericMatrix* mat, 
+            int nthreads, 
+            bool direct, 
+            std::vector<std::unique_ptr<tatami::Extractor<tatami::DimensionSelectionType::FULL, sparse_, double, int> > >& work,
+            std::vector<std::unique_ptr<tatami::Extractor<tatami::DimensionSelectionType::BLOCK, sparse_, double, int> > >& blockwork)
+        {
+            tatami::Options opt;
+            opt.cache_for_reuse = true;
+            int mydim = (row_ ? mat->nrow() : mat->ncol());
+            int otherdim = (row_ ? mat->ncol() : mat->nrow());
 
-                if (multiply || nthreads == 1) {
-                    rowwork.reserve(nthreads);
-                    for (int t = 0; t < nthreads; ++t) {
-                        rowwork.push_back(mat->new_row_workspace());
-                        values[t].resize(NC);
-                        if (mat->sparse()) {
-                            indices[t].resize(NC);
-                        }
+            values.reserve(nthreads);
+            if constexpr(sparse_) {
+                indices.reserve(nthreads);
+            }
+
+            if (direct || nthreads == 1) {
+                int start = 0;
+                int per_thread = std::ceil(static_cast<double>(mydim) / nthreads);
+                work.reserve(nthreads);
+                ranges.reserve(nthreads);
+
+                for (int t = 0; t < nthreads; ++t) {
+                    int start = per_thread * t;
+                    int end = std::min(mydim, start + per_thread);
+                    if (end <= start) {
+                        break;
                     }
 
-                } else {
-                    size_t start = 0;
-                    size_t per_thread = std::ceil(static_cast<double>(NC) / nthreads);
-                    rowbwork.reserve(nthreads);
-                    staging.resize(nthreads);
-
-                    for (int t = 0; t < nthreads; ++t) {
-                        size_t end = std::min(NC, start + per_thread);
-                        size_t length = end - start;
-                        rowbwork.push_back(mat->new_row_workspace(start, length, true));
-                        start = end;
-
-                        values[t].resize(length);
-                        staging[t].resize(NC);
-                        if (mat->sparse()) {
-                            indices[t].resize(length);
-                        }
+                    work.push_back(tatami::new_extractor<row_, sparse_>(mat, opt));
+                    values.emplace_back(otherdim);
+                    if constexpr(sparse_) {
+                        indices.emplace_back(otherdim);
                     }
+
+                    ranges.emplace_back(start, end);
                 }
 
             } else {
-                size_t NR = mat->nrow();
+                int start = 0;
+                int per_thread = std::ceil(static_cast<double>(otherdim) / nthreads);
+                blockwork.reserve(nthreads);
+                staging.reserve(nthreads);
 
-                if (!multiply || nthreads == 1) {
-                    colwork.reserve(nthreads);
-                    for (int t = 0; t < nthreads; ++t) {
-                        colwork.push_back(mat->new_column_workspace(true));
-                        values[t].resize(NR);
-                        if (mat->sparse()) {
-                            indices[t].resize(NR);
-                        }
+                for (int t = 0; t < nthreads; ++t) {
+                    int end = std::min(otherdim, start + per_thread);
+                    if (end <= start) {
+                        break;
                     }
 
-                } else {
-                    size_t start = 0;
-                    size_t per_thread = std::ceil(static_cast<double>(NR) / nthreads);
-                    colbwork.reserve(nthreads);
-                    staging.resize(nthreads);
+                    int length = end - start;
+                    blockwork.push_back(tatami::new_extractor<row_, sparse_>(mat, start, length, opt));
 
-                    for (int t = 0; t < nthreads; ++t) {
-                        size_t end = std::min(NR, start + per_thread);
-                        size_t length = end - start;
-                        colbwork.push_back(mat->new_column_workspace(start, length, true));
-                        start = end;
-
-                        values[t].resize(length);
-                        staging[t].resize(NR);
-                        if (mat->sparse()) {
-                            indices[t].resize(length);
-                        }
+                    values.emplace_back(length);
+                    if constexpr(sparse_) {
+                        indices.emplace_back(length);
                     }
+
+                    staging.emplace_back(otherdim);
+                    start = end;
                 }
             }
 
-            if (nthreads > 1) {
-                jobs.reserve(nthreads);
+            use_serial = (values.size() == 1);
+        }
+
+    public:
+        Workspace(const tatami::NumericMatrix* mat, int nthreads, bool multiply) { 
+            if (mat->prefer_rows()) {
+                if (mat->sparse()) {
+                    initialize<true, true>(mat, nthreads, multiply, swork, sbwork);
+                } else {
+                    initialize<true, false>(mat, nthreads, multiply, dwork, dbwork);
+                }
+            } else {
+                if (mat->sparse()) {
+                    initialize<false, true>(mat, nthreads, !multiply, swork, sbwork);
+                } else {
+                    initialize<false, false>(mat, nthreads, !multiply, dwork, dbwork);
+                }
             }
         }
+
+    private:
+        bool use_serial;
 
         std::vector<std::vector<double> > values;
         std::vector<std::vector<int> > indices;
 
+        std::vector<std::unique_ptr<tatami::Extractor<tatami::DimensionSelectionType::FULL, true, double, int> > > swork;
+        std::vector<std::unique_ptr<tatami::Extractor<tatami::DimensionSelectionType::FULL, false, double, int> > > dwork;
+        std::vector<std::pair<int, int> > ranges;
+
+        std::vector<std::unique_ptr<tatami::Extractor<tatami::DimensionSelectionType::BLOCK, true, double, int> > > sbwork;
+        std::vector<std::unique_ptr<tatami::Extractor<tatami::DimensionSelectionType::BLOCK, false, double, int> > > dbwork;
         std::vector<std::vector<double> > staging; // avoid false sharing during parallelized addition.
 
-        std::vector<std::shared_ptr<tatami::RowWorkspace> > rowwork;
-        std::vector<std::shared_ptr<tatami::ColumnWorkspace> > colwork;
-        std::vector<std::shared_ptr<tatami::RowBlockWorkspace> > rowbwork;
-        std::vector<std::shared_ptr<tatami::ColumnBlockWorkspace> > colbwork;
+    private:
+        template<bool sparse_>
+        auto& get_work() {
+            if constexpr(sparse_) {
+                return swork;
+            } else {
+                return dwork;
+            }
+        }
 
-        std::vector<std::thread> jobs;
+        template<bool sparse_>
+        auto& get_block_work() {
+            if constexpr(sparse_) {
+                return sbwork;
+            } else {
+                return dbwork;
+            }
+        }
+
+    private:
+        template<bool sparse_, class Right_>
+        void running_serial(int mydim, const Right_& rhs, Eigen::VectorXd& output) {
+            auto& current = get_work<sparse_>().front();
+            auto vbuffer = values.front().data();
+            auto ibuffer = (sparse_ ? indices.front().data() : static_cast<int*>(NULL));
+
+            output.setZero();
+            int other = current->full_length;
+
+            for (int x = 0; x < mydim; ++x) {
+                auto mult = rhs.coeff(x);
+
+                if constexpr(sparse_) {
+                    auto found = current->fetch(x, vbuffer, ibuffer);
+                    for (int i = 0; i < found.number; ++i) {
+                        output.coeffRef(found.index[i]) += found.value[i] * mult;
+                    }
+                } else {
+                    auto found = current->fetch(x, vbuffer);
+                    for (int i = 0; i < other; ++i) {
+                        output.coeffRef(i) += found[i] * mult;
+                    }
+                }
+            }
+        }
+
+        template<bool sparse_, class Right_>
+        void running_parallel(int mydim, const Right_& rhs, Eigen::VectorXd& output) {
+            auto& currentwork = get_block_work<sparse_>();
+            output.setZero();
+
+            IRLBA_CUSTOM_PARALLEL(currentwork.size(), [&](int thread) -> void {
+                auto& current = currentwork[thread];
+                auto vbuffer = values[thread].data();
+                auto ibuffer = (sparse_ ? indices[thread].data() : static_cast<int*>(NULL));
+
+                auto& sums = staging[thread]; // do the sums in a staging area to avoid false sharing problems.
+                std::fill(sums.begin(), sums.end(), 0);
+                auto blockstart = current->block_start;
+                auto blocklen = current->block_length;
+
+                for (int x = 0; x < mydim; ++x) {
+                    auto mult = rhs.coeff(x);
+
+                    if constexpr(sparse_) {
+                        auto found = current->fetch(x, vbuffer, ibuffer);
+                        for (int i = 0; i < found.number; ++i) {
+                            sums[found.index[i]] += found.value[i] * mult;
+                        }
+                    } else {
+                        auto found = current->fetch(x, vbuffer);
+                        for (int i = 0; i < blocklen; ++i) {
+                            sums[blockstart + i] += found[i] * mult;
+                        }
+                    }
+                }
+
+                std::copy_n(sums.begin() + blockstart, blocklen, output.begin() + blockstart);
+            });
+        }
+
+    public:
+        template<bool sparse_, class Right_>
+        void running(int mydim, const Right_& rhs, Eigen::VectorXd& output) {
+            if (use_serial) {
+                running_serial<sparse_>(mydim, rhs, output);
+            } else {
+                running_parallel<sparse_>(mydim, rhs, output);
+            }
+        }
+
+    private:
+        template<bool sparse_, class Right_, class Extractor_>
+        double direct_raw(const Right_& rhs, int x, double* vbuffer, int* ibuffer, Extractor_& current) {
+            double total = 0;
+
+            if constexpr(sparse_) {
+                auto found = current->fetch(x, vbuffer, ibuffer);
+                for (int i = 0; i < found.number; ++i) {
+                    total += found.value[i] * rhs.coeff(found.index[i]);
+                }
+            } else {
+                auto found = current->fetch(x, vbuffer);
+                int otherdim = current->full_length;
+                for (int i = 0; i < otherdim; ++i) {
+                    total += found[i] * rhs.coeff(i);
+                }
+            }
+
+            return total;
+        }
+
+        template<bool sparse_, class Right_>
+        void direct_serial(int mydim, const Right_& rhs, Eigen::VectorXd& output) {
+            auto& current = get_work<sparse_>().front();
+            auto vbuffer = values.front().data();
+            auto ibuffer = (sparse_ ? indices.front().data() : static_cast<int*>(NULL));
+
+            output.setZero();
+            for (int x = 0; x < mydim; ++x) {
+                output.coeffRef(x) = direct_raw<sparse_>(rhs, x, vbuffer, ibuffer, current);
+            }
+        }
+
+        template<bool sparse_, class Right_>
+        void direct_parallel(int mydim, const Right_& rhs, Eigen::VectorXd& output) {
+            auto& currentwork = get_work<sparse_>();
+            output.setZero();
+
+            IRLBA_CUSTOM_PARALLEL(currentwork.size(), [&](int thread) -> void {
+                auto range = ranges[thread];
+                auto start = range.first;
+                auto end = range.second;
+
+                auto& current = currentwork[thread];
+                auto vbuffer = values[thread].data();
+                auto ibuffer = (sparse_ ? indices[thread].data() : static_cast<int*>(NULL));
+
+                for (int x = start; x < end; ++x) {
+                    output.coeffRef(x) = direct_raw<sparse_>(rhs, x, vbuffer, ibuffer, current);
+                }
+            });
+        }
+
+    public:
+        template<bool sparse_, class Right_>
+        void direct(int mydim, const Right_& rhs, Eigen::VectorXd& output) {
+            if (use_serial) {
+                direct_serial<sparse_>(mydim, rhs, output);
+            } else {
+                direct_parallel<sparse_>(mydim, rhs, output); 
+            }
+        }
     };
 
+public:
     Workspace workspace() const {
         return Workspace(mat, nthreads, true);
     }
@@ -125,229 +292,19 @@ public:
         return Workspace(mat, nthreads, false);
     }
 
-private:
-    template<bool column>
-    static auto& get_work(Workspace& work) {
-        if constexpr(column) {
-            return work.colwork;
-        } else {
-            return work.rowwork;
-        }
-    }
-
-    template<bool column>
-    static auto& get_block_work(Workspace& work) {
-        if constexpr(column) {
-            return work.colbwork;
-        } else {
-            return work.rowbwork;
-        }
-    }
-
-    template<bool column>
-    size_t get_dimension() const {
-        if constexpr(column) {
-            return mat->ncol();
-        } else {
-            return mat->nrow();
-        }
-    }
-
-    template<bool column>
-    size_t get_other_dimension() const {
-        if constexpr(column) {
-            return mat->nrow();
-        } else {
-            return mat->ncol();
-        }
-    }
-
-    template<bool column, class TatamiWork>
-    auto get_sparse_range(size_t x, double* vbuffer, int* ibuffer, TatamiWork* work) const {
-        if constexpr(column) {
-            return mat->sparse_column(x, vbuffer, ibuffer, work);
-        } else {
-            return mat->sparse_row(x, vbuffer, ibuffer, work);
-        }
-    }
-
-    template<bool column, class TatamiWork>
-    auto get_dense(size_t x, double* vbuffer, TatamiWork* work) const {
-        if constexpr(column) {
-            return mat->column(x, vbuffer, work);
-        } else {
-            return mat->row(x, vbuffer, work);
-        }
-    }
-
-private:
-    template<bool column, bool sparse, class Right>
-    void running_serial(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
-        auto& current = get_work<column>(work).front();
-        auto vbuffer = work.values.front().data();
-        auto ibuffer = work.indices.front().data();
-
-        output.setZero();
-        size_t end = get_dimension<column>();
-        size_t other = get_other_dimension<column>();
-
-        for (size_t x = 0; x < end; ++x) {
-            auto mult = rhs.coeff(x);
-
-            if constexpr(sparse) {
-                auto found = get_sparse_range<column>(x, vbuffer, ibuffer, current.get());
-                for (size_t i = 0; i < found.number; ++i) {
-                    output.coeffRef(found.index[i]) += found.value[i] * mult;
-                }
-            } else {
-                auto found = get_dense<column>(x, vbuffer, current.get());
-                for (size_t i = 0; i < other; ++i) {
-                    output.coeffRef(i) += found[i] * mult;
-                }
-            }
-        }
-    }
-
-    template<bool column, bool sparse, class Right>
-    void running_parallel(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
-        auto& jobs = work.jobs;
-        auto& currentwork = get_block_work<column>(work);
-        output.setZero();
-        size_t end = get_dimension<column>();
-        jobs.clear();
-
-        for (int t = 0; t < nthreads; ++t) {
-            jobs.emplace_back([&](int thread) -> void {
-                auto& current = currentwork[thread];
-                auto vbuffer = work.values[thread].data();
-                auto ibuffer = work.indices[thread].data();
-
-                auto& sums = work.staging[thread]; // do the sums in a staging area to avoid false sharing problems.
-                std::fill(sums.begin(), sums.end(), 0);
-                const auto& pos = current->block();
-
-                for (size_t x = 0; x < end; ++x) {
-                    auto mult = rhs.coeff(x);
-
-                    if constexpr(sparse) {
-                        auto found = get_sparse_range<column>(x, vbuffer, ibuffer, current.get());
-                        for (size_t i = 0; i < found.number; ++i) {
-                            sums[found.index[i]] += found.value[i] * mult;
-                        }
-                    } else {
-                        auto found = get_dense<column>(x, vbuffer, current.get());
-                        for (size_t i = 0; i < pos.second; ++i) {
-                            sums[pos.first + i] += found[i] * mult;
-                        }
-                    }
-                }
-
-                std::copy_n(sums.begin() + pos.first, pos.second, output.begin() + pos.first);
-            }, t);
-        }
-
-        for (int t = 0; t < nthreads; ++t) {
-            jobs[t].join();
-        }
-    }
-
-    template<bool column, bool sparse, class Right>
-    void running(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
-        if (nthreads == 1) {
-            running_serial<column, sparse>(rhs, output, work);
-        } else {
-            running_parallel<column, sparse>(rhs, output, work);
-        }
-    }
-
-private:
-    template<bool column, bool sparse, class Right, class TatamiWork>
-    double direct_raw(const Right& rhs, size_t x, double* vbuffer, int* ibuffer, TatamiWork* current) const {
-        double total = 0;
-
-        if constexpr(sparse) {
-            auto found = get_sparse_range<column>(x, vbuffer, ibuffer, current);
-            for (size_t i = 0; i < found.number; ++i) {
-                total += found.value[i] * rhs.coeff(found.index[i]);
-            }
-        } else {
-            size_t other = rhs.size();
-            auto found = get_dense<column>(x, vbuffer, current);
-            for (size_t i = 0; i < other; ++i) {
-                total += found[i] * rhs.coeff(i);
-            }
-        }
-
-        return total;
-    }
-
-    template<bool column, bool sparse, class Right>
-    void direct_serial(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
-        auto& current = get_work<column>(work).front();
-        auto vbuffer = work.values.front().data();
-        auto ibuffer = work.indices.front().data();
-
-        output.setZero();
-        size_t end = get_dimension<column>();
-        for (size_t x = 0; x < end; ++x) {
-            output.coeffRef(x) = direct_raw<column, sparse>(rhs, x, vbuffer, ibuffer, current.get());
-        }
-    }
-
-    template<bool column, bool sparse, class Right>
-    void direct_parallel(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
-        auto& jobs = work.jobs;
-        auto& currentwork = get_work<column>(work);
-
-        output.setZero();
-        size_t start = 0;
-        size_t ntasks = get_dimension<column>();
-        size_t per_thread = std::ceil(static_cast<double>(ntasks) / nthreads);
-        jobs.clear();
-
-        for (int t = 0; t < nthreads; ++t) {
-            auto end = std::min(ntasks, start + per_thread);
-
-            jobs.emplace_back([&](int thread, size_t s, size_t e) -> void {
-                auto& current = currentwork[thread];
-                auto vbuffer = work.values[thread].data();
-                auto ibuffer = work.indices[thread].data();
-                for (size_t x = s; x < e; ++x) {
-                    output.coeffRef(x) = direct_raw<column, sparse>(rhs, x, vbuffer, ibuffer, current.get());
-                }
-            }, t, start, end);
-
-            start = end;
-        }
-
-        for (int t = 0; t < nthreads; ++t) {
-            jobs[t].join();
-        }
-    }
-
-    template<bool column, bool sparse, class Right>
-    void direct(const Right& rhs, Eigen::VectorXd& output, Workspace& work) const {
-        if (nthreads == 1) {
-            direct_serial<column, sparse>(rhs, output, work);
-        } else {
-            direct_parallel<column, sparse>(rhs, output, work);
-        }
-    }
-
-public:
     template<class Right>
     void multiply(const Right& rhs, Workspace& work, Eigen::VectorXd& output) const {
         if (mat->prefer_rows()) {
             if (mat->sparse()) {
-                direct<false, true>(rhs, output, work);
+                work.template direct<true>(mat->nrow(), rhs, output);
             } else {
-                direct<false, false>(rhs, output, work);
+                work.template direct<false>(mat->nrow(), rhs, output);
             }
         } else {
             if (mat->sparse()) {
-                running<true, true>(rhs, output, work);
+                work.template running<true>(mat->ncol(), rhs, output);
             } else {
-                running<true, false>(rhs, output, work);
+                work.template running<false>(mat->ncol(), rhs, output);
             }
         }
     }
@@ -356,15 +313,15 @@ public:
     void adjoint_multiply(const Right& rhs, Workspace& work, Eigen::VectorXd& output) const {
         if (mat->prefer_rows()) {
             if (mat->sparse()) {
-                running<false, true>(rhs, output, work);
+                work.template running<true>(mat->nrow(), rhs, output);
             } else {
-                running<false, false>(rhs, output, work);
+                work.template running<false>(mat->nrow(), rhs, output);
             }
         } else {
             if (mat->sparse()) {
-                direct<true, true>(rhs, output, work);
+                work.template direct<true>(mat->ncol(), rhs, output);
             } else {
-                direct<true, false>(rhs, output, work);
+                work.template direct<false>(mat->ncol(), rhs, output);
             }
         }
     }
@@ -378,7 +335,8 @@ public:
 
 //[[Rcpp::export(rng=false)]]
 Rcpp::List irlba_tatami(SEXP input, int rank, int nthreads, int seed) {
-    auto shared = extract_NumericMatrix_shared(input);
+    auto converted = Rtatami::BoundNumericPointer(input);
+    const auto& shared = converted->ptr;
     size_t NR = shared->nrow();
     size_t NC = shared->ncol();
 

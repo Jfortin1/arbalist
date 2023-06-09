@@ -3,7 +3,6 @@
 #include "Rcpp.h"
 #include "irlba/irlba.hpp"
 #include "irlba/parallel.hpp"
-#include "tatamize.h"
 
 #include <vector>
 #include <algorithm>
@@ -20,69 +19,67 @@ struct SparseComponents {
 template<typename T, typename IDX>
 SparseComponents sparse_by_row(const tatami::Matrix<T, IDX>* mat, int nthreads) {
     SparseComponents output;
-    size_t NR = mat->nrow(), NC = mat->ncol();
+    IDX NR = mat->nrow(), NC = mat->ncol();
     auto& ptrs = output.ptrs;
     ptrs.resize(NR + 1);
 
     /*** First round, to fetch the number of zeros in each row. ***/
-    ARBALIST_CUSTOM_PARALLEL(NR, [&](size_t start, size_t end) -> void {
-        std::vector<double> xbuffer(NC);
-        std::vector<int> ibuffer(NC);
-        auto wrk = mat->new_row_workspace();
-        for (size_t r = start; r < end; ++r) {
-            auto range = mat->sparse_row(r, xbuffer.data(), ibuffer.data(), wrk.get());
+    tatami::Options opt;
+    opt.sparse_extract_index = false;
+    opt.sparse_extract_value = false;
+
+    ARBALIST_CUSTOM_PARALLEL([&](int, IDX start, IDX len) -> void {
+        auto wrk = tatami::consecutive_extractor<true, true>(mat, start, len, opt);
+        for (IDX r = start, end = start + len; r < end; ++r) {
+            auto range = wrk->fetch(r, NULL, NULL);
             ptrs[r + 1] = range.number;
         }
-    }, nthreads);
+    }, NR, nthreads);
 
     /*** Second round, to populate the vectors. ***/
-    for (size_t r = 0; r < NR; ++r) {
+    for (IDX r = 0; r < NR; ++r) {
         ptrs[r + 1] += ptrs[r];
     }
     output.values.resize(ptrs.back());
     output.indices.resize(ptrs.back());
 
-    ARBALIST_CUSTOM_PARALLEL(NR, [&](size_t start, size_t end) -> void {
-        auto wrk = mat->new_row_workspace();
-        for (size_t r = start; r < end; ++r) {
+    ARBALIST_CUSTOM_PARALLEL([&](int, IDX start, IDX len) -> void {
+        auto wrk = tatami::consecutive_extractor<true, true>(mat, start, len);
+        for (IDX r = start, end = start + len; r < end; ++r) {
             auto offset = ptrs[r];
-            mat->sparse_row_copy(r, output.values.data() + offset, output.indices.data() + offset, wrk.get(), tatami::SPARSE_COPY_BOTH);
+            wrk->fetch_copy(r, output.values.data() + offset, output.indices.data() + offset);
         }
-    }, nthreads);
+    }, NR, nthreads);
 
     return output;
 }
 
 template<typename T, typename IDX>
 SparseComponents sparse_by_column(const tatami::Matrix<T, IDX>* mat, int nthreads) {
-    size_t NR = mat->nrow(), NC = mat->ncol();
+    IDX NR = mat->nrow(), NC = mat->ncol();
 
     /*** First round, to fetch the number of zeros in each row. ***/
-    size_t cols_per_thread = std::ceil(static_cast<double>(NC) / nthreads);
-    std::vector<std::vector<size_t> > threaded_nonzeros_per_row(nthreads);
+    tatami::Options opt;
+    opt.sparse_extract_index = true;
+    opt.sparse_extract_value = false;
 
-    ARBALIST_CUSTOM_PARALLEL(nthreads, [&](int start, int end) -> void { // Trivial allocation of one job per thread.
-        for (int t = start; t < end; ++t) {
-            size_t startcol = cols_per_thread * t, endcol = std::min(startcol + cols_per_thread, NC);
-            if (startcol < endcol) {
-                std::vector<size_t>& nonzeros_per_row = threaded_nonzeros_per_row[t];
-                nonzeros_per_row.resize(NR);
-                std::vector<double> xbuffer(NR);
-                std::vector<int> ibuffer(NR);
-                auto wrk = mat->new_column_workspace();
+    std::vector<std::vector<IDX> > threaded_nonzeros_per_row(nthreads); // create separate vectors to avoid false sharing.
 
-                for (size_t c = startcol; c < endcol; ++c) {
-                    auto range = mat->sparse_column(c, xbuffer.data(), ibuffer.data(), wrk.get());
-                    for (size_t i = 0; i < range.number; ++i) {
-                        ++(nonzeros_per_row[range.index[i]]);
-                    }
-                }
+    ARBALIST_CUSTOM_PARALLEL([&](int t, IDX start, IDX len) -> void {
+        auto wrk = tatami::consecutive_extractor<false, true>(mat, start, len, opt);
+        auto& mine = threaded_nonzeros_per_row[t];
+        mine.resize(NR);
+        std::vector<IDX> ibuffer(NR);
+
+        for (IDX i = start, end = start + len; i < end; ++i) {
+            auto range = wrk->fetch(i, NULL, ibuffer.data());
+            for (IDX j = 0; j < range.number; ++j) {
+                ++(mine[range.index[j]]);
             }
         }
-    }, nthreads);
+    }, NC, nthreads);
 
-    // There had better be at least one thread!
-    std::vector<size_t> nonzeros_per_row = std::move(threaded_nonzeros_per_row[0]);
+    std::vector<IDX> nonzeros_per_row = std::move(threaded_nonzeros_per_row[0]);
     for (int t = 1; t < nthreads; ++t) {
         auto it = nonzeros_per_row.begin();
         for (auto x : threaded_nonzeros_per_row[t]) {
@@ -94,43 +91,33 @@ SparseComponents sparse_by_column(const tatami::Matrix<T, IDX>* mat, int nthread
     /*** Second round, to populate the vectors. ***/
     SparseComponents output;
     output.ptrs.resize(NR + 1);
-    size_t total_nzeros = 0;
-    for (size_t r = 0; r < NR; ++r) {
+    IDX total_nzeros = 0;
+    for (IDX r = 0; r < NR; ++r) {
         total_nzeros += nonzeros_per_row[r];
         output.ptrs[r + 1] = total_nzeros;
 
     }
     output.values.resize(total_nzeros);
     output.indices.resize(total_nzeros);
-
-    // Splitting by row this time, because columnar extraction can't be done safely.
-    nthreads = 1;
-    size_t rows_per_thread = std::ceil(static_cast<double>(NR) / nthreads);
     auto ptr_copy = output.ptrs;
 
-    ARBALIST_CUSTOM_PARALLEL(nthreads, [&](int start, int end) -> void { // Trivial allocation of one job per thread.
-    for (int t = start; t < end; ++t) {
-        size_t startrow = rows_per_thread * t, endrow = std::min(startrow + rows_per_thread, NR);
+    // Splitting by row this time, because columnar extraction can't be done safely.
+    ARBALIST_CUSTOM_PARALLEL([&](int t, int start, int len) -> void { 
+        auto wrk = tatami::consecutive_extractor<false, true>(mat, 0, NC, start, len);
+        std::vector<T> vbuffer(len);
+        std::vector<IDX> ibuffer(len);
 
-        if (startrow < endrow) {
-            size_t length = endrow - startrow;
-            auto wrk = mat->new_column_workspace(startrow, length);
-            std::vector<double> xbuffer(length);
-            std::vector<int> ibuffer(length);
-
-            for (size_t c = 0; c < NC; ++c) {
-                auto range = mat->sparse_column(c, xbuffer.data(), ibuffer.data(), wrk.get());
-                for (size_t i = 0; i < range.number; ++i) {
-                    auto r = range.index[i];
-                    auto& offset = ptr_copy[r];
-                    output.values[offset] = range.value[i];
-                    output.indices[offset] = c;
-                    ++offset;
-                }
+        for (IDX c = 0; c < NC; ++c) {
+            auto range = wrk->fetch(c, vbuffer.data(), ibuffer.data());
+            for (IDX i = 0; i < range.number; ++i) {
+                auto r = range.index[i];
+                auto& offset = ptr_copy[r];
+                output.values[offset] = range.value[i];
+                output.indices[offset] = c;
+                ++offset;
             }
         }
-    }
-    }, nthreads);
+    }, NR, nthreads);
 
     return output;
 }
@@ -146,7 +133,8 @@ SparseComponents extract_sparse_for_pca(const tatami::Matrix<T, IDX>* mat, int n
 
 //[[Rcpp::export(rng=false)]]
 Rcpp::List irlba_realized(SEXP input, int rank, int nthreads, int seed) {
-    auto shared = extract_NumericMatrix_shared(input);
+    auto converted = Rtatami::BoundNumericPointer(input);
+    const auto& shared = converted->ptr;
     size_t NR = shared->nrow();
     size_t NC = shared->ncol();
 

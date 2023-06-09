@@ -16,7 +16,7 @@ test_that("LSI-related utilities work as expected", {
 
     yr <- Matrix::t(y)
     r <- new("dgRMatrix", x=yr@x, j=yr@i, p=yr@p, Dim=dim(y))
-    rptr <- initializeCpp(r)
+    rptr <- beachmat::initializeCpp(r)
     
     rinfo <- arbalist:::lsi_matrix_stats(rptr, nthreads=1)
     expect_identical(info, rinfo)

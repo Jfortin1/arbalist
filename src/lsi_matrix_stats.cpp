@@ -1,48 +1,45 @@
 #include "config.h"
 
 #include "Rcpp.h"
-#include "tatamize.h"
 #include <vector>
 
 //[[Rcpp::export(rng=false)]]
 Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads) {
-    auto shared = extract_NumericMatrix_shared(mat);
-    size_t NR = shared->nrow(), NC = shared->ncol();
+    auto converted = Rtatami::BoundNumericPointer(mat);
+    const auto& shared = converted->ptr;
+    int NR = shared->nrow(), NC = shared->ncol();
     Rcpp::NumericVector sums(NC);
     Rcpp::IntegerVector detected(NR);
 
     std::vector<std::vector<int> > tmp_detected(nthreads);
 
     if (shared->prefer_rows()) {
-        std::vector<std::vector<double> > tmp_sums(nthreads);
-
-        run_parallel3(shared->ncol(), [&](int thread, size_t start, size_t end) -> void {
-            size_t length = end - start;
-            auto wrk = shared->new_row_workspace(start, length);
+        ARBALIST_CUSTOM_PARALLEL([&](int thread, int start, int length) -> void {
             std::vector<double> vbuffer(length);
 
-            auto& soutput = tmp_sums[thread];
-            soutput.resize(NR);
+            std::vector<double> soutput(NR);
             auto& doutput = tmp_detected[thread];
             doutput.resize(NR);
 
             if (shared->sparse()) {
+                auto wrk = tatami::consecutive_extractor<true, true>(shared.get(), 0, NR, start, length);
                 std::vector<int> ibuffer(length);
-                for (size_t r = 0; r < NR; ++r) {
-                    auto range = shared->sparse_row(r, vbuffer.data(), ibuffer.data(), wrk.get()); 
-
+                for (int r = 0; r < NR; ++r) {
+                    auto range = wrk->fetch(r, vbuffer.data(), ibuffer.data());
                     int total = 0;
-                    for (size_t i = 0; i < range.number; ++i) {
+                    for (int i = 0; i < range.number; ++i) {
                         total += range.value[i] > 0;
                         soutput[range.index[i]] += range.value[i];
                     }
                     doutput[r] = total;
                 }
+
             } else {
-                for (size_t r = 0; r < NR; ++r) {
-                    auto found = shared->row(r, vbuffer.data(), wrk.get()); 
+                auto wrk = tatami::consecutive_extractor<true, false>(shared.get(), 0, NR, start, length);
+                for (int r = 0; r < NR; ++r) {
+                    auto found = wrk->fetch(r, vbuffer.data());
                     int total = 0;
-                    for (size_t i = 0; i < length; ++i) {
+                    for (int i = 0; i < length; ++i) {
                         total += found[i] > 0;
                         soutput[i + start] += found[i];
                     }
@@ -50,22 +47,22 @@ Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads) {
                 }
             }
 
-            std::copy(soutput.begin() + start, soutput.begin() + end, sums.begin() + start);
-        }, nthreads);
+            std::copy_n(soutput.begin() + start, length, sums.begin() + start);
+        }, NR, nthreads);
 
     } else {
-        run_parallel3(shared->ncol(), [&](int thread, size_t start, size_t end) -> void {
-            auto wrk = shared->new_column_workspace();
+        ARBALIST_CUSTOM_PARALLEL([&](int thread, int start, int length) -> void {
             std::vector<double> vbuffer(NR);
             auto& doutput = tmp_detected[thread];
             doutput.resize(NR);
 
             if (shared->sparse()) {
+                auto wrk = tatami::consecutive_extractor<false, true>(shared.get(), start, length);
                 std::vector<int> ibuffer(NR);
-                for (size_t c = start; c < end; ++c) {
-                    auto range = shared->sparse_column(c, vbuffer.data(), ibuffer.data(), wrk.get()); 
+                for (int c = start, end = start + length; c < end; ++c) {
+                    auto range = wrk->fetch(c, vbuffer.data(), ibuffer.data());
                     double total = 0;
-                    for (size_t i = 0; i < range.number; ++i) {
+                    for (int i = 0; i < range.number; ++i) {
                         total += range.value[i];
                         doutput[range.index[i]] += range.value[i] > 0;
                     }
@@ -73,10 +70,11 @@ Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads) {
                 }
 
             } else {
-                for (size_t c = start; c < end; ++c) {
-                    auto found = shared->column(c, vbuffer.data(), wrk.get()); 
+                auto wrk = tatami::consecutive_extractor<false, false>(shared.get(), start, length);
+                for (int c = start, end = start + length; c < end; ++c) {
+                    auto found = wrk->fetch(c, vbuffer.data());
                     double total = 0;
-                    for (size_t i = 0; i < NR; ++i) {
+                    for (int i = 0; i < NR; ++i) {
                         total += found[i];
                         doutput[i + start] += found[i] > 0;
                     }
@@ -84,12 +82,12 @@ Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads) {
                 }
             }
 
-        }, nthreads);
+        }, NC, nthreads);
     }
 
     for (const auto& tmp : tmp_detected) {
         if (!tmp.empty()) { // i.e., a thread was assigned and used.
-            for (size_t r = 0; r < NR; ++r) {
+            for (int r = 0; r < NR; ++r) {
                 detected[r] += tmp[r];
 
             }

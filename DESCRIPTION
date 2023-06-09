@@ -22,7 +22,8 @@ Imports:
     GenomicRanges
 LinkingTo:
     Rcpp,
-    Rhdf5lib
+    Rhdf5lib,
+    beachmat
 Suggests:
     testthat,
     knitr,
