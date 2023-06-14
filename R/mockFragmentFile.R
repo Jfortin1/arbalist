@@ -26,6 +26,8 @@
 #'
 #' @author Aaron Lun
 #'
+#' @importFrom stats runif
+#' @importFrom utils write.table
 #' @export
 mockFragmentFile <- function(output.file, seq.lengths, num.fragments, cell.names, width.range = c(10, 1000), read.range = c(1, 10), comments = NULL, compressed = TRUE) {
     number <- num.fragments * length(cell.names)
@@ -42,7 +44,7 @@ mockFragmentFile <- function(output.file, seq.lengths, num.fragments, cell.names
     on.exit(close(handle))
 
     if (length(comments)) {
-        writeLines(con=handle, paste("# ", comments), sep="\n")
+        writeLines(con=handle, paste0("# ", comments), sep="\n")
     }
     write.table(file=handle, df, row.names=FALSE, col.names=FALSE, sep="\t", quote=FALSE, eol="\n")
 

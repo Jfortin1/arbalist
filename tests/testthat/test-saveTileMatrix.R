@@ -87,15 +87,19 @@ test_that("saveTileMatrix works correctly with restricted cells", {
 
 test_that("saveTileMatrix looks up the sequence lengths", {
     seq.lengths <- c(chrC = 1999, chrB = 999, chrA = 29999)
-    temp.fai <- tempfile(fileext=".fai")
-    write.table(data.frame(names(seq.lengths), seq.lengths), file=temp.fai, col.names=FALSE, row.names=FALSE)
+    temp.fai.dir <- file.path(tempdir(),"fasta")
+    if(!dir.exists(temp.fai.dir)) {
+      dir.create(temp.fai.dir)
+    }
+    temp.fai <- file.path(temp.fai.dir, "genome.fa.fai")
+    write.table(data.frame(names(seq.lengths), seq.lengths), file=temp.fai, col.names=FALSE, row.names=FALSE, sep="\t")
 
     temp <- tempfile(fileext = ".gz")
-    mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS, comments=paste0("reference_path=", temp.fai))
+    mockFragmentFile(temp, seq.lengths, 1e3, cell.names = LETTERS, comments=paste0("reference_path=", tempdir()))
     ref <- reference_counter(temp, seq.lengths, allowed.cells = NULL, tile.size = 500)
 
     temp.h5 <- tempfile(fileext = ".h5")
-    obs <- saveTileMatrix(temp, seq.lengths=seq.lengths, output.file=temp.h5, output.name="WHEE", barcodes = NULL)
+    obs <- saveTileMatrix(temp, seq.lengths=NULL, output.file=temp.h5, output.name="WHEE", barcodes = NULL)
 
     expect_identical(nrow(obs$counts), length(obs$tiles))
     expect_identical(as.character(runValue(seqnames(obs$tiles))), names(seq.lengths))

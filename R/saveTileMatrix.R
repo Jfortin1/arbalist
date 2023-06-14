@@ -104,13 +104,13 @@ saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=
     repeat {
         lines <- readLines(handle, n = chunk)
         header <- startsWith(lines, "#")
-        all.headers <- c(all.headers, sub("^# ", lines[header]))
-        if (length(lines) < n || !all(header)) {
+        all.headers <- c(all.headers, sub("^# ", "", lines[header]))
+        if (length(lines) < chunk || !all(header)) {
             break
         }
     }
 
     field <- sub("=.*", "", all.headers)
-    value <- sub("[^=]+=", all.headers)
+    value <- sub("[^=]+=", "", all.headers)
     split(value, field)
 }

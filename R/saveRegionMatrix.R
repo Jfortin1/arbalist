@@ -84,7 +84,7 @@ saveRegionMatrix <- function(fragment.file, output.file, output.name, regions, b
 
 #' @import methods
 #' @importFrom GenomeInfoDb seqnames
-#' @importFrom BiocGenerics setdiff
+#' @importFrom BiocGenerics setdiff start end
 #' @importFrom IRanges reduce coverage slice findOverlaps
 #' @importClassesFrom GenomicRanges GRanges 
 sanitize_regions <- function(regions, decompose = TRUE) { 
