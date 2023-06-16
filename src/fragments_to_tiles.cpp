@@ -88,7 +88,7 @@ public:
         }
 
         auto slength = (current_tile_seq_it->second).length;
-        if (slength <= start_pos || slength <= end_pos) {
+        if (slength <= start_pos || slength < end_pos) {
             throw std::runtime_error("fragment boundaries (" + std::to_string(start_pos) + ":" + std::to_string(end_pos) + ") out of range of the sequence length on line " + std::to_string(line_number));
         }
 
