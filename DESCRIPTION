@@ -5,7 +5,11 @@ Title: Bringing ArchR to Bioconductor
 Description: 
     Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
     in preparation for submission to Bioconductor.
-Authors@R: person("Aaron", "Lun", role=c("aut", "cre"), email="infinite.monkeys.with.keyboards@gmail.com")
+Authors@R: c(
+    person("Jean-Philippe", "Fortin", email = "fortin946@gmail.com", role = c("aut", "cre")),
+    person("Aaron", "Lun", email = "infinite.monkeys.with.keyboards@gmail.com", role = c("aut")),
+    person("Natalie", "Fox", email = "natalie.fox@roche.com", role = c("aut")),
+    )
 License: MIT + file LICENSE
 Imports:
     Rcpp,
