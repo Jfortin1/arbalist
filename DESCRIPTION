@@ -8,7 +8,7 @@ Description:
 Authors@R: c(
     person("Jean-Philippe", "Fortin", email = "fortin946@gmail.com", role = c("aut", "cre")),
     person("Aaron", "Lun", email = "infinite.monkeys.with.keyboards@gmail.com", role = c("aut")),
-    person("Natalie", "Fox", email = "natalie.fox@roche.com", role = c("aut")),
+    person("Natalie", "Fox", email = "natalie.fox@roche.com", role = c("aut"))
     )
 License: MIT + file LICENSE
 Imports:
