@@ -17,7 +17,7 @@ Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads) {
         ARBALIST_CUSTOM_PARALLEL([&](int thread, int start, int length) -> void {
             std::vector<double> vbuffer(length);
 
-            std::vector<double> soutput(NR);
+            std::vector<double> soutput(NC);
             auto& doutput = tmp_detected[thread];
             doutput.resize(NR);
 
@@ -48,7 +48,7 @@ Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads) {
             }
 
             std::copy_n(soutput.begin() + start, length, sums.begin() + start);
-        }, NR, nthreads);
+        }, NC, nthreads);
 
     } else {
         ARBALIST_CUSTOM_PARALLEL([&](int thread, int start, int length) -> void {
