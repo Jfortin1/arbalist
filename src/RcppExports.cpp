@@ -119,6 +119,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// apply_bind
+SEXP apply_bind(Rcpp::List input, bool row);
+RcppExport SEXP _arbalist_apply_bind(SEXP inputSEXP, SEXP rowSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< bool >::type row(rowSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_bind(input, row));
+    return rcpp_result_gen;
+END_RCPP
+}
 // apply_addition
 SEXP apply_addition(SEXP input, Rcpp::NumericVector val, bool row);
 RcppExport SEXP _arbalist_apply_addition(SEXP inputSEXP, SEXP valSEXP, SEXP rowSEXP) {
@@ -190,6 +201,46 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// apply_abs
+SEXP apply_abs(SEXP input);
+RcppExport SEXP _arbalist_apply_abs(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_abs(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_sqrt
+SEXP apply_sqrt(SEXP input);
+RcppExport SEXP _arbalist_apply_sqrt(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_sqrt(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_round
+SEXP apply_round(SEXP input);
+RcppExport SEXP _arbalist_apply_round(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_round(input));
+    return rcpp_result_gen;
+END_RCPP
+}
+// apply_exp
+SEXP apply_exp(SEXP input);
+RcppExport SEXP _arbalist_apply_exp(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(apply_exp(input));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_aggregate_counts", (DL_FUNC) &_arbalist_aggregate_counts, 3},
@@ -200,12 +251,17 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_lsi_matrix_stats", (DL_FUNC) &_arbalist_lsi_matrix_stats, 2},
     {"_arbalist_apply_subset", (DL_FUNC) &_arbalist_apply_subset, 3},
     {"_arbalist_apply_transpose", (DL_FUNC) &_arbalist_apply_transpose, 1},
+    {"_arbalist_apply_bind", (DL_FUNC) &_arbalist_apply_bind, 2},
     {"_arbalist_apply_addition", (DL_FUNC) &_arbalist_apply_addition, 3},
     {"_arbalist_apply_multiplication", (DL_FUNC) &_arbalist_apply_multiplication, 3},
     {"_arbalist_apply_subtraction", (DL_FUNC) &_arbalist_apply_subtraction, 4},
     {"_arbalist_apply_division", (DL_FUNC) &_arbalist_apply_division, 4},
     {"_arbalist_apply_log", (DL_FUNC) &_arbalist_apply_log, 2},
     {"_arbalist_apply_log1p", (DL_FUNC) &_arbalist_apply_log1p, 1},
+    {"_arbalist_apply_abs", (DL_FUNC) &_arbalist_apply_abs, 1},
+    {"_arbalist_apply_sqrt", (DL_FUNC) &_arbalist_apply_sqrt, 1},
+    {"_arbalist_apply_round", (DL_FUNC) &_arbalist_apply_round, 1},
+    {"_arbalist_apply_exp", (DL_FUNC) &_arbalist_apply_exp, 1},
     {NULL, NULL, 0}
 };
 

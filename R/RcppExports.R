@@ -33,6 +33,10 @@ apply_transpose <- function(input) {
     .Call('_arbalist_apply_transpose', PACKAGE = 'arbalist', input)
 }
 
+apply_bind <- function(input, row) {
+    .Call('_arbalist_apply_bind', PACKAGE = 'arbalist', input, row)
+}
+
 apply_addition <- function(input, val, row) {
     .Call('_arbalist_apply_addition', PACKAGE = 'arbalist', input, val, row)
 }
@@ -55,5 +59,21 @@ apply_log <- function(input, base) {
 
 apply_log1p <- function(input) {
     .Call('_arbalist_apply_log1p', PACKAGE = 'arbalist', input)
+}
+
+apply_abs <- function(input) {
+    .Call('_arbalist_apply_abs', PACKAGE = 'arbalist', input)
+}
+
+apply_sqrt <- function(input) {
+    .Call('_arbalist_apply_sqrt', PACKAGE = 'arbalist', input)
+}
+
+apply_round <- function(input) {
+    .Call('_arbalist_apply_round', PACKAGE = 'arbalist', input)
+}
+
+apply_exp <- function(input) {
+    .Call('_arbalist_apply_exp', PACKAGE = 'arbalist', input)
 }
 
