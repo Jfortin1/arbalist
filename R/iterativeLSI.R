@@ -1,8 +1,35 @@
+#' Create iterative LSI embeddings
+#'
+#' @param rank Number specifying the rank for irlba_realized
+#' @param iterations Number of LSI iterations to perform.
+#' @param num.features Number of accessible features to select when selecting the most accessible or most variable features.
+#' @param cluster.method String specifying cluster method. Currently "kmeans" is the only supported option.
+#' @param cluster.k Number of clusters to use
+#' @param correlation.cutoff 	Numeric cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the corCutOff, it will be excluded from analysis.
+#' @param scale.to Number specifying the center for TF-IDF normalization.
+#' @param num.threads Number of threads to be used for parallel computing.
+#' @param seed Number to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
+#' @param total.features Number of features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.
+#' @param filter.quantile Number 0,1 that indicates the quantile above which features should be removed based on insertion counts prior
+#'
+#' @return A list is returned containing:
+#' \itemize{
+#' \item \code{embedding}, a matrix containing the iterativeLSI embedding
+#' \item \code{projection}, 
+#' \item \code{subset}, a vectory of indices specifying the selected subset of features
+#' }
+#' 
+
+#' @author Natalie Fox
+#' @examples
+#' \dontrun{
+#' mae <- maw.scatac::importScAtac('FRS15024')
+#' res <- iterativeLSI(MultiAssayExperiment::assay(mae[[1]]))
+#'}
 #' @export
 #' @importFrom matrixStats rowVars
 #' @importFrom beachmat initializeCpp
 #' @importFrom stats kmeans
-#' @importFrom BiocParallel bpparam
 iterativeLSI <- function(
     x, 
     rank = 30,
@@ -11,35 +38,13 @@ iterativeLSI <- function(
     cluster.method = "kmeans",
     cluster.k = 20,
     correlation.cutoff = 0.75,
-    subsample = 100000,
     scale.to = 10000,
     num.threads = 1,
     seed = 5,
     total.features = 500000,
-    filter.quantile = 0.995,
-    BPPARAM = bpparam()
+    filter.quantile = 0.995
 ) {
 
-#  # filter x based on row sums for top features or most variable features
-#  idx.list <- list()
-#  num.line.per.parallelization <- 10000
-#  for(i in 1:ceiling(nrow(x)/num.line.per.parallelization)) {
-#    idx.list[[i]] <- seq((i-1)*num.line.per.parallelization+1,i*num.line.per.parallelization)
-#  }
-#  idx.list[[length(idx.list)]] <- seq(min(idx.list[[length(idx.list)]]),nrow(x))
-#  rowSumParallelized <- function(idxs, x, num.threads) {
-#    x <- x[idxs,,drop=FALSE]
-#    if(!is(x,'sparseMatrix')) {
-#      x <- as(x, 'sparseMatrix')
-#    }
-#    ptr <- beachmat::initializeCpp(x)
-#    stats <- lsi_matrix_stats(ptr, nthreads = num.threads)
-#    return(stats$frequency)
-#  }
-#  res.list <- bptry(bplapply(idx.list, rowSumParallelized, x=x, num.threads=num.threads))
-#  row.accessibility <- unlist(res.list)
-
-  
   if (cluster.method == "kmeans") {
     cluster.method <- function(x) kmeans(x, centers=cluster.k)$cluster
   }
