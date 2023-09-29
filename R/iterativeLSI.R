@@ -1,5 +1,6 @@
 #' Create iterative LSI embeddings
 #'
+#' @param x input matrix for creating iterative LSI embeddings
 #' @param rank Number specifying the rank for irlba_realized
 #' @param iterations Number of LSI iterations to perform.
 #' @param num.features Number of accessible features to select when selecting the most accessible or most variable features.
@@ -29,7 +30,8 @@
 #' @export
 #' @importFrom matrixStats rowVars
 #' @importFrom beachmat initializeCpp
-#' @importFrom stats kmeans
+#' @importFrom stats kmeans cor
+#' @importFrom utils head
 iterativeLSI <- function(
     x, 
     rank = 30,

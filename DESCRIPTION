@@ -21,6 +21,8 @@ Imports:
     rhdf5,
     matrixStats,
     methods,
+    MultiAssayExperiment,
+    SingleCellExperiment,
     stats,
     BiocGenerics,
     IRanges,
