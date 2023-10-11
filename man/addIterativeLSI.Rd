@@ -56,12 +56,6 @@ addIterativeLSI(
 \description{
 Add new iterative LSI embeddings to MultiAssayExperiment
 }
-\examples{
-\dontrun{
-mae <- maw.scatac::importScAtac('FRS15024')
-mae.res <- addIterativeLSI(mae)
-}
-}
 \author{
 Natalie Fox
 }

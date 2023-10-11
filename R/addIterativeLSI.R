@@ -18,11 +18,6 @@
 #' @return \linkS4class{MultiAssayExperiment}
 #' 
 #' @author Natalie Fox
-#' @examples
-#' \dontrun{
-#' mae <- maw.scatac::importScAtac('FRS15024')
-#' mae.res <- addIterativeLSI(mae)
-#'}
 #' @export
 #' @importFrom MultiAssayExperiment assay
 #' @importFrom SingleCellExperiment reducedDim<- reducedDims reducedDimNames<- reducedDimNames reducedDims
