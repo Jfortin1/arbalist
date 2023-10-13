@@ -20,7 +20,7 @@
 #'
 #' @export
 #' @importFrom MultiAssayExperiment experiments
-#' @importFrom SingleCellExperiment reducedDims altExp reducedDim<- reducedDim altExpNames altExp<-
+#' @importFrom SingleCellExperiment reducedDims altExp reducedDim<- reducedDim altExpNames altExp<- reducedDimNames
 addUMAP <- function(
   mae,
   name.iterative.lsi = 'iterativeLSI',

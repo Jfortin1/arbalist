@@ -29,7 +29,8 @@ Imports:
     GenomeInfoDb,
     GenomicRanges,
     nabor,
-    uwot
+    uwot,
+    Seurat
 LinkingTo:
     Rcpp,
     Rhdf5lib,
