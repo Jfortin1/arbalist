@@ -25,6 +25,10 @@ lsi_matrix_stats <- function(mat, nthreads) {
     .Call('_arbalist_lsi_matrix_stats', PACKAGE = 'arbalist', mat, nthreads)
 }
 
+create_pseuobulk_file <- function(fragment_files, output_file, cellnames) {
+    invisible(.Call('_arbalist_create_pseuobulk_file', PACKAGE = 'arbalist', fragment_files, output_file, cellnames))
+}
+
 apply_subset <- function(input, subset, row) {
     .Call('_arbalist_apply_subset', PACKAGE = 'arbalist', input, subset, row)
 }
@@ -75,5 +79,9 @@ apply_round <- function(input) {
 
 apply_exp <- function(input) {
     .Call('_arbalist_apply_exp', PACKAGE = 'arbalist', input)
+}
+
+var_stats <- function(mat, nthreads) {
+    .Call('_arbalist_var_stats', PACKAGE = 'arbalist', mat, nthreads)
 }
 

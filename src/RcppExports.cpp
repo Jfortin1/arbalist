@@ -97,6 +97,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// create_pseuobulk_file
+void create_pseuobulk_file(Rcpp::Nullable<Rcpp::CharacterVector> fragment_files, std::string output_file, Rcpp::Nullable<Rcpp::CharacterVector> cellnames);
+RcppExport SEXP _arbalist_create_pseuobulk_file(SEXP fragment_filesSEXP, SEXP output_fileSEXP, SEXP cellnamesSEXP) {
+BEGIN_RCPP
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type fragment_files(fragment_filesSEXP);
+    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type cellnames(cellnamesSEXP);
+    create_pseuobulk_file(fragment_files, output_file, cellnames);
+    return R_NilValue;
+END_RCPP
+}
 // apply_subset
 SEXP apply_subset(SEXP input, Rcpp::IntegerVector subset, bool row);
 RcppExport SEXP _arbalist_apply_subset(SEXP inputSEXP, SEXP subsetSEXP, SEXP rowSEXP) {
@@ -241,6 +252,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// var_stats
+Rcpp::List var_stats(SEXP mat, int nthreads);
+RcppExport SEXP _arbalist_var_stats(SEXP matSEXP, SEXP nthreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(var_stats(mat, nthreads));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_aggregate_counts", (DL_FUNC) &_arbalist_aggregate_counts, 3},
@@ -249,6 +271,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
     {"_arbalist_irlba_tatami", (DL_FUNC) &_arbalist_irlba_tatami, 4},
     {"_arbalist_lsi_matrix_stats", (DL_FUNC) &_arbalist_lsi_matrix_stats, 2},
+    {"_arbalist_create_pseuobulk_file", (DL_FUNC) &_arbalist_create_pseuobulk_file, 3},
     {"_arbalist_apply_subset", (DL_FUNC) &_arbalist_apply_subset, 3},
     {"_arbalist_apply_transpose", (DL_FUNC) &_arbalist_apply_transpose, 1},
     {"_arbalist_apply_bind", (DL_FUNC) &_arbalist_apply_bind, 2},
@@ -262,6 +285,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_apply_sqrt", (DL_FUNC) &_arbalist_apply_sqrt, 1},
     {"_arbalist_apply_round", (DL_FUNC) &_arbalist_apply_round, 1},
     {"_arbalist_apply_exp", (DL_FUNC) &_arbalist_apply_exp, 1},
+    {"_arbalist_var_stats", (DL_FUNC) &_arbalist_var_stats, 2},
     {NULL, NULL, 0}
 };
 

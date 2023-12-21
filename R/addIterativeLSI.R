@@ -20,7 +20,7 @@
 #' @author Natalie Fox
 #' @export
 #' @importFrom MultiAssayExperiment assay
-#' @importFrom SingleCellExperiment reducedDim<- reducedDims reducedDimNames<- reducedDimNames reducedDims
+#' @importFrom SingleCellExperiment reducedDim<- reducedDims reducedDimNames<- reducedDimNames reducedDims altExp altExpNames
 addIterativeLSI <- function(
   mae,
   experiment.name = 'TileMatrix500',
@@ -37,13 +37,25 @@ addIterativeLSI <- function(
   total.features = 500000,
   filter.quantile = 0.995 
 ) {
+
+  main.exp.name <- NULL
+  if(experiment.name %in% names(mae)) {
+    se <- mae[[experiment.name]]
+  } else {
+    for(i in names(mae)) {
+      if(experiment.name %in% altExpNames(mae[[i]])) {
+        se <- altExp(mae[[i]],experiment.name)
+	      main.exp.name <- i
+      }
+    }
+  }
   
-  if(embedding.name %in% reducedDimNames(mae[[experiment.name]])) {
+  if(embedding.name %in% reducedDimNames(se)) {
     stop(paste0('There is already a reduced dimension called ',embedding.name))
   }
   
-  res <- iterativeLSI (
-    x = assay(mae[[experiment.name]]),
+  res <- iterativeLSI(
+    x = assay(se),
     rank = rank,
     iterations = iterations,
     num.features = num.features,
@@ -57,7 +69,17 @@ addIterativeLSI <- function(
     filter.quantile = filter.quantile 
   )
   
-  reducedDim(mae[[experiment.name]], embedding.name) <- res$embedding
+  if(is.null(main.exp.name)) {
+    if(any(!colnames(mae[[experiment.name]]) %in% rownames(res$embedding))) {
+      mae[[experiment.name]] <- mae[[experiment.name]][,rownames(res$embedding)]
+    }
+    reducedDim(mae[[experiment.name]], embedding.name) <- res$embedding
+  } else {
+    if(any(!colnames(altExp(mae[[main.exp.name]],experiment.name)) %in% rownames(res$embedding))) {
+      mae[[main.exp.name]] <- mae[[main.exp.name]][,rownames(res$embedding)]
+    }
+    reducedDim(altExp(mae[[main.exp.name]],experiment.name), embedding.name) <- res$embedding
+  }
   
   return(mae)
 }

@@ -2,6 +2,7 @@
 
 #include "Rcpp.h"
 #include "tatamize.h"
+#include <iostream>
 
 //[[Rcpp::export(rng=false)]]
 Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, int nthreads) {
@@ -9,8 +10,6 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
     int NR = shared->nrow();
     int NC = shared->ncol();
     int ngroups = *std::max_element(grouping.begin(), grouping.end()) + 1;
-    
-    //Rprintf("NR: %i, NC: %i, ngroups: %i\n", NR, NC, ngroups);
 
     Rcpp::NumericMatrix output(NR, ngroups);
 
@@ -21,6 +20,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
           std::vector<double> vbuffer(length);
 
           if (shared->sparse()) {
+
               auto wrk = tatami::consecutive_extractor<true, true>(shared.get(), 0, NR, start, length);
               std::vector<int> ibuffer(NC);
               for (int r = 0; r < NR; ++r) { 
@@ -32,6 +32,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
               }
 
           } else {
+
               auto wrk = tatami::consecutive_extractor<true, false>(shared.get(), 0, NR, start, length);
               for (int r = 0; r < NR; ++r) { 
                   auto ptr = buffer.data() + r * ngroups;
@@ -57,7 +58,6 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
         std::vector<int> starts(nthreads, -1), lengths(nthreads, -1);
 
         ARBALIST_CUSTOM_PARALLEL([&](int thread, int start, int end) -> void {
-          //Rprintf("thread: %i, start: %i, end: %i\n", thread, start, end);
           int length = end - start;
           starts[thread] = start;
           lengths[thread] = length;
@@ -67,20 +67,15 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
           doutput.resize(NR * ngroups);
 
           if (shared->sparse()) {
-              auto wrk = tatami::consecutive_extractor<false, true>(shared.get(), start, length);
+               auto wrk = tatami::consecutive_extractor<false, true>(shared.get(), start, length);
               std::vector<int> ibuffer(length);
               for (int c = 0; c < NC; ++c) { 
                   auto range = wrk->fetch(c, vbuffer.data(), ibuffer.data());
                   auto ptr = doutput.data() + grouping[c] * NR;
                   for (int i = 0; i < range.number; i++) {
                       ptr[range.index[i]] += range.value[i];
-                    //Rprintf("c: %i, grouping.c: %i, i: %i, range.number: %i, range.index: %i, range.value: %f, ptr.value: %f\n", c, grouping[c], i, range.number, range.index[i], range.value[i], ptr[range.index[i]]);
-                    //Rprintf("%i %i %i %i %i %i %i %i %i %i %i %i\n", int (doutput[0]), int (doutput[1]),int (doutput[2]), int (doutput[3]),int (doutput[4]),int (doutput[5]),int (doutput[6]),int (doutput[7]),int (doutput[8]),int (doutput[9]),int (doutput[10]),int (doutput[11]));
-                    //Rprintf("%i %i %i %i %i %i %i %i %i %i %i %i\n", int (doutput[12]), int (doutput[13]),int (doutput[14]), int (doutput[15]),int (doutput[16]),int (doutput[17]),int (doutput[18]),int (doutput[19]),int (doutput[20]),int (doutput[21]),int (doutput[22]),int (doutput[23]));
-                    //Rprintf("%i %i %i %i %i %i %i %i %i %i %i %i\n", int (doutput[24]), int (doutput[25]),int (doutput[26]), int (doutput[27]),int (doutput[28]),int (doutput[29]),int (doutput[30]),int (doutput[31]),int (doutput[32]),int (doutput[33]),int (doutput[34]),int (doutput[35]));
-                    //Rprintf("%i %i %i %i %i %i %i %i %i %i %i %i\n", int (doutput[36]), int (doutput[37]),int (doutput[38]), int (doutput[39]),int (doutput[40]),int (doutput[41]),int (doutput[42]),int (doutput[43]),int (doutput[44]),int (doutput[45]),int (doutput[46]),int (doutput[47]));
                   }
-             }
+              }
           } else {
               auto wrk = tatami::consecutive_extractor<false, false>(shared.get(), start, length);
               for (int c = 0; c < NC; ++c) { 

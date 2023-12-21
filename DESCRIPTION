@@ -23,6 +23,8 @@ Imports:
     methods,
     MultiAssayExperiment,
     SingleCellExperiment,
+    SummarizedExperiment,
+    S4Vectors,
     stats,
     BiocGenerics,
     IRanges,

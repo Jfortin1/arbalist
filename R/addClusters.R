@@ -14,6 +14,8 @@
 #' @export
 #' @importFrom Seurat CreateSeuratObject CreateDimReducObject FindNeighbors FindClusters
 #' @importFrom SingleCellExperiment altExp reducedDim<- reducedDim altExpNames altExp<- reducedDimNames
+#' @importFrom SummarizedExperiment colData colData<-
+#' @importFrom stats rnorm
 addClusters <- function(
   mae,
   name.iterative.lsi = "iterativeLSI",
@@ -70,16 +72,16 @@ addClusters <- function(
   
   if(grep('seurat',tolower(method))) {
     
-    seurat.input <- matrix(rnorm(nrow(lsi.matrix) * 3, 10), ncol = nrow(lsi.matrix), nrow = 3)
-    colnames(seurat.input) <- rownames(lsi.matrix)
-    rownames(seurat.input) <- paste0("t",seq_len(nrow(seurat.input)))
+    # create a fake matrix to fill the input daya slot to represent the cell dimension
+    mat.fake <- matrix(rnorm(nrow(lsi.matrix) * 3, 10), ncol = nrow(lsi.matrix), nrow = 3)
+    colnames(mat.fake) <- rownames(lsi.matrix)
+    rownames(mat.fake) <- paste0("t",seq_len(nrow(mat.fake)))
     
-    
-    seurat.obj <- Seurat::CreateSeuratObject(seurat.input, project='scATAC', min.cells=0, min.features=0)
+    seurat.obj <- Seurat::CreateSeuratObject(mat.fake, project='scATAC', min.cells=0, min.features=0)
     seurat.obj[['pca']] <- Seurat::CreateDimReducObject(embeddings=lsi.matrix, key='PC_', assay='RNA')
     
-    seurat.obj <- Seurat::FindNeighbors(seurat.obj)
-    seurat.obj <- Seurat::FindClusters(seurat.obj)
+    seurat.obj <- Seurat::FindNeighbors(seurat.obj, reduction = 'pca', dims = seq_len(ncol(lsi.matrix)))
+    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(lsi.matrix)))
     
     # get clusters form Seurat Object
     clust <- seurat.obj@meta.data[,ncol(seurat.obj@meta.data)]
@@ -96,10 +98,12 @@ addClusters <- function(
     }
     colData(mae[[exp.idx]])[,clusters.colname] <- as.character(clust)
   } else {
-    if(clusters.colname %in% colData(altExp(mae[[exp.idx]], lsi.alt.exp.name)) && !force) {
+    if(clusters.colname %in% colnames(colData(altExp(mae[[exp.idx]], lsi.alt.exp.name))) && !force) {
       stop(paste0(clusters.colname,' is already a column name. Set force = TRUE if you want to overwrite it.'))
     }
     colData(altExp(mae[[exp.idx]], lsi.alt.exp.name))[,clusters.colname] <- as.character(clust)
   }
+  
+  mae
   
 }
