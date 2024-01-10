@@ -9,6 +9,7 @@ iterativeLSI(
   rank = 30,
   iterations = 2,
   num.features = 25000,
+  lsi.method = 1,
   cluster.method = "kmeans",
   cluster.k = 20,
   correlation.cutoff = 0.75,
@@ -16,17 +17,20 @@ iterativeLSI(
   num.threads = 1,
   seed = 5,
   total.features = 5e+05,
-  filter.quantile = 0.995
+  filter.quantile = 0.995,
+  outlier.quantiles = c(0.02, 0.98)
 )
 }
 \arguments{
-\item{x}{input matrix for creating iterative LSI embeddings}
+\item{x}{input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features}
 
 \item{rank}{Number specifying the rank for irlba_realized}
 
 \item{iterations}{Number of LSI iterations to perform.}
 
 \item{num.features}{Number of accessible features to select when selecting the most accessible or most variable features.}
+
+\item{lsi.method}{Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf"}
 
 \item{cluster.method}{String specifying cluster method. Currently "kmeans" is the only supported option.}
 

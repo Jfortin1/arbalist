@@ -78,7 +78,8 @@ public:
         } else if (current_seq_it->first != seq_name) {
             auto sIt = seq_to_id.find(seq_name);
             if (sIt == seq_to_id.end()) {
-                throw std::runtime_error("unrecognized sequence name '" + seq_name + "' on line " + std::to_string(line_number));
+                return;
+                //throw std::runtime_error("unrecognized sequence name '" + seq_name + "' on line " + std::to_string(line_number));
             }
 
             if ((sIt->second).visited) {

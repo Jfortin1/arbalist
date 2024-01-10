@@ -1,9 +1,20 @@
-#' @importFrom SummarizedExperiment colData
+#' Create Pseudobulk replicates
+#'
+#' Select cells for pseudobulk replicates, create coverage files and add a pseudobulk experiment to the MultiAssayExperiment.
+#'
+#' @return \linkS4class{MultiAssayExperiment}
+#' 
+#' @author Natalie Fox
+#' @importFrom BiocParallel bptry bplapply bpparam
+#' @importFrom SummarizedExperiment colData rowRanges
+#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap
+#' @importFrom S4Vectors DataFrame metadata metadata<-
+#' @importFrom SingleCellExperiment altExp altExpNames
+#' @export
 addGroupCoverages <- function(
     mae,
     experiment.name = "TileMatrix500",
     group.by.colname = "Clusters",
-    useLabels = TRUE,
     sampleLabels = "Sample",
     min.cells = 40,
     max.cells = 500,
@@ -13,7 +24,9 @@ addGroupCoverages <- function(
     sample.ratio = 0.8,
     kmerLength = 6,
     return.groups = FALSE,
-    force = FALSE
+    force = FALSE,
+    coverage.file.path = getwd(),
+    BPPARAM = bpparam()
 ){
   
   # Find the experiment result
@@ -38,15 +51,11 @@ addGroupCoverages <- function(
     stop(paste0(experiment.name,' is not found in mae'))
   }
   
-  # Samples Passing Min Filter
-  samplesPassFilter <- sum(num.cells.per.sample >= min.cells)
-  samplesThatCouldBeMergedToPass <- floor(sum(num.cells.per.sample[num.cells.per.sample < min.cells]) / min.cells)
-  
-  num.samples <- length(unique(colData(sce)$Sample))
+  num.samples <- length(unique(colData(sce)[,sampleLabels]))
   num.cells <- ncol(sce)
-  num.cells.per.sample <- table(colData(sce)$Sample)
+  num.cells.per.sample <- table(colData(sce)[,sampleLabels])
   num.cells.per.group <- table(colData(sce)[,group.by.colname])
-  num.cells.per.group.and.sample <- table(paste0(colData(sce)[,group.by.colname],colData(sce)$Sample))
+  num.cells.per.group.and.sample <- table(paste0(colData(sce)[,group.by.colname],colData(sce)[,sampleLabels]))
   cells.per.group <- split(colnames(sce),colData(sce)[,group.by.colname])
   cells.per.group.and.sample <- sapply(cells.per.group,function(x) {split(x,sub('#.*','',x))},simplify = FALSE)
   
@@ -100,36 +109,10 @@ addGroupCoverages <- function(
     }
   }
 
-  x <- assay(sce)
-  # error that type 'S4' is non subsettable when trying to fetch data using tatami from a DelayedArray
-  # so converting to sparseMatrix as a temporary work around until issue with seed handling in tatami_r fixed
-  if(!is(x,'sparseMatrix')) {
-    x <- as(x, 'sparseMatrix')
-  }
-  ptr <- beachmat::initializeCpp(x)
-  replicates.matrix <- matrix(NA, nrow = nrow(x), ncol = rep.num * length(selected.cells))
-  replicates.matrix.coldata <- data.frame(
-    group = rep(names(selected.cells),each=rep.num),
-    rep = rep(1:rep.num, length(selected.cells)),
-    coverage.file = rep(NA,ncol(replicates.matrix))
-  )
-  replicates.matrix.coldata$coverage.file <- paste0(replicates.matrix.coldata$group,'_pseudobulk_',replicates.matrix.coldata$rep,'.txt')
-  
-  for(i in 1:nrow(replicates.matrix.coldata)) {
-      output.file <- replicates.matrix.coldata$coverage.file[i]
-      pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[i]]][[replicates.matrix.coldata$rep[i]]])
-      #create_pseuobulk_file(mae$fragment_file,output.file,sub('.*#','',pseudobulk.cells))
-      ptr.subset <- apply_subset(ptr, which(colnames(sce) %in% pseudobulk.cells), FALSE)
-      replicates.matrix[,i] <- aggregate_counts(ptr.subset, rep(1,length(pseudobulk.cells))-1L, nthreads = 1)
-  }
-  replicates.matrix <- as(replicates.matrix, 'sparseMatrix')
-
-  # Add replicates matrix as SummarizedExperiment to MAE
-  
   # save the new pseudobulk replicate selection to the MAE
   for(i in names(selected.cells)) {
     for(j in 1:length(selected.cells[[i]])) {
-      rep.colname <- paste0('Psuedobulk_Rep',j)
+      rep.colname <- paste0('Pseudobulk_Rep',j)
       if(is.null(alt.exp.name)) {
         if(! rep.colname %in% colnames(colData(mae[[sce.idx]]))) {
           colData(mae[[sce.idx]])[,rep.colname] <- FALSE
@@ -144,32 +127,75 @@ addGroupCoverages <- function(
     }
   }
   
-  mae
-}
-
-#####################################################################################################
-# Write Coverage To Bed File for MACS2
-#####################################################################################################
-
-.writeCoverageToBed <- function(coverageFile = NULL, out = NULL, excludeChr = NULL, logFile = NULL){
-  rmf <- .suppressAll(file.remove(out))
-  allChr <- .availableSeqnames(coverageFile, "Coverage")
-  if(!is.null(excludeChr)){
-    allChr <- allChr[allChr %ni% excludeChr]
+  x <- assay(sce)
+  # error that type 'S4' is non subsettable when trying to fetch data using tatami from a DelayedArray
+  # so converting to sparseMatrix as a temporary work around until issue with seed handling in tatami_r fixed
+  if(!is(x,'sparseMatrix')) {
+    x <- as(x, 'sparseMatrix')
   }
-  if(length(allChr)==0){
-    stop("No Chromosomes in Coverage after Excluding Chr!")
+  ptr <- beachmat::initializeCpp(x)
+  replicates.matrix <- matrix(NA, nrow = nrow(x), ncol = rep.num * length(selected.cells))
+  replicates.matrix.coldata <- data.frame(
+    group = rep(names(selected.cells),each=rep.num),
+    rep = rep(1:rep.num, length(selected.cells)),
+    num.cells = rep(NA,ncol(replicates.matrix)),
+    coverage.file = rep(NA,ncol(replicates.matrix))
+  )
+  replicates.matrix.coldata$ID <- paste0(replicates.matrix.coldata$group,'_pseudobulk_rep',replicates.matrix.coldata$rep)
+  if(is.na(coverage.file.path) || coverage.file.path == '') {
+    replicates.matrix.coldata$coverage.file <- paste0(replicates.matrix.coldata$ID,'.txt')
+  } else {
+    replicates.matrix.coldata$coverage.file <- paste0(coverage.file.path,'/',replicates.matrix.coldata$ID,'.txt')
   }
-  ##Note that there was a bug with data.table vs data.frame with stacking
-  for(x in seq_along(allChr)){
-      iS <- .getCoverageInsertionSites(coverageFile = coverageFile, chr = allChr[x])
-      iS <- data.table(seqnames = allChr[x], start = iS - 1L, end = iS)
-      if(!any(is.na(iS$start))) {
-        data.table::fwrite(iS, out, sep = "\t", col.names = FALSE, append = TRUE)
-      } else {
-        message(paste0("Warning - No insertions found on seqnames ", allChr[x], " for coverageFile ", coverageFile,"."))
-      }
-  }
-  out
-}
   
+  # create coverage files
+  .create_pseuobulk_file_parallel_func <- function(j, replicates.matrix.coldata, mae) {
+    output.file <- replicates.matrix.coldata$coverage.file[j]
+    pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[j]]][[replicates.matrix.coldata$rep[j]]])
+    create_pseuobulk_file(mae$fragment_file, output.file, sub('.*#','',pseudobulk.cells))
+  }
+  res.list <- bptry(bplapply(seq(nrow(replicates.matrix.coldata)), .create_pseuobulk_file_parallel_func, replicates.matrix.coldata=replicates.matrix.coldata, mae=mae, BPPARAM = BPPARAM))
+
+  # Create matrix for pseudobulk experiment
+  for(i in 1:nrow(replicates.matrix.coldata)) {
+    output.file <- replicates.matrix.coldata$coverage.file[i]
+    pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[i]]][[replicates.matrix.coldata$rep[i]]])
+    ptr.subset <- apply_subset(ptr, which(colnames(sce) %in% pseudobulk.cells), FALSE)
+    replicates.matrix[,i] <- aggregate_counts(ptr.subset, rep(1,length(pseudobulk.cells))-1L, nthreads = 1)
+    replicates.matrix.coldata$num.cells <- length(pseudobulk.cells)
+  }
+  replicates.matrix <- as(replicates.matrix, 'sparseMatrix')
+
+  # Add replicates matrix as SummarizedExperiment to MAE
+  pseudobulk.se <-  SummarizedExperiment(list(counts=replicates.matrix))
+  rowRanges(pseudobulk.se) <- rowRanges(sce)
+  colData(pseudobulk.se) <- DataFrame(replicates.matrix.coldata)
+  colnames(pseudobulk.se) <- replicates.matrix.coldata$ID
+  
+  exp.list <- experiments(mae)
+  exp.list[[paste0(experiment.name,'_pseudobulk')]] <- pseudobulk.se
+
+  el <- ExperimentList(exp.list)
+  maplist <- lapply(exp.list, function(se) {
+    if(sampleLabels %in% colnames(colData(se))) {
+      data.frame(primary = colData(se)[,sampleLabels], colname = colnames(se), stringsAsFactors = FALSE)
+    } else {
+      data.frame(primary = se$ID, colname = colnames(se), stringsAsFactors = FALSE)
+    }
+  })
+  sampMap <- listToMap(maplist)
+  
+  # Create and annotate the MultiAssayExperiment
+  new.mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
+  pseudobulk.colData.filler <- matrix(NA,ncol=ncol(colData(mae)),nrow=ncol(pseudobulk.se))
+  colnames(pseudobulk.colData.filler) <- colnames(colData(mae))
+  rownames(pseudobulk.colData.filler) <- colnames(pseudobulk.se)
+  if('fragment_file' %in% colnames(pseudobulk.colData.filler)) {
+    pseudobulk.colData.filler <- as.data.frame(pseudobulk.colData.filler)
+    pseudobulk.colData.filler$fragment_file <- replicates.matrix.coldata$coverage.file
+  }
+  colData(new.mae) <- rbind(colData(mae),pseudobulk.colData.filler)
+  metadata(new.mae) <- metadata(mae)
+  
+  new.mae
+}
