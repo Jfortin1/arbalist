@@ -3,7 +3,7 @@
 #' Creating UMAP embedding from iterative LSI reduced dimensions contained with a MAE and adding the UMAP result back to the MAE
 #' 
 #' @param mae MultiAssayExperiment
-#' @param name.iterative.lsi A string specifying the name of the reduced dimensions to create the UMAP from
+#' @param name.iterative.lsi A string specifying the name of the reduced dimensions to create the UMAP from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the correct experiment name in the vector's names. This can also be a vector or strings if you want to create a UMAP based on the combination of reduced dimensions. The UMAP matrix will be added to the same location as we find the first reduced dimension.
 #' @param name.umap A string specifying the name of the new UMAP reduced dimensions
 #' @param num.neighbors An integer describing the number of nearest neighbors to compute a UMAP. This argument is passed to n_neighbors in uwot::umap().
 #' @param min.dist A number specifying effective minimum distance between embedded points. See [uwot::umap]
@@ -34,37 +34,29 @@ addUMAP <- function(
   outlier.quantile = 0.9,
   ...
 ) {
-  
-  # Find the IterativeLSI result
-  lsi.matrix <- NULL;
-  lsi.exp.idx <- NULL;
-  lsi.alt.exp.name <- NULL;
-  for(exp.idx in seq_len(length(mae))) {
-    if(name.iterative.lsi %in% reducedDimNames(mae[[exp.idx]])) {
-      lsi.matrix <- reducedDim(mae[[exp.idx]], name.iterative.lsi)
-      # record where the iterative LSI was saved so we can put the UMAP in the same place
-      lsi.exp.idx <- exp.idx
-      break
-    }
-    if(is.null(lsi.matrix)) {
-      for(name.alt.exp in altExpNames(mae[[1]])) {
-        if(name.iterative.lsi %in% reducedDimNames(altExp(mae[[exp.idx]], name.alt.exp))) {
-          lsi.matrix <- reducedDim(altExp(mae[[exp.idx]], name.alt.exp), name.iterative.lsi)
-          # record where the iterative LSI was saved so we can put the UMAP in the same place
-          lsi.exp.idx <- exp.idx
-          lsi.alt.exp.name <- name.alt.exp
-          break
-        }
-      }
-    }
+  if(length(name.umap) > 1) {
+    stop('Change name.umap to only be a single string.')
   }
-  if(is.null(lsi.matrix)) {
-    stop(paste0(name.iterative.lsi,' is not found in mae'))
+  
+  # retrieve the reduced dimension (probably iterative lsi) matrix from the MAE
+  reduced.dim.list <- list()
+  for(i in name.iterative.lsi) {
+    reduced.dim.list[[i]] <- findReducedDimRes(mae,i)
+  }
+  
+  reduced.dim.matrix <- reduced.dim.list[[1]]$matrix;
+  if(length(reduced.dim.list) > 1) {
+    for(i in 2:length(reduced.dim.list)) {
+      if(nrow(reduced.dim.matrix) != nrow(reduced.dim.list[[i]]$matrix)) {
+        stop('The reduced dimension matrices need to have the same number of rows.')
+      }
+      reduced.dim.matrix <- cbind(reduced.dim.matrix,reduced.dim.list[[i]]$matrix)
+    }
   }
   
   # Create the UMAP embedding
   umap.res <- getUMAPFromIterativeLSI(
-    lsi.matrix,
+    reduced.dim.matrix,
     num.neighbors = num.neighbors,
     min.dist = min.dist,
     metric = metric,
@@ -76,10 +68,10 @@ addUMAP <- function(
   )
   
   # save the new reduced dimensions to the MAE
-  if(is.null(lsi.alt.exp.name)) {
-    reducedDim(mae[[exp.idx]], name.umap) <- umap.res
+  if(is.null(reduced.dim.list[[1]]$alt.exp.name)) {
+    reducedDim(mae[[reduced.dim.list[[1]]$exp.idx]], name.umap) <- umap.res
   } else {
-    reducedDim(altExp(mae[[exp.idx]], lsi.alt.exp.name), name.umap) <- umap.res
+    reducedDim(altExp(mae[[reduced.dim.list[[1]]$exp.idx]], reduced.dim.list[[1]]$alt.exp.name), name.umap) <- umap.res
   }
   
   return(mae)

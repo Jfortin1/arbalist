@@ -21,7 +21,7 @@ addUMAP(
 \arguments{
 \item{mae}{MultiAssayExperiment}
 
-\item{name.iterative.lsi}{A string specifying the name of the reduced dimensions to create the UMAP from}
+\item{name.iterative.lsi}{A string specifying the name of the reduced dimensions to create the UMAP from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the correct experiment name in the vector's names. This can also be a vector or strings if you want to create a UMAP based on the combination of reduced dimensions. The UMAP matrix will be added to the same location as we find the first reduced dimension.}
 
 \item{name.umap}{A string specifying the name of the new UMAP reduced dimensions}
 

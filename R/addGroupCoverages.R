@@ -30,27 +30,11 @@ addGroupCoverages <- function(
 ){
   
   # Find the experiment result
-  sce <- NULL;
-  sce.idx <- NULL;
-  alt.exp.name <- NULL;
-  if(experiment.name %in% names(mae)) {
-    sce.idx <- which(names(mae) == experiment.name)
-    sce <- mae[[sce.idx]]
-  } else {
-    for(i in seq_len(length(mae))) {
-      if(experiment.name %in% altExpNames(mae[[i]])) {
-        sce <- altExp(mae[[i]],experiment.name)
-        # record where the iterative LSI was saved so we can put the UMAP in the same place
-        sce.idx <- i
-        alt.exp.name <- experiment.name
-        break
-      }
-    }
-  }
-  if(is.null(sce.idx)) {
-    stop(paste0(experiment.name,' is not found in mae'))
-  }
-  
+  sce.list <- findSCE(mae,experiment.name)
+  sce <- sce.list$sce
+  sce.idx <- sce.list$sce.idx
+  alt.exp.name <- sce.list$alt.exp.name
+
   num.samples <- length(unique(colData(sce)[,sampleLabels]))
   num.cells <- ncol(sce)
   num.cells.per.sample <- table(colData(sce)[,sampleLabels])
@@ -190,10 +174,7 @@ addGroupCoverages <- function(
   pseudobulk.colData.filler <- matrix(NA,ncol=ncol(colData(mae)),nrow=ncol(pseudobulk.se))
   colnames(pseudobulk.colData.filler) <- colnames(colData(mae))
   rownames(pseudobulk.colData.filler) <- colnames(pseudobulk.se)
-  if('fragment_file' %in% colnames(pseudobulk.colData.filler)) {
-    pseudobulk.colData.filler <- as.data.frame(pseudobulk.colData.filler)
-    pseudobulk.colData.filler$fragment_file <- replicates.matrix.coldata$coverage.file
-  }
+
   colData(new.mae) <- rbind(colData(mae),pseudobulk.colData.filler)
   metadata(new.mae) <- metadata(mae)
   

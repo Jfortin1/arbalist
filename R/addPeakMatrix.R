@@ -31,6 +31,9 @@ addPeakMatrix <- function(
     ...
 ){
   
+  # Find the single cell experiment result
+  sce <- findSCE(mae,sc.experiment.name)$sce
+
   ## Calculate peak set ##
   
   # set Significance Threshold Parameters
@@ -114,7 +117,7 @@ addPeakMatrix <- function(
         output.file = as.character(output.file.names[sample.name]),
         output.name = 'peak_matrix',
         regions = res.peak.set,
-        barcodes = as.character(sub('.*#','',rownames(colData(mae[[sc.experiment.name]])))[mae[[sc.experiment.name]]$Sample == sample.name])
+        barcodes = as.character(sub('.*#','',rownames(colData(sce)))[sce$Sample == sample.name])
       )
       return(matrix.res)
     }, 

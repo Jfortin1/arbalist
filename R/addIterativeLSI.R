@@ -38,18 +38,15 @@ addIterativeLSI <- function(
   filter.quantile = 0.995 
 ) {
 
-  main.exp.name <- NULL
-  if(experiment.name %in% names(mae)) {
-    se <- mae[[experiment.name]]
-  } else {
-    for(i in names(mae)) {
-      if(experiment.name %in% altExpNames(mae[[i]])) {
-        se <- altExp(mae[[i]],experiment.name)
-	      main.exp.name <- i
-      }
-    }
+  # Find the experiment result
+  sce.list <- findSCE(mae,experiment.name)
+  if(is.null(sce.list)) {
+    stop(paste0(experiment.name,' is not found in mae'))
   }
-  
+  se <- sce.list$sce
+  main.exp.name <- names(mae)[sce.list$sce.idx]
+  alt.exp.name <- sce.list$alt.exp.name
+
   if(embedding.name %in% reducedDimNames(se)) {
     stop(paste0('There is already a reduced dimension called ',embedding.name))
   }

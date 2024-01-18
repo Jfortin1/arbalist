@@ -26,7 +26,7 @@ addGroupCoverages(
 \linkS4class{MultiAssayExperiment}
 }
 \description{
-Select cells for pseudobulk replicats, create coverage files and add a pseudobulk experiment to the MultiAssayExperiment.
+Select cells for pseudobulk replicates, create coverage files and add a pseudobulk experiment to the MultiAssayExperiment.
 }
 \author{
 Natalie Fox

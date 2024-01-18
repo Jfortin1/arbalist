@@ -13,28 +13,32 @@ Authors@R: c(
 License: MIT + file LICENSE
 Imports:
     Rcpp,
-    Matrix,
+    alabaster.matrix,
     beachmat,
     beachmat.hdf5,
+    BiocGenerics,
     BiocParallel,
     DelayedArray,
+    GenomeInfoDb,
+    GenomicRanges,
     HDF5Array,
     rhdf5,
+    IRanges,
+    Matrix,
     matrixStats,
     methods,
     MultiAssayExperiment,
-    SingleCellExperiment,
-    SummarizedExperiment,
-    S4Vectors,
-    stats,
-    BiocGenerics,
-    IRanges,
-    GenomeInfoDb,
-    GenomicRanges,
     nabor,
-    uwot,
+    S4Vectors,
+    SingleCellExperiment,
     Seurat,
-    alabaster.matrix
+    SummarizedExperiment,
+    stats,
+    uwot,
+    ggplot2,
+    ggpointdensity,
+    pheatmap,
+    viridis
 LinkingTo:
     Rcpp,
     Rhdf5lib,
@@ -48,4 +52,4 @@ VignetteBuilder:
 SystemRequirements: 
     GNU make, 
     C++17
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.0

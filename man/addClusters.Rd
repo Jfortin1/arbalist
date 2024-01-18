@@ -2,26 +2,35 @@
 % Please edit documentation in R/addClusters.R
 \name{addClusters}
 \alias{addClusters}
-\title{Clustering cells}
+\title{Cluster cells}
 \usage{
 addClusters(
   mae,
   name.iterative.lsi = "iterativeLSI",
   clusters.colname = "Clusters",
+  cluster.prefix = "C",
   method = "Seurat",
-  force = FALSE
+  dims.to.use = NULL,
+  force = FALSE,
+  ...
 )
 }
 \arguments{
 \item{mae}{MultiAssayExperiment}
 
-\item{name.iterative.lsi}{String specifying the name of the reduced dimensions to create clusters from}
+\item{name.iterative.lsi}{String specifying the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the correct experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.}
 
 \item{clusters.colname}{String specifying the column name to save the clusters as in the experiment column data}
 
-\item{method}{String specifying the method for creating clsuters. Valid options are "Seurat" or "Scran".}
+\item{cluster.prefix}{String prefixed to the cluster number for saving in colData}
+
+\item{method}{String specifying the method for creating clusters. Valid options are "Seurat" or "scran".}
 
 \item{force}{Logical whether to overwrite existing columns with clusters.colname column name}
+
+\item{...}{Additional arguments to be provided to Seurat::FindClusters or scran::buildSNNGraph (for example, knn = 50, jaccard = TRUE)}
+
+\item{dims.to.us}{Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions}
 }
 \value{
 A \linkS4class{MultiAssayExperiment}
