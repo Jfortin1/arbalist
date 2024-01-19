@@ -22,6 +22,9 @@ addGroupCoverages(
   BPPARAM = bpparam()
 )
 }
+\arguments{
+\item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
+}
 \value{
 \linkS4class{MultiAssayExperiment}
 }

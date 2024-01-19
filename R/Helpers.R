@@ -1,3 +1,6 @@
+#' @importFrom SummarizedExperiment colData
+#' @importFrom SingleCellExperiment altExp
+#' @export
 findSCE <- function(mae,experiment.name) {
   # Find the experiment result
   sce <- NULL;
@@ -30,6 +33,7 @@ findSCE <- function(mae,experiment.name) {
   return(list(sce=sce, sce.idx=sce.idx, alt.exp.name=alt.exp.name))
 }
 
+#' @importFrom SingleCellExperiment altExp altExpNames reducedDim reducedDimNames
 findReducedDimRes <- function(mae, name.reduced.dim) {
   if(length(name.reduced.dim) > 1) {
     stop('Please only specify one name.reduced.dim')

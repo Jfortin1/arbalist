@@ -4,6 +4,7 @@
 #'
 #' @param mae \linkS4class{MultiAssayExperiment}
 #' @param genome.size Number specifying the effective genome size or the size of hte genome that is mappable to use in MACSr peak calling. See [MACSr::callpeak] for more details.
+#' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
 #'
 #' @return \linkS4class{MultiAssayExperiment}
 #' 

@@ -1,21 +1,36 @@
-
+#' Add TSS Enrichment Scores
+#'
+#' Calculate and add TSS enrichment scores to the MultiAssayExperiment.
+#' 
+#' @param mae A \linkS4class{MultiAssayExperiment}
+#' @param experiment.name String specifying the experiment name to add the TSS Enrichment to the colData
+#' @param gene.grs A \linkS4class{GRanges} specifying genes. THe start coordinate will be used as the transcription start site.
+#' @param force Logical. If there is already a TSS Enrichment column whether to overwrite it (TRUE) or error (FALSE).
+#' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
+#'
+#' @author Natalie Fox
+#' @importFrom SummarizedExperiment rowData
+#' @export
 addTSSEnrichmentScores <- function(
     mae,
     experiment.name = 'TileMatrix500',
     gene.grs = NULL,
     force = FALSE,
-    BPPARAM = bpparam(),
-    ...
+    BPPARAM = bpparam()
 ) {
   
   # Find the experiment result
-  sce.list <- findSCE(mae,'TileMatrix500')
+  sce.list <- findSCE(mae, experiment.name)
   if(is.null(sce.list)) {
     stop(paste0(experiment.name,' is not found in mae'))
   }
   
   if(is.null(gene.grs)) {
-    gene.grs = GRanges(rowData(mae[['GeneExpressionMatrix']])$interval[rowData(mae[['GeneExpressionMatrix']])$interval != 'NA'])
+    gene.sce.list <- findSCE(mae,'GeneExpressionMatrix')
+    if(is.null(gene.sce.list)) {
+      stop('Cannot find a GeneExpressionMatrix to get gene coordinates from so please specify gene.grs')
+    }
+    gene.grs = GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
   }
   
   if('TSSEnrichment' %in% colnames(colData(mae[[sce.list$sce.idx]])) & !force) {
@@ -26,32 +41,42 @@ addTSSEnrichmentScores <- function(
   
   tss.scores <- bptry(bplapply(
     names(fragment.files), 
-    function(sample.name) {
-      sample.tss.scores <- tssEnrichmentScores(
-        fragment.files[sample.name],
-        as.character(sub('.*#','',rownames(colData(mae[[sce.list$sce.idx]])))[mae[[sce.list$sce.idx]]$Sample == sample.name]),
-        res.gene.grs
-      )
-      names(sample.tss.scores) <- rownames(colData(mae[[sce.list$sce.idx]]))[mae[[sce.list$sce.idx]]$Sample == sample.name]
-      return(sample.tss.scores)
+    function(sample.name, fragment.files, gene.grs, sce) {
+      per.sample.tss.scores <- tssEnrichmentScores(
+        fragment.file = fragment.files[sample.name],
+        barcodes = as.character(sub('.*#','',rownames(colData(sce)))[colData(sce)$Sample == sample.name]),
+        gene.grs = gene.grs
+      );
+      as.numeric(per.sample.tss.scores)
     },
+    fragment.files = fragment.files,
+    gene.grs = gene.grs,
+    sce = sce.list$sce,
     BPPARAM = BPPARAM
   ))
-  colData(mae[[sce.list$sce.idx]])$TSSEnrichment <- unlist(tss.scores)[rownames(colData(mae[[sce.list$sce.idx]]))]
-  
-  #colData(mae[[sce.list$sce.idx]])$TSSEnrichment <- rep(NA,ncol(mae[[sce.list$sce.idx]]))
-  #for(i in seq_along(fragment.files)) {
-  #  sample.tss.scores <- tssEnrichmentScores(
-  #    fragment.files[i],
-  #    as.character(sub('.*#','',rownames(colData(mae[[sce.list$sce.idx]])))[mae[[sce.list$sce.idx]]$Sample == names(fragment.files[i])]),
-  #    res.gene.grs
-  #  )
-  #  colData(mae[[sce.list$sce.idx]])[rownames(colData(mae[[sce.list$sce.idx]]))[mae[[sce.list$sce.idx]]$Sample == names(fragment.files[i])],sce.list$sce.idx] <- sample.tss.scores
-  #}
+  for(i in seq_along(fragment.files)) {
+    names(tss.scores[[i]]) <- paste0(names(fragment.files)[i],'#',names(tss.scores[[i]]))
+  }
+  colData(mae[[sce.list$sce.idx]])$TSSEnrichment <- unlist(tss.scores)[rownames(colData(sce.list$sce))]
   
   mae
 }
 
+#' Calculate TSS Enrichment Scores
+#'
+#' Calculate TSS enrichment scores from one fragment.files.
+#' 
+#' @param fragment.file String specifying fragment file
+#' @param barcodes Vector or strings specified the cell barcodes to include from the fragment file
+#' @param gene.grs GRanges specifying gene where there start coordinate will be used as the TSS
+#' @param window Number specifying the size in bp of the TSS window
+#' @param norm Number specifying the size in bp of the flanking region window
+#' @param flank Number specifying the bp distance for the flanking region from the TSS 
+#' @param min.norm
+#'
+#' @author Natalie Fox
+#' @importFrom GenomicRanges resize GRanges trim start end seqnames strand
+#' @importFrom IRanges IRanges
 tssEnrichmentScores <- function(
     fragment.file,
     barcodes,
@@ -62,52 +87,50 @@ tssEnrichmentScores <- function(
     min.norm = 0.2
 ) {
   
-  TSS <- gene.grs
+  tss.grs <- gene.grs
   
-  #Create Window and Flank
-  TSS <- GenomicRanges::resize(TSS, 1, fix = "start")
-  #strand(TSS) <- "*"
-  TSS <- unique(TSS)
-  tssWindow <- GenomicRanges::resize(TSS, window, "center")
-  tssWindow$type <- "window"
-  tssFlank <- c(
-    #Positive Flank
-    GRanges(seqnames(TSS), IRanges(end(TSS) + flank - norm + 1, end(TSS) + flank)),
-    #Negative Flank
-    GRanges(seqnames(TSS), IRanges(start(TSS) - flank, start(TSS) - flank + norm - 1))
+  # create TSS and flanking GRanges
+  tss.grs <- GenomicRanges::resize(tss.grs, 1, fix = "start")
+  tss.grs <- unique(tss.grs)
+  tss.window <- GenomicRanges::resize(tss.grs, window, "center")
+  tss.window <- GenomicRanges::trim(tss.window)
+  tss.flank <- c(
+    # positive Flank
+    GRanges(seqnames(tss.grs), IRanges(end(tss.grs) + flank - norm + 1, end(tss.grs) + flank)),
+    # negative Flank
+    GRanges(seqnames(tss.grs), IRanges(start(tss.grs) - flank, start(tss.grs) - flank + norm - 1))
   )
-  tssFlank$type <- "flank"
-  tssFeatures <- c(tssWindow, tssFlank)
-  
-  #Trim In Case Extending beyond Chromosomes
-  tssFeatures <- GenomicRanges::trim(tssFeatures)
-  
-  countWindow <- saveRegionMatrix(
+  tss.flank <- GenomicRanges::trim(tss.flank)
+
+  window.file <- tempfile(pattern = "window", tmpdir = tempdir())
+  window.count.matrix <- saveRegionMatrix(
     fragment.file,
-    output.file = tempfile(pattern = "window", tmpdir = tempdir()),
+    output.file = window.file,
     output.name = 'tss_and_flank',
-    regions = tssWindow,
+    regions = tss.window,
     barcodes = barcodes
   )
   
-  countFlank <- saveRegionMatrix(
+  flank.file <- tempfile(pattern = "flank", tmpdir = tempdir())
+  flank.count.matrix <- saveRegionMatrix(
     fragment.file,
-    output.file = tempfile(pattern = "flank", tmpdir = tempdir()),
+    output.file = flank.file ,
     output.name = 'tss_and_flank',
-    regions = tssFlank,
+    regions = tss.flank,
     barcodes = barcodes
   )
   
-  #Normalize per BP
-  cWn <- apply(countWindow,2,function(x) {sum(as.integer(x[x != 0]))}) / window
-  cFn <- apply(countFlank,2,function(x) {sum(as.integer(x[x != 0]))}) / norm
+  # normalize per bp
+  window.per.cell.sum <- apply(window.count.matrix,2,function(x) {sum(as.integer(x[x != 0]))}) / window
+  flank.per.cell.sum  <- apply(flank.count.matrix,2,function(x) {sum(as.integer(x[x != 0]))}) / norm
   
-  #Compute scores
-  tssScores <- 2 * cWn / (pmax(cFn, min.norm))
-  tssScores <- round(tssScores, 3)
+  # compute scores
+  tss.scores <- 2 * window.per.cell.sum / (pmax(flank.per.cell.sum, min.norm))
+  tss.scores <- round(tss.scores, 3)
   
-  file.remove(paste0(tempdir(),'/window.h5'))
-  file.remove(paste0(tempdir(),'/flank.h5'))
+  # remove temp window and flank files
+  file.remove(window.file)
+  file.remove(flank.file)
   
-  return(tssScores)
+  return(tss.scores)
 }

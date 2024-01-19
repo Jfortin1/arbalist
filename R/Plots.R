@@ -11,9 +11,9 @@
 plotTSSenrichmentVsNumFragments <- function(mae, sample.name) {
   tile.matrix.coldata <- colData(findSCE(mae,'TileMatrix500')$sce)
   plot.data <- as.data.frame(tile.matrix.coldata[tile.matrix.coldata$Sample == sample.name,])
-  ggplot(plot.data,aes(y=TSS_fragments,x=log10(fragments))) + 
-    geom_pointdensity() + theme_classic() +
-    xlab(bquote(log[10] ~ "Number of Fragments")) + scale_color_viridis()
+  ggplot(plot.data,aes(y=TSSEnrichment,x=log10(fragments))) + 
+    geom_pointdensity() + theme_classic() + ylab('TSS Enrichment') +
+    xlab(bquote(log[10] ~ "Number of Fragments")) + scale_color_viridis() + ggtitle(sample.name)
 }
 
 

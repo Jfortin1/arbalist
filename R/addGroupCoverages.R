@@ -2,6 +2,8 @@
 #'
 #' Select cells for pseudobulk replicates, create coverage files and add a pseudobulk experiment to the MultiAssayExperiment.
 #'
+#' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
+#'
 #' @return \linkS4class{MultiAssayExperiment}
 #' 
 #' @author Natalie Fox
