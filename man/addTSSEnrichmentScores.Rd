@@ -9,8 +9,7 @@ addTSSEnrichmentScores(
   experiment.name = "TileMatrix500",
   gene.grs = NULL,
   force = FALSE,
-  BPPARAM = bpparam(),
-  ...
+  BPPARAM = BiocParallel::bpparam()
 )
 }
 \arguments{

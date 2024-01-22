@@ -5,6 +5,10 @@ aggregate_counts <- function(input, grouping, nthreads) {
     .Call('_arbalist_aggregate_counts', PACKAGE = 'arbalist', input, grouping, nthreads)
 }
 
+count_fragment_size_distributions <- function(fragment_file) {
+    .Call('_arbalist_count_fragment_size_distributions', PACKAGE = 'arbalist', fragment_file)
+}
+
 fragments_to_regions <- function(fragment_file, output_file, output_group, seqnames, region_ids, region_starts, region_ends, cellnames, num_regions, deflate_level, chunk_dim) {
     .Call('_arbalist_fragments_to_regions', PACKAGE = 'arbalist', fragment_file, output_file, output_group, seqnames, region_ids, region_starts, region_ends, cellnames, num_regions, deflate_level, chunk_dim)
 }
@@ -79,9 +83,5 @@ apply_round <- function(input) {
 
 apply_exp <- function(input) {
     .Call('_arbalist_apply_exp', PACKAGE = 'arbalist', input)
-}
-
-var_stats <- function(mat, nthreads) {
-    .Call('_arbalist_var_stats', PACKAGE = 'arbalist', mat, nthreads)
 }
 

@@ -22,6 +22,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// count_fragment_size_distributions
+Rcpp::IntegerVector count_fragment_size_distributions(std::string fragment_file);
+RcppExport SEXP _arbalist_count_fragment_size_distributions(SEXP fragment_fileSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< std::string >::type fragment_file(fragment_fileSEXP);
+    rcpp_result_gen = Rcpp::wrap(count_fragment_size_distributions(fragment_file));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fragments_to_regions
 SEXP fragments_to_regions(std::string fragment_file, std::string output_file, std::string output_group, Rcpp::CharacterVector seqnames, Rcpp::List region_ids, Rcpp::List region_starts, Rcpp::List region_ends, Rcpp::Nullable<Rcpp::CharacterVector> cellnames, int num_regions, int deflate_level, int chunk_dim);
 RcppExport SEXP _arbalist_fragments_to_regions(SEXP fragment_fileSEXP, SEXP output_fileSEXP, SEXP output_groupSEXP, SEXP seqnamesSEXP, SEXP region_idsSEXP, SEXP region_startsSEXP, SEXP region_endsSEXP, SEXP cellnamesSEXP, SEXP num_regionsSEXP, SEXP deflate_levelSEXP, SEXP chunk_dimSEXP) {
@@ -252,20 +262,10 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// var_stats
-Rcpp::List var_stats(SEXP mat, int nthreads);
-RcppExport SEXP _arbalist_var_stats(SEXP matSEXP, SEXP nthreadsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< SEXP >::type mat(matSEXP);
-    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(var_stats(mat, nthreads));
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_aggregate_counts", (DL_FUNC) &_arbalist_aggregate_counts, 3},
+    {"_arbalist_count_fragment_size_distributions", (DL_FUNC) &_arbalist_count_fragment_size_distributions, 1},
     {"_arbalist_fragments_to_regions", (DL_FUNC) &_arbalist_fragments_to_regions, 11},
     {"_arbalist_fragments_to_tiles", (DL_FUNC) &_arbalist_fragments_to_tiles, 9},
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
@@ -285,7 +285,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_apply_sqrt", (DL_FUNC) &_arbalist_apply_sqrt, 1},
     {"_arbalist_apply_round", (DL_FUNC) &_arbalist_apply_round, 1},
     {"_arbalist_apply_exp", (DL_FUNC) &_arbalist_apply_exp, 1},
-    {"_arbalist_var_stats", (DL_FUNC) &_arbalist_var_stats, 2},
     {NULL, NULL, 0}
 };
 

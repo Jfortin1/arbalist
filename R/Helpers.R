@@ -17,10 +17,13 @@ findSCE <- function(mae,experiment.name) {
         sce.idx <- i
         alt.exp.name <- experiment.name
         if (ncol(colData(mae[[sce.idx]])) > 0) {
+          colname.overlap.count <- table(c(colnames(colData(mae[[sce.idx]])),colnames(colData(sce))))
           if(ncol(colData(sce)) == 0) {
             colData(sce) <- colData(mae[[sce.idx]])
+          } else if(!any(colname.overlap.count > 1)) {
+            colData(sce) <- cbind(colData(mae[[sce.idx]]),colData(sce))
           } else {
-            colData(sce) <- cbind(colData(mae[[sce.idx]])[,-which(table(c(colnames(colData(mae[[sce.idx]])),colnames(colData(sce)))) == 2)],colData(sce))
+            colData(sce) <- cbind(colData(mae[[sce.idx]])[,-which(colname.overlap.count == 2)],colData(sce))
           }
         }
         break

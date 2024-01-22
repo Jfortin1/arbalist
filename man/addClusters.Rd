@@ -26,11 +26,11 @@ addClusters(
 
 \item{method}{String specifying the method for creating clusters. Valid options are "Seurat" or "scran".}
 
+\item{dims.to.use}{Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions}
+
 \item{force}{Logical whether to overwrite existing columns with clusters.colname column name}
 
 \item{...}{Additional arguments to be provided to Seurat::FindClusters or scran::buildSNNGraph (for example, knn = 50, jaccard = TRUE)}
-
-\item{dims.to.us}{Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions}
 }
 \value{
 A \linkS4class{MultiAssayExperiment}

@@ -13,6 +13,8 @@
 #' @importFrom IRanges subsetByOverlaps
 #' @importFrom BiocParallel bptry bpparam bplapply
 #' @importFrom alabaster.matrix AmalgamatedArray
+#' @importFrom MACSr callpeak
+#' @importFrom data.table fread
 #' @export
 addPeakMatrix <- function(
     mae,
@@ -226,6 +228,7 @@ addPeakMatrix <- function(
 
 #' @importFrom S4Vectors queryHits subjectHits 
 #' @importFrom IRanges overlapsAny
+#' @importFrom GenomicRanges resize
 .identifyReproduciblePeaks <- function(
     peak.sets,
     reproducibility = 0.51,

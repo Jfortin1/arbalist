@@ -7,7 +7,7 @@
 #' @param clusters.colname String specifying the column name to save the clusters as in the experiment column data
 #' @param cluster.prefix String prefixed to the cluster number for saving in colData
 #' @param method String specifying the method for creating clusters. Valid options are "Seurat" or "scran".
-#' @param dims.to.us Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions
+#' @param dims.to.use Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions
 #' @param force Logical whether to overwrite existing columns with clusters.colname column name
 #' @param ... Additional arguments to be provided to Seurat::FindClusters or scran::buildSNNGraph (for example, knn = 50, jaccard = TRUE)
 #' 
@@ -96,7 +96,7 @@ addClusters <- function(
     clust <- clust[rownames(reduced.dim.matrix)]
 
   } else if(grep('seurat',tolower(method))) {
-    g <- scran::buildSNNGraph(x = t(matDR), d = ncol(matDR), k = ifelse(exists("...$k"), ...$k, 25))
+    g <- scran::buildSNNGraph(x = t(reduced.dim.matrix), d = ncol(reduced.dim.matrix), k = ifelse(exists("...$k"), ...$k, 25))
     clust <- paste0(cluster.prefix,igraph::cluster_walktrap(g)$membership)
   } else {
     stop(paste0(method,' is not one of the current clustering method options. Try "Seurat" or "scran".'))

@@ -16,7 +16,7 @@ addTSSEnrichmentScores <- function(
     experiment.name = 'TileMatrix500',
     gene.grs = NULL,
     force = FALSE,
-    BPPARAM = bpparam()
+    BPPARAM = BiocParallel::bpparam()
 ) {
   
   # Find the experiment result
@@ -72,7 +72,7 @@ addTSSEnrichmentScores <- function(
 #' @param window Number specifying the size in bp of the TSS window
 #' @param norm Number specifying the size in bp of the flanking region window
 #' @param flank Number specifying the bp distance for the flanking region from the TSS 
-#' @param min.norm
+#' @param min.norm Number specifying the minimum allow for flanking region window. Avoids divide by zero error.
 #'
 #' @author Natalie Fox
 #' @importFrom GenomicRanges resize GRanges trim start end seqnames strand
@@ -102,7 +102,13 @@ tssEnrichmentScores <- function(
   )
   tss.flank <- GenomicRanges::trim(tss.flank)
 
-  window.file <- tempfile(pattern = "window", tmpdir = tempdir())
+  window.file <- tempfile(pattern = paste0(gsub("window",'\\.','_',gsub('/','_',fragment.file))), tmpdir = tempdir())
+  if(file.exists(window.file)) {
+    window.file <- tempfile(pattern = paste0(gsub("window",'\\.','_',gsub('/','_',fragment.file))), tmpdir = tempdir())
+    if(file.exists(window.file)) {
+      stop('file already exists')
+    }
+  }
   window.count.matrix <- saveRegionMatrix(
     fragment.file,
     output.file = window.file,
@@ -111,7 +117,13 @@ tssEnrichmentScores <- function(
     barcodes = barcodes
   )
   
-  flank.file <- tempfile(pattern = "flank", tmpdir = tempdir())
+  flank.file <- tempfile(pattern = paste0(gsub("flank",'\\.','_',gsub('/','_',fragment.file))), tmpdir = tempdir())
+  if(file.exists(window.file)) {
+    flank.file <- tempfile(pattern = paste0(gsub("flank",'\\.','_',gsub('/','_',fragment.file))), tmpdir = tempdir())
+    if(file.exists(flank.file)) {
+      stop('file already exists')
+    }
+  }
   flank.count.matrix <- saveRegionMatrix(
     fragment.file,
     output.file = flank.file ,

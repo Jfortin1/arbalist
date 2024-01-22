@@ -27,7 +27,7 @@ tssEnrichmentScores(
 
 \item{flank}{Number specifying the bp distance for the flanking region from the TSS}
 
-\item{min.norm}{}
+\item{min.norm}{Number specifying the minimum allow for flanking region window. Avoids divide by zero error.}
 }
 \description{
 Calculate TSS enrichment scores from one fragment.files.
