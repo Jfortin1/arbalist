@@ -2,7 +2,7 @@
 #'
 #' @param mae \linkS4class{MultiAssayExperiment} 
 #' @param experiment.name String specifying the name of the experiment to create the embedding from and add reduced dimensions to
-#' @param embedding.name String sepcifying the name of the new iterativeLSI embedding
+#' @param embedding.name String specifying the name of the new iterativeLSI embedding
 #' @param rank Number specifying the rank for irlba_realized
 #' @param iterations Number of LSI iterations to perform.
 #' @param num.features Number of accessible features to select when selecting the most accessible or most variable features.
@@ -66,16 +66,16 @@ addIterativeLSI <- function(
     filter.quantile = filter.quantile 
   )
   
-  if(is.null(main.exp.name)) {
+  if(is.null(alt.exp.name)) {
     if(any(!colnames(mae[[experiment.name]]) %in% rownames(res$embedding))) {
       mae[[experiment.name]] <- mae[[experiment.name]][,rownames(res$embedding)]
     }
     reducedDim(mae[[experiment.name]], embedding.name) <- res$embedding
   } else {
-    if(any(!colnames(altExp(mae[[main.exp.name]],experiment.name)) %in% rownames(res$embedding))) {
+    if(any(!colnames(altExp(mae[[main.exp.name]],alt.exp.name)) %in% rownames(res$embedding))) {
       mae[[main.exp.name]] <- mae[[main.exp.name]][,rownames(res$embedding)]
     }
-    reducedDim(altExp(mae[[main.exp.name]],experiment.name), embedding.name) <- res$embedding
+    reducedDim(altExp(mae[[main.exp.name]],alt.exp.name), embedding.name) <- res$embedding
   }
   
   return(mae)

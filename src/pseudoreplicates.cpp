@@ -37,7 +37,7 @@ public:
 };
 
 // [[Rcpp::export(rng=false)]]
-void create_pseuobulk_file(
+void create_pseudobulk_file(
     Rcpp::Nullable<Rcpp::CharacterVector> fragment_files, 
     std::string output_file, 
     Rcpp::Nullable<Rcpp::CharacterVector> cellnames)

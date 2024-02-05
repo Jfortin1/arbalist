@@ -55,7 +55,7 @@ addTSSEnrichmentScores <- function(
     BPPARAM = BPPARAM
   ))
   for(i in seq_along(fragment.files)) {
-    names(tss.scores[[i]]) <- paste0(names(fragment.files)[i],'#',names(tss.scores[[i]]))
+    names(tss.scores[[i]]) <- paste0(names(fragment.files)[i],'#',as.character(sub('.*#','',rownames(colData(sce.list$sce)))[colData(sce.list$sce)$Sample == names(fragment.files)[i]]))
   }
   colData(mae[[sce.list$sce.idx]])$TSSEnrichment <- unlist(tss.scores)[rownames(colData(sce.list$sce))]
   

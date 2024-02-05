@@ -107,14 +107,14 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// create_pseuobulk_file
-void create_pseuobulk_file(Rcpp::Nullable<Rcpp::CharacterVector> fragment_files, std::string output_file, Rcpp::Nullable<Rcpp::CharacterVector> cellnames);
-RcppExport SEXP _arbalist_create_pseuobulk_file(SEXP fragment_filesSEXP, SEXP output_fileSEXP, SEXP cellnamesSEXP) {
+// create_pseudobulk_file
+void create_pseudobulk_file(Rcpp::Nullable<Rcpp::CharacterVector> fragment_files, std::string output_file, Rcpp::Nullable<Rcpp::CharacterVector> cellnames);
+RcppExport SEXP _arbalist_create_pseudobulk_file(SEXP fragment_filesSEXP, SEXP output_fileSEXP, SEXP cellnamesSEXP) {
 BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type fragment_files(fragment_filesSEXP);
     Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type cellnames(cellnamesSEXP);
-    create_pseuobulk_file(fragment_files, output_file, cellnames);
+    create_pseudobulk_file(fragment_files, output_file, cellnames);
     return R_NilValue;
 END_RCPP
 }
@@ -271,7 +271,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
     {"_arbalist_irlba_tatami", (DL_FUNC) &_arbalist_irlba_tatami, 4},
     {"_arbalist_lsi_matrix_stats", (DL_FUNC) &_arbalist_lsi_matrix_stats, 2},
-    {"_arbalist_create_pseuobulk_file", (DL_FUNC) &_arbalist_create_pseuobulk_file, 3},
+    {"_arbalist_create_pseudobulk_file", (DL_FUNC) &_arbalist_create_pseudobulk_file, 3},
     {"_arbalist_apply_subset", (DL_FUNC) &_arbalist_apply_subset, 3},
     {"_arbalist_apply_transpose", (DL_FUNC) &_arbalist_apply_transpose, 1},
     {"_arbalist_apply_bind", (DL_FUNC) &_arbalist_apply_bind, 2},

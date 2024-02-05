@@ -4,6 +4,17 @@
 #'
 #' @param mae \linkS4class{MultiAssayExperiment}
 #' @param genome.size Number specifying the effective genome size or the size of hte genome that is mappable to use in MACSr peak calling. See [MACSr::callpeak] for more details.
+#' @param pseudobulk.experiment.name Experiment name for the pseudobulk \linkS4class{SummarizedExperiment} containing colData pointing to coverage files. This experiment can be created from arbalist::addGroupCoverages.
+#' @param sc.experiment.name Experiment name for \linkS4class{SingleCellExperiment} with cell barcodes as the rownames
+#' @param reproducibility A string that indicates how peak reproducibility should be handled. This string is dynamic and can be a function of n where n is the number of samples being assessed. For example, reproducibility = "2" means at least 2 samples must have a peak call at this locus and reproducibility = "(n+1)/2" means that the majority of samples must have a peak call at this locus.
+#' @param shift Number of baseparis to shift each Tn5 insertion. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
+#' @param extsize Number of basepairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
+#' @param method Method to use for significance testing in MACS2. Options are "p" for p-value and "q" for q-value. When combined with cutOff this gives the method and significance threshold for peak calling (see MACS2 documentation)
+#' @param cutOff Numeric significance cutOff for the testing method indicated by method (see MACSr::callpeak documentation).
+#' @param nomodel Whether or not to build the shifting model during MACSr::callpeak
+#' @param nolambda If True, MACS will use fixed background lambda as local lambda for every peak region.
+#' @param extendSummits Number of basepairs to extend peak summits (in both directions) to obtain final fixed-width peaks. For example, extendSummits = 250 will create 501-bp fixed-width peaks from the 1-bp summits.
+#' @param output.dir Directory where hdf5 files should be output while creating the peak matrix \linkS4class{SingleCellExperiment}.
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
 #'
 #' @return \linkS4class{MultiAssayExperiment}
@@ -30,8 +41,7 @@ addPeakMatrix <- function(
     nolambda = TRUE,
     extendSummits = 250,
     output.dir = tempdir(),
-    BPPARAM = bpparam(),
-    ...
+    BPPARAM = bpparam()
 ){
   
   # Find the single cell experiment result
@@ -69,8 +79,7 @@ addPeakMatrix <- function(
         extsize = extsize,
         qvalue = qvalue,
         pvalue = pvalue,
-        cutoff_analysis = TRUE,
-        ...)
+        cutoff_analysis = TRUE)
       
       # output files
       summitsFile <- paste0(coverage.file, "_summits.bed")
@@ -90,7 +99,10 @@ addPeakMatrix <- function(
     BPPARAM = BPPARAM
   ))
   
+  groupPeaks <- groupPeaks[which(unlist(lapply(groupPeaks,length)) > 0)]
+  
   group.names <- unique(mae[[pseudobulk.experiment.name]]$group)
+  group.names <- names(which(sapply(group.names,function(x) {any(grep(x,names(groupPeaks)))})))
   names(group.names) <- group.names
   cluster.peak.sets <- bptry(bplapply(group.names, function(x) {
     return(.identifyReproduciblePeaks(groupPeaks[mae[[pseudobulk.experiment.name]]$ID[mae[[pseudobulk.experiment.name]]$group == x]], by = "score", reproducibility = reproducibility, extendSummits=extendSummits))
@@ -133,22 +145,7 @@ addPeakMatrix <- function(
   
   peak.sce <- .getSCEFromH5List(peak.res.list, res.peak.set)
   
-  exp.list <- experiments(mae)
-  exp.list[['PeakMatrix']] <- peak.sce
-  
-  el <- ExperimentList(exp.list)
-  maplist <- lapply(exp.list, function(se) {
-    if('Sample' %in% colnames(colData(se))) {
-      data.frame(primary = se$Sample, colname = colnames(se), stringsAsFactors = FALSE)
-    } else {
-      data.frame(primary = se$ID, colname = colnames(se), stringsAsFactors = FALSE)
-    }
-  })
-  sampMap <- listToMap(maplist)
-  
-  # Create and annotate the MultiAssayExperiment
-  new.mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
-  metadata(new.mae) <- metadata(mae)
+  new.mae <- c(mae, 'PeakMatrix'=peak.sce)
   
   return(new.mae)
 }
@@ -236,6 +233,8 @@ addPeakMatrix <- function(
     by = 'score'
 ){
   
+  n <- length(peak.sets)
+  
   for(i in names(peak.sets)) {
     peak.sets[[i]] <- GenomicRanges::resize(peak.sets[[i]], extendSummits * 2 + 1, "center")
     peak.sets[[i]] <- sortSeqlevels(peak.sets[[i]])
@@ -249,16 +248,21 @@ addPeakMatrix <- function(
   peak.overlaps <- findOverlaps(combined.all.peaks)
   peak.overlaps <- peak.overlaps[which(queryHits(peak.overlaps) < subjectHits(peak.overlaps))]
   overlapping.peaks.idx <- unique(c(queryHits(peak.overlaps),subjectHits(peak.overlaps)))
-  non.overlapping.peaks <- combined.all.peaks[-overlapping.peaks.idx]
-  overlapping.peaks <- combined.all.peaks[overlapping.peaks.idx]
-  overlapping.peaks <- overlapping.peaks[order(overlapping.peaks[,by],decreasing = TRUE)]
   
-  overlapping.peaks <- unique(overlapping.peaks)
-  
-  hits.res <- queryHits(findOverlaps(overlapping.peaks))
-  selected.peaks <- overlapping.peaks[hits.res[match(unique(hits.res),hits.res)]]
-  
-  combined.peaks <- c(non.overlapping.peaks,selected.peaks)
+  if(length(overlapping.peaks.idx) == 0) {
+    combined.peaks <- Reduce("c", peak.sets)
+  } else {
+    non.overlapping.peaks <- combined.all.peaks[-overlapping.peaks.idx]
+    overlapping.peaks <- combined.all.peaks[overlapping.peaks.idx]
+    overlapping.peaks <- overlapping.peaks[order(overlapping.peaks[,by],decreasing = TRUE)]
+    
+    overlapping.peaks <- unique(overlapping.peaks)
+    
+    hits.res <- queryHits(findOverlaps(overlapping.peaks))
+    selected.peaks <- overlapping.peaks[hits.res[match(unique(hits.res),hits.res)]]
+    
+    combined.peaks <- c(non.overlapping.peaks,selected.peaks)
+  }
 
   overlapMat <- Reduce('cbind',lapply(split(Reduce("c", peak.sets), Reduce("c", peak.sets)$GroupReplicate), function(x){
     overlapsAny(combined.peaks, x)}))
@@ -266,7 +270,8 @@ addPeakMatrix <- function(
   if(length(peak.sets) > 1){
     combined.peaks$Reproducibility <- rowSums(overlapMat)
     combined.peaks$ReproducibilityPercent <- round(rowSums(overlapMat) / ncol(overlapMat) , 3)
-    idxPass <- which(combined.peaks$Reproducibility >= reproducibility)
+    min.rep <- eval(parse(text=reproducibility))
+    idxPass <- which(combined.peaks$Reproducibility >= min.rep)
     ncombined.peaks <- combined.peaks[idxPass]
   }else{
     combined.peaks$Reproducibility <- rep(NA, length(combined.peaks))

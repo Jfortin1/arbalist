@@ -18,14 +18,35 @@ addPeakMatrix(
   nolambda = TRUE,
   extendSummits = 250,
   output.dir = tempdir(),
-  BPPARAM = bpparam(),
-  ...
+  BPPARAM = bpparam()
 )
 }
 \arguments{
 \item{mae}{\linkS4class{MultiAssayExperiment}}
 
 \item{genome.size}{Number specifying the effective genome size or the size of hte genome that is mappable to use in MACSr peak calling. See [MACSr::callpeak] for more details.}
+
+\item{pseudobulk.experiment.name}{Experiment name for the pseudobulk \linkS4class{SummarizedExperiment} containing colData pointing to coverage files. This experiment can be created from arbalist::addGroupCoverages.}
+
+\item{sc.experiment.name}{Experiment name for \linkS4class{SingleCellExperiment} with cell barcodes as the rownames}
+
+\item{reproducibility}{A string that indicates how peak reproducibility should be handled. This string is dynamic and can be a function of n where n is the number of samples being assessed. For example, reproducibility = "2" means at least 2 samples must have a peak call at this locus and reproducibility = "(n+1)/2" means that the majority of samples must have a peak call at this locus.}
+
+\item{shift}{Number of baseparis to shift each Tn5 insertion. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.}
+
+\item{extsize}{Number of basepairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.}
+
+\item{method}{Method to use for significance testing in MACS2. Options are "p" for p-value and "q" for q-value. When combined with cutOff this gives the method and significance threshold for peak calling (see MACS2 documentation)}
+
+\item{cutOff}{Numeric significance cutOff for the testing method indicated by method (see MACSr::callpeak documentation).}
+
+\item{nomodel}{Whether or not to build the shifting model during MACSr::callpeak}
+
+\item{nolambda}{If True, MACS will use fixed background lambda as local lambda for every peak region.}
+
+\item{extendSummits}{Number of basepairs to extend peak summits (in both directions) to obtain final fixed-width peaks. For example, extendSummits = 250 will create 501-bp fixed-width peaks from the 1-bp summits.}
+
+\item{output.dir}{Directory where hdf5 files should be output while creating the peak matrix \linkS4class{SingleCellExperiment}.}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
 }

@@ -14,15 +14,37 @@ addGroupCoverages(
   max.frags = 25 * 10^6,
   min.reps = 2,
   max.reps = 5,
-  sample.ratio = 0.8,
-  kmerLength = 6,
-  return.groups = FALSE,
-  force = FALSE,
   coverage.file.path = getwd(),
+  skip.se.creation = FALSE,
+  skip.coverage.file.creation = FALSE,
   BPPARAM = bpparam()
 )
 }
 \arguments{
+\item{mae}{\linkS4class{MultiAssayExperiment}}
+
+\item{experiment.name}{Experiment name for creating the pseudobulk counts}
+
+\item{group.by.colname}{Experiment colData colname for the cell groups for pseudobulks}
+
+\item{sampleLabels}{Experiment colData colname for sample labels}
+
+\item{min.cells}{Minimum number of cells to select per group for pseudobulk creation}
+
+\item{max.cells}{Maximum number of cells to select per group for pseudobulk creation}
+
+\item{max.frags}{Maximum number of fragments per cell group to add to the pseudobulk coverage file}
+
+\item{min.reps}{Minimum number of pseudobulk replicates to generate}
+
+\item{max.reps}{Maximum number of pseudobulk replicates to generate}
+
+\item{coverage.file.path}{output directory for generating coverage files}
+
+\item{skip.se.creation}{Logical specifying whether to skip generating the pseudobulk summarized experiment}
+
+\item{skip.coverage.file.creation}{Logical specifying whether to skip generating coverage files}
+
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
 }
 \value{

@@ -10,7 +10,10 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
     int NR = shared->nrow();
     int NC = shared->ncol();
     int ngroups = *std::max_element(grouping.begin(), grouping.end()) + 1;
-
+    std::printf("NC %i\n",NC);
+    std::printf("NR %i\n",NR);
+    std::printf("ngroups %i\n",ngroups);
+    
     Rcpp::NumericMatrix output(NR, ngroups);
 
     if (shared->prefer_rows()) {
@@ -20,7 +23,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
           std::vector<double> vbuffer(length);
 
           if (shared->sparse()) {
-
+            std::printf("1 %i, %i, %i",thread,start, length);
               auto wrk = tatami::consecutive_extractor<true, true>(shared.get(), 0, NR, start, length);
               std::vector<int> ibuffer(NC);
               for (int r = 0; r < NR; ++r) { 
@@ -32,7 +35,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
               }
 
           } else {
-
+            std::printf("2 %i, %i, %i",thread,start, length);
               auto wrk = tatami::consecutive_extractor<true, false>(shared.get(), 0, NR, start, length);
               for (int r = 0; r < NR; ++r) { 
                   auto ptr = buffer.data() + r * ngroups;
@@ -67,16 +70,19 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
           doutput.resize(NR * ngroups);
 
           if (shared->sparse()) {
-               auto wrk = tatami::consecutive_extractor<false, true>(shared.get(), start, length);
+            std::printf("3\n");
+              auto wrk = tatami::consecutive_extractor<false, true>(shared.get(), start, length);
               std::vector<int> ibuffer(length);
               for (int c = 0; c < NC; ++c) { 
                   auto range = wrk->fetch(c, vbuffer.data(), ibuffer.data());
                   auto ptr = doutput.data() + grouping[c] * NR;
                   for (int i = 0; i < range.number; i++) {
+                    std::printf("%i, %i, %i, %i\n",i, range.number, range.index[i],range.value[i]);
                       ptr[range.index[i]] += range.value[i];
                   }
               }
           } else {
+            std::printf("4 %i, %i, %i",thread,start, length);
               auto wrk = tatami::consecutive_extractor<false, false>(shared.get(), start, length);
               for (int c = 0; c < NC; ++c) { 
                   auto found = wrk->fetch(c, vbuffer.data());

@@ -26,7 +26,7 @@ addIterativeLSI(
 
 \item{experiment.name}{String specifying the name of the experiment to create the embedding from and add reduced dimensions to}
 
-\item{embedding.name}{String sepcifying the name of the new iterativeLSI embedding}
+\item{embedding.name}{String specifying the name of the new iterativeLSI embedding}
 
 \item{rank}{Number specifying the rank for irlba_realized}
 

@@ -9,7 +9,6 @@
 #' @param method String specifying the method for creating clusters. Valid options are "Seurat" or "scran".
 #' @param dims.to.use Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions
 #' @param force Logical whether to overwrite existing columns with clusters.colname column name
-#' @param ... Additional arguments to be provided to Seurat::FindClusters or scran::buildSNNGraph (for example, knn = 50, jaccard = TRUE)
 #' 
 #' @return A \linkS4class{MultiAssayExperiment}
 #' 
@@ -40,8 +39,7 @@ addClusters <- function(
   #biasProportion = 0.5,
   #biasPval = 0.05,
   #nPerm = 500,
-  force = FALSE,
-  ... 
+  force = FALSE
 ) {
   
   # retrieve the reduced dimension (probably iterative lsi) matrix from the MAE
@@ -87,7 +85,7 @@ addClusters <- function(
     seurat.obj[['pca']] <- Seurat::CreateDimReducObject(embeddings=reduced.dim.matrix, key='PC_', assay='RNA')
     
     seurat.obj <- Seurat::FindNeighbors(seurat.obj, reduction = 'pca', dims = seq_len(ncol(reduced.dim.matrix)))
-    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(reduced.dim.matrix)), ...)
+    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(reduced.dim.matrix)))
     
     # get clusters form Seurat Object
     clust <- seurat.obj@meta.data[,ncol(seurat.obj@meta.data)]
@@ -96,7 +94,7 @@ addClusters <- function(
     clust <- clust[rownames(reduced.dim.matrix)]
 
   } else if(grep('seurat',tolower(method))) {
-    g <- scran::buildSNNGraph(x = t(reduced.dim.matrix), d = ncol(reduced.dim.matrix), k = ifelse(exists("...$k"), ...$k, 25))
+    g <- scran::buildSNNGraph(x = t(reduced.dim.matrix), d = ncol(reduced.dim.matrix))
     clust <- paste0(cluster.prefix,igraph::cluster_walktrap(g)$membership)
   } else {
     stop(paste0(method,' is not one of the current clustering method options. Try "Seurat" or "scran".'))

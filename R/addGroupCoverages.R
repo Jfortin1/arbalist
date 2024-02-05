@@ -2,6 +2,18 @@
 #'
 #' Select cells for pseudobulk replicates, create coverage files and add a pseudobulk experiment to the MultiAssayExperiment.
 #'
+#' @param mae \linkS4class{MultiAssayExperiment} 
+#' @param experiment.name Experiment name for creating the pseudobulk counts
+#' @param group.by.colname Experiment colData colname for the cell groups for pseudobulks
+#' @param sampleLabels Experiment colData colname for sample labels
+#' @param min.cells Minimum number of cells to select per group for pseudobulk creation
+#' @param max.cells Maximum number of cells to select per group for pseudobulk creation
+#' @param max.frags Maximum number of fragments per cell group to add to the pseudobulk coverage file
+#' @param min.reps Minimum number of pseudobulk replicates to generate
+#' @param max.reps Maximum number of pseudobulk replicates to generate
+#' @param coverage.file.path output directory for generating coverage files
+#' @param skip.se.creation Logical specifying whether to skip generating the pseudobulk summarized experiment
+#' @param skip.coverage.file.creation Logical specifying whether to skip generating coverage files
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
 #'
 #' @return \linkS4class{MultiAssayExperiment}
@@ -12,6 +24,7 @@
 #' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap
 #' @importFrom S4Vectors DataFrame metadata metadata<-
 #' @importFrom SingleCellExperiment altExp altExpNames
+#' @importFrom beachmat initializeCpp flushMemoryCache
 #' @export
 addGroupCoverages <- function(
     mae,
@@ -23,36 +36,49 @@ addGroupCoverages <- function(
     max.frags = 25*10^6,
     min.reps = 2,
     max.reps = 5,
-    sample.ratio = 0.8,
-    kmerLength = 6,
-    return.groups = FALSE,
-    force = FALSE,
     coverage.file.path = getwd(),
+    skip.se.creation = FALSE,
+    skip.coverage.file.creation = FALSE,
     BPPARAM = bpparam()
 ){
-  
+
   # Find the experiment result
   sce.list <- findSCE(mae,experiment.name)
   sce <- sce.list$sce
   sce.idx <- sce.list$sce.idx
   alt.exp.name <- sce.list$alt.exp.name
 
+  # count the number of cells per sample and per group
   num.samples <- length(unique(colData(sce)[,sampleLabels]))
-  num.cells <- ncol(sce)
-  num.cells.per.sample <- table(colData(sce)[,sampleLabels])
   num.cells.per.group <- table(colData(sce)[,group.by.colname])
-  num.cells.per.group.and.sample <- table(paste0(colData(sce)[,group.by.colname],colData(sce)[,sampleLabels]))
-  cells.per.group <- split(colnames(sce),colData(sce)[,group.by.colname])
+  
+  # find the group names with at least min.cells
+  num.cells.per.group <- table(colData(sce)[,group.by.colname])[which(num.cells.per.group >= min.cells)]
+  
+  # decide the number of cells to sample per group
+  num.cells.to.sample <- max(min(min(num.cells.per.group),max.cells),min.cells)
+  
+  # find the number of cells to sample per group and sample
+  num.cells.to.sample.from.group.and.sample <- ceiling(num.cells.to.sample/num.samples)
+  num.cells.per.group.and.sample <- table(paste0(colData(sce)[,group.by.colname],colData(sce)[,sampleLabels])[colData(sce)[,group.by.colname] %in% names(num.cells.per.group)])
+  overall.num.cells.to.sample.from.group.and.sample <- max(min(min(num.cells.per.group.and.sample),num.cells.to.sample.from.group.and.sample),ceiling(min.cells/num.samples))
+  
+  # decide the number of pseudobulk reps to create
+  rep.num <- max( min.reps, min( max.reps, floor(min(num.cells.per.group)/num.cells.to.sample)))
+
+  # list the samples per group and per group and sample
+  cells.per.group <- split(
+    colnames(sce)[colData(sce)[,group.by.colname] %in% names(num.cells.per.group)],
+    colData(sce)[colData(sce)[,group.by.colname] %in% names(num.cells.per.group),group.by.colname])
   cells.per.group.and.sample <- sapply(cells.per.group,function(x) {split(x,sub('#.*','',x))},simplify = FALSE)
-  
-  num.cells.to.sample.from.group.and.sample <- ceiling(min.cells/num.samples)
-  
-  rep.num <- max( min.reps, min( max.reps, floor(min(num.cells.per.group)/min.cells)))
   
   selected.cells <- list()
   for(group.name in names(cells.per.group.and.sample)) {
-    num.cells.to.sample.from.group.and.sample <- ceiling(min.cells/num.samples)
+
+    # reset in case the number of cells to sample was change for the last group
+    num.cells.to.sample.from.group.and.sample <- overall.num.cells.to.sample.from.group.and.sample
     
+    # get the cells to sample
     x <- cells.per.group.and.sample[[group.name]]
     
     selected.cells[[group.name]] <- list()
@@ -68,6 +94,7 @@ addGroupCoverages <- function(
       num.cells.to.sample.from.group.and.sample <- ceiling(min.cells/length(x))
     }
     
+    # for each sample, select cells for the pseudobulk replicate
     for(x2 in x) {
       # create replicates while selecting different cells for each replicate (as much as possible)
       selected.cells.per.group.and.sample <- sample(x2, num.cells.to.sample.from.group.and.sample, replace = length(x2) < num.cells.to.sample.from.group.and.sample)
@@ -90,11 +117,12 @@ addGroupCoverages <- function(
         cells.left <- setdiff(cells.left,selected.cells[[group.name]][[j]])
       }
     }
+    # make sure the results are character vectors
     for(j in 1:rep.num) {
       selected.cells[[group.name]][[j]] <- as.character(selected.cells[[group.name]][[j]])
     }
   }
-
+  
   # save the new pseudobulk replicate selection to the MAE
   for(i in names(selected.cells)) {
     for(j in 1:length(selected.cells[[i]])) {
@@ -112,14 +140,10 @@ addGroupCoverages <- function(
       }
     }
   }
-  
+
   x <- assay(sce)
-  # error that type 'S4' is non subsettable when trying to fetch data using tatami from a DelayedArray
-  # so converting to sparseMatrix as a temporary work around until issue with seed handling in tatami_r fixed
-  if(!is(x,'sparseMatrix')) {
-    x <- as(x, 'sparseMatrix')
-  }
-  ptr <- beachmat::initializeCpp(x)
+
+  # set up metadata for the pseudobulk replicates
   replicates.matrix <- matrix(NA, nrow = nrow(x), ncol = rep.num * length(selected.cells))
   replicates.matrix.coldata <- data.frame(
     group = rep(names(selected.cells),each=rep.num),
@@ -133,52 +157,62 @@ addGroupCoverages <- function(
   } else {
     replicates.matrix.coldata$coverage.file <- paste0(coverage.file.path,'/',replicates.matrix.coldata$ID,'.txt')
   }
-  
+
   # create coverage files
-  .create_pseuobulk_file_parallel_func <- function(j, replicates.matrix.coldata, mae) {
+  .create_pseudobulk_file_parallel_func <- function(j, replicates.matrix.coldata, mae) {
     output.file <- replicates.matrix.coldata$coverage.file[j]
     pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[j]]][[replicates.matrix.coldata$rep[j]]])
-    create_pseuobulk_file(mae$fragment_file, output.file, sub('.*#','',pseudobulk.cells))
+    create_pseudobulk_file(mae$fragment_file, output.file, sub('.*#','',pseudobulk.cells))
   }
-  res.list <- bptry(bplapply(seq(nrow(replicates.matrix.coldata)), .create_pseuobulk_file_parallel_func, replicates.matrix.coldata=replicates.matrix.coldata, mae=mae, BPPARAM = BPPARAM))
-
-  # Create matrix for pseudobulk experiment
-  for(i in 1:nrow(replicates.matrix.coldata)) {
-    output.file <- replicates.matrix.coldata$coverage.file[i]
-    pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[i]]][[replicates.matrix.coldata$rep[i]]])
-    ptr.subset <- apply_subset(ptr, which(colnames(sce) %in% pseudobulk.cells), FALSE)
-    replicates.matrix[,i] <- aggregate_counts(ptr.subset, rep(1,length(pseudobulk.cells))-1L, nthreads = 1)
-    replicates.matrix.coldata$num.cells <- length(pseudobulk.cells)
+  if(!skip.coverage.file.creation) {
+    res.list <- bptry(bplapply(seq(nrow(replicates.matrix.coldata)), .create_pseudobulk_file_parallel_func, replicates.matrix.coldata=replicates.matrix.coldata, mae=mae, BPPARAM = BPPARAM))
   }
-  replicates.matrix <- as(replicates.matrix, 'sparseMatrix')
 
-  # Add replicates matrix as SummarizedExperiment to MAE
-  pseudobulk.se <-  SummarizedExperiment(list(counts=replicates.matrix))
-  rowRanges(pseudobulk.se) <- rowRanges(sce)
-  colData(pseudobulk.se) <- DataFrame(replicates.matrix.coldata)
-  colnames(pseudobulk.se) <- replicates.matrix.coldata$ID
-  
-  exp.list <- experiments(mae)
-  exp.list[[paste0(experiment.name,'_pseudobulk')]] <- pseudobulk.se
-
-  el <- ExperimentList(exp.list)
-  maplist <- lapply(exp.list, function(se) {
-    if(sampleLabels %in% colnames(colData(se))) {
-      data.frame(primary = colData(se)[,sampleLabels], colname = colnames(se), stringsAsFactors = FALSE)
-    } else {
-      data.frame(primary = se$ID, colname = colnames(se), stringsAsFactors = FALSE)
+  if(!skip.se.creation) {
+    beachmat::flushMemoryCache()
+    ptr <- beachmat::initializeCpp(x, memorize=TRUE)
+    # Create matrix for pseudobulk experiment
+    for(i in 1:nrow(replicates.matrix.coldata)) {
+      output.file <- replicates.matrix.coldata$coverage.file[i]
+      pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[i]]][[replicates.matrix.coldata$rep[i]]])
+      ptr.subset <- apply_subset(ptr, which(colnames(sce) %in% pseudobulk.cells), FALSE)
+      replicates.matrix[,i] <- aggregate_counts(ptr.subset, rep(1,length(pseudobulk.cells))-1L, nthreads = 1)
+      replicates.matrix.coldata$num.cells <- length(pseudobulk.cells)
     }
-  })
-  sampMap <- listToMap(maplist)
-  
-  # Create and annotate the MultiAssayExperiment
-  new.mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
-  pseudobulk.colData.filler <- matrix(NA,ncol=ncol(colData(mae)),nrow=ncol(pseudobulk.se))
-  colnames(pseudobulk.colData.filler) <- colnames(colData(mae))
-  rownames(pseudobulk.colData.filler) <- colnames(pseudobulk.se)
-
-  colData(new.mae) <- rbind(colData(mae),pseudobulk.colData.filler)
-  metadata(new.mae) <- metadata(mae)
-  
-  new.mae
+    replicates.matrix <- as(replicates.matrix, 'sparseMatrix')
+    
+    # Add replicates matrix as SummarizedExperiment to MAE
+    pseudobulk.se <-  SummarizedExperiment(list(counts=replicates.matrix))
+    rowRanges(pseudobulk.se) <- rowRanges(sce)
+    colData(pseudobulk.se) <- DataFrame(replicates.matrix.coldata)
+    colnames(pseudobulk.se) <- replicates.matrix.coldata$ID
+    
+    exp.list <- experiments(mae)
+    exp.list[[paste0(experiment.name,'_pseudobulk')]] <- pseudobulk.se
+    
+    el <- ExperimentList(exp.list)
+    maplist <- lapply(exp.list, function(se) {
+      if(sampleLabels %in% colnames(colData(se))) {
+        data.frame(primary = colData(se)[,sampleLabels], colname = colnames(se), stringsAsFactors = FALSE)
+      } else {
+        data.frame(primary = se$ID, colname = colnames(se), stringsAsFactors = FALSE)
+      }
+    })
+    sampMap <- listToMap(maplist)
+    
+    # Create and annotate the MultiAssayExperiment
+    new.mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
+    pseudobulk.colData.filler <- matrix(NA,ncol=ncol(colData(mae)),nrow=ncol(pseudobulk.se))
+    colnames(pseudobulk.colData.filler) <- colnames(colData(mae))
+    rownames(pseudobulk.colData.filler) <- colnames(pseudobulk.se)
+    
+    colData(new.mae) <- rbind(colData(mae),pseudobulk.colData.filler)
+    metadata(new.mae) <- metadata(mae)
+    
+    beachmat::flushMemoryCache()
+    
+    return(new.mae)
+  } else {
+    return(mae)
+  }
 }

@@ -11,8 +11,7 @@ addClusters(
   cluster.prefix = "C",
   method = "Seurat",
   dims.to.use = NULL,
-  force = FALSE,
-  ...
+  force = FALSE
 )
 }
 \arguments{
@@ -29,8 +28,6 @@ addClusters(
 \item{dims.to.use}{Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions}
 
 \item{force}{Logical whether to overwrite existing columns with clusters.colname column name}
-
-\item{...}{Additional arguments to be provided to Seurat::FindClusters or scran::buildSNNGraph (for example, knn = 50, jaccard = TRUE)}
 }
 \value{
 A \linkS4class{MultiAssayExperiment}

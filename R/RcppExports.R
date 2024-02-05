@@ -29,8 +29,8 @@ lsi_matrix_stats <- function(mat, nthreads) {
     .Call('_arbalist_lsi_matrix_stats', PACKAGE = 'arbalist', mat, nthreads)
 }
 
-create_pseuobulk_file <- function(fragment_files, output_file, cellnames) {
-    invisible(.Call('_arbalist_create_pseuobulk_file', PACKAGE = 'arbalist', fragment_files, output_file, cellnames))
+create_pseudobulk_file <- function(fragment_files, output_file, cellnames) {
+    invisible(.Call('_arbalist_create_pseudobulk_file', PACKAGE = 'arbalist', fragment_files, output_file, cellnames))
 }
 
 apply_subset <- function(input, subset, row) {

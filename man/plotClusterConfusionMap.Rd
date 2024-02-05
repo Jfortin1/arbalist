@@ -7,7 +7,7 @@
 plotClusterConfusionMap(mae)
 }
 \arguments{
-\item{mae}{\linkS4class{MultiAssayExperiment} containing a "TileMatrix500" experiment with "Cluster" and "Sample" columns in the colData}
+\item{mae}{\linkS4class{MultiAssayExperiment} containing a "TileMatrix500" experiment with "Clusters" and "Sample" columns in the colData}
 }
 \description{
 Plot the association between slusters and samples using a confusion matrix.

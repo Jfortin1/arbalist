@@ -30,7 +30,7 @@
 #'}
 #' @export
 #' @importFrom matrixStats rowVars
-#' @importFrom beachmat initializeCpp
+#' @importFrom beachmat initializeCpp flushMemoryCache
 #' @importFrom stats kmeans cor
 #' @importFrom utils head
 iterativeLSI <- function(
@@ -56,12 +56,13 @@ iterativeLSI <- function(
   
   # error that type 'S4' is non subsettable when trying to fetch data using tatami from a DelayedArray
   # so converting to sparseMatrix as a temporary work around until issue with seed handling in tatami_r fixed
-  if(!is(x,'sparseMatrix')) {
-    x <- as(x, 'sparseMatrix')
-  }
+#  if(!is(x,'sparseMatrix')) {
+#    x <- as(x, 'sparseMatrix')
+#  }
   
-  # select the top features based on accessibility of the binarized features 
-  ptr <- beachmat::initializeCpp(x)
+  # select the top features based on accessibility of the binarized features
+  beachmat::flushMemoryCache()
+  ptr <- beachmat::initializeCpp(x, memorize=TRUE)
   stats <- lsi_matrix_stats(ptr, nthreads = num.threads) # sums = colSums, frequency = # non-zero per row
   row.accessibility <- stats$frequency
   rm.top <- floor((1-filter.quantile) * total.features)
@@ -103,6 +104,7 @@ iterativeLSI <- function(
     lsi.res <- .computeLSI(mat.subset, lsi.method=lsi.method, scale.to=scale.to, outlier.quantiles=outlier.quantiles, seed=seed)
     embedding <- lsi.res$matSVD
   }
+  beachmat::flushMemoryCache()
   
   list(embedding = embedding, projection = lsi.res$v, subset = indices)
 }
@@ -120,8 +122,12 @@ iterativeLSI <- function(
   
   set.seed(seed)
   
+  if(!is(mat,'sparseMatrix')) {
+    mat <- as(mat, 'sparseMatrix')
+  }
+  
   # make sure the matrix is binarized
-  mat@x[mat@x > 0] <- 1 
+  mat@x[mat@x > 0] <- 1
 
   # compute column sums and remove columns with only zero values
   col.sums <- Matrix::colSums(mat)
@@ -211,6 +217,10 @@ iterativeLSI <- function(
   # Get Same Features - ie subsetting by Non-Zero features in inital Matrix
   mat <- mat[lsi.res$idx,]
   
+  if(!is(mat,'sparseMatrix')) {
+    mat <- as(mat, 'sparseMatrix')
+  }
+  
   # Binarize Matrix
   mat@x[mat@x > 0] <- 1     
 
@@ -244,6 +254,10 @@ iterativeLSI <- function(
 
 # num.col and row.sums might not match mat. For example, when normalizing for the projection, mun.col na drun.sums will match the LSI result instead of mat.
 .apply.tf.idf.normalization <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
+  if(!is(mat,'sparseMatrix')) {
+    mat <- as(mat, 'sparseMatrix')
+  }
+  
   # compute Term Frequency
   col.sums <- Matrix::colSums(mat)
   if(any(col.sums == 0)){
