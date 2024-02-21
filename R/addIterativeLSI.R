@@ -1,21 +1,22 @@
 #' Add new iterative LSI embeddings to MultiAssayExperiment
 #'
 #' @param mae \linkS4class{MultiAssayExperiment} 
-#' @param experiment.name String specifying the name of the experiment to create the embedding from and add reduced dimensions to
-#' @param embedding.name String specifying the name of the new iterativeLSI embedding
-#' @param rank Number specifying the rank for irlba_realized
-#' @param iterations Number of LSI iterations to perform.
-#' @param num.features Number of accessible features to select when selecting the most accessible or most variable features.
-#' @param cluster.method String specifying cluster method. Currently "kmeans" is the only supported option.
-#' @param cluster.k Number of clusters to use
-#' @param correlation.cutoff 	Numeric cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the corCutOff, it will be excluded from analysis.
-#' @param scale.to Number specifying the center for TF-IDF normalization.
-#' @param num.threads Number of threads to be used for parallel computing.
-#' @param seed Number to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
-#' @param total.features Number of features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.
-#' @param filter.quantile Number 0,1 that indicates the quantile above which features should be removed based on insertion counts prior
+#' @param experiment.name String containing the name of the experiment to create the embedding from and add reduced dimensions to.
+#' @param embedding.name String containing the name of the new iterativeLSI embedding.
+#' @param rank Integer scalar specifying the rank for irlba_realized.
+#' @param iterations Integer scalar specifying number of LSI iterations to perform.
+#' @param num.features Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.
+#' @param lsi.method Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".
+#' @param cluster.method String containing cluster method. Currently "kmeans" is the only supported option.
+#' @param cluster.k Integer scalar specifying how many clusters to use.
+#' @param correlation.cutoff 	Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the corCutOff, it will be excluded from analysis.
+#' @param scale.to Numeric scalar specifying the center for TF-IDF normalization.
+#' @param num.threads Integer scalar specifying the number of threads to be used for parallel computing.
+#' @param seed Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
+#' @param total.features Integer scalar specifying how many features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.
+#' @param filter.quantile Numeric scalar between 0 and 1 inclusive that indicates the quantile above which features should be removed based on insertion counts prior.
 #'
-#' @return \linkS4class{MultiAssayExperiment}
+#' @return \linkS4class{MultiAssayExperiment} with iterative LSI results added to the \linkS4class{SingleCellExperiment} reduced dimensions.
 #' 
 #' @author Natalie Fox
 #' @export

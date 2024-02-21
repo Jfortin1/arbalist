@@ -2,15 +2,15 @@
 #' 
 #' Creating cell clusters from iterative LSI reduced dimensions contained with a MAE and adding the cluster result back to the MAE
 #' 
-#' @param mae MultiAssayExperiment
-#' @param name.iterative.lsi String specifying the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the correct experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.
-#' @param clusters.colname String specifying the column name to save the clusters as in the experiment column data
-#' @param cluster.prefix String prefixed to the cluster number for saving in colData
-#' @param method String specifying the method for creating clusters. Valid options are "Seurat" or "scran".
-#' @param dims.to.use Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions
-#' @param force Logical whether to overwrite existing columns with clusters.colname column name
+#' @param mae \linkS4class.
+#' @param name.iterative.lsi String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.
+#' @param clusters.colname String containing the column name to save the clusters as in the experiment column data
+#' @param cluster.prefix String to prefix to the cluster number for saving in colData result.
+#' @param method String containing the method for creating clusters. Valid options are "Seurat" or "scran".
+#' @param dims.to.use Numeric vector or list of numeric vectors specifying which of the columns to use from the reduced dimensions.
+#' @param force Logical whether to overwrite existing columns with clusters.colname column name.
 #' 
-#' @return A \linkS4class{MultiAssayExperiment}
+#' @return A \linkS4class{MultiAssayExperiment} with cluster column added to the experiment colData.
 #' 
 #' @author Natalie Fox
 #' @export
@@ -25,20 +25,6 @@ addClusters <- function(
   cluster.prefix = "C",
   method = "Seurat",
   dims.to.use = NULL,
-  #scaleDims = NULL, 
-  #corCutOff = 0.75,
-  #nOutlier = 5, 
-  #maxClusters = 25,
-  #testBias = TRUE,
-  #filterBias = FALSE,
-  #biasClusters = 0.01,
-  #biasCol = "nFrags",
-  #biasVals = NULL,
-  #biasQuantiles = c(0.05, 0.95),
-  #biasEnrich = 10,
-  #biasProportion = 0.5,
-  #biasPval = 0.05,
-  #nPerm = 500,
   force = FALSE
 ) {
   

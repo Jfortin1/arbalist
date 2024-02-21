@@ -15,22 +15,22 @@ addClusters(
 )
 }
 \arguments{
-\item{mae}{MultiAssayExperiment}
+\item{mae}{\linkS4class.}
 
-\item{name.iterative.lsi}{String specifying the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the correct experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.}
+\item{name.iterative.lsi}{String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.}
 
-\item{clusters.colname}{String specifying the column name to save the clusters as in the experiment column data}
+\item{clusters.colname}{String containing the column name to save the clusters as in the experiment column data}
 
-\item{cluster.prefix}{String prefixed to the cluster number for saving in colData}
+\item{cluster.prefix}{String to prefix to the cluster number for saving in colData result.}
 
-\item{method}{String specifying the method for creating clusters. Valid options are "Seurat" or "scran".}
+\item{method}{String containing the method for creating clusters. Valid options are "Seurat" or "scran".}
 
-\item{dims.to.use}{Numeric vector or list of numeric vector specifying which of the columns to use from the reduced dimensions}
+\item{dims.to.use}{Numeric vector or list of numeric vectors specifying which of the columns to use from the reduced dimensions.}
 
-\item{force}{Logical whether to overwrite existing columns with clusters.colname column name}
+\item{force}{Logical whether to overwrite existing columns with clusters.colname column name.}
 }
 \value{
-A \linkS4class{MultiAssayExperiment}
+A \linkS4class{MultiAssayExperiment} with cluster column added to the experiment colData.
 }
 \description{
 Creating cell clusters from iterative LSI reduced dimensions contained with a MAE and adding the cluster result back to the MAE

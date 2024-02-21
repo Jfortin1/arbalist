@@ -21,34 +21,36 @@ addGroupCoverages(
 )
 }
 \arguments{
-\item{mae}{\linkS4class{MultiAssayExperiment}}
+\item{mae}{\linkS4class{MultiAssayExperiment}.}
 
-\item{experiment.name}{Experiment name for creating the pseudobulk counts}
+\item{experiment.name}{String containing experiment name for creating the pseudobulk counts.}
 
-\item{group.by.colname}{Experiment colData colname for the cell groups for pseudobulks}
+\item{group.by.colname}{String containing experiment colData colname for the cell groups for pseudobulks.}
 
-\item{sampleLabels}{Experiment colData colname for sample labels}
+\item{sampleLabels}{String containing experiment colData colname for sample labels.}
 
-\item{min.cells}{Minimum number of cells to select per group for pseudobulk creation}
+\item{min.cells}{Integer scalar specifying minimum number of cells to select per group for pseudobulk creation.}
 
-\item{max.cells}{Maximum number of cells to select per group for pseudobulk creation}
+\item{max.cells}{Integer scalar specifying maximum number of cells to select per group for pseudobulk creation.}
 
-\item{max.frags}{Maximum number of fragments per cell group to add to the pseudobulk coverage file}
+\item{max.frags}{Integer scalar specifying maximum number of fragments per cell group to add to the pseudobulk coverage file.}
 
-\item{min.reps}{Minimum number of pseudobulk replicates to generate}
+\item{min.reps}{Integer scalar specifying minimum number of pseudobulk replicates to generate.}
 
-\item{max.reps}{Maximum number of pseudobulk replicates to generate}
+\item{max.reps}{Integer scalar specifying maximum number of pseudobulk replicates to generate.}
 
-\item{coverage.file.path}{output directory for generating coverage files}
+\item{coverage.file.path}{String containing the output directory for generated coverage files.}
 
-\item{skip.se.creation}{Logical specifying whether to skip generating the pseudobulk summarized experiment}
+\item{skip.se.creation}{Logical specifying whether to skip generating the pseudobulk summarized experiment.}
 
-\item{skip.coverage.file.creation}{Logical specifying whether to skip generating coverage files}
+\item{skip.coverage.file.creation}{Logical specifying whether to skip generating coverage files.}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
 }
 \value{
-\linkS4class{MultiAssayExperiment}
+\linkS4class{MultiAssayExperiment} with a new pseudobulk \linkS4class{SummarizedExperiment} and
+columns are added to the \linkS4class{SingleCellExperiment} colData specifying which pseudobulk cell composition.
+Lastly, psuedobulk coverage files containing the fragments coordinates are written to file and file names are specified in the pseudobulk \linkS4class{SummarizedExperiment} colData.
 }
 \description{
 Select cells for pseudobulk replicates, create coverage files and add a pseudobulk experiment to the MultiAssayExperiment.

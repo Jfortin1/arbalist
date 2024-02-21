@@ -2,21 +2,23 @@
 #'
 #' Select cells for pseudobulk replicates, create coverage files and add a pseudobulk experiment to the MultiAssayExperiment.
 #'
-#' @param mae \linkS4class{MultiAssayExperiment} 
-#' @param experiment.name Experiment name for creating the pseudobulk counts
-#' @param group.by.colname Experiment colData colname for the cell groups for pseudobulks
-#' @param sampleLabels Experiment colData colname for sample labels
-#' @param min.cells Minimum number of cells to select per group for pseudobulk creation
-#' @param max.cells Maximum number of cells to select per group for pseudobulk creation
-#' @param max.frags Maximum number of fragments per cell group to add to the pseudobulk coverage file
-#' @param min.reps Minimum number of pseudobulk replicates to generate
-#' @param max.reps Maximum number of pseudobulk replicates to generate
-#' @param coverage.file.path output directory for generating coverage files
-#' @param skip.se.creation Logical specifying whether to skip generating the pseudobulk summarized experiment
-#' @param skip.coverage.file.creation Logical specifying whether to skip generating coverage files
+#' @param mae \linkS4class{MultiAssayExperiment}.
+#' @param experiment.name String containing experiment name for creating the pseudobulk counts.
+#' @param group.by.colname String containing experiment colData colname for the cell groups for pseudobulks.
+#' @param sampleLabels String containing experiment colData colname for sample labels.
+#' @param min.cells Integer scalar specifying minimum number of cells to select per group for pseudobulk creation.
+#' @param max.cells Integer scalar specifying maximum number of cells to select per group for pseudobulk creation.
+#' @param max.frags Integer scalar specifying maximum number of fragments per cell group to add to the pseudobulk coverage file.
+#' @param min.reps Integer scalar specifying minimum number of pseudobulk replicates to generate.
+#' @param max.reps Integer scalar specifying maximum number of pseudobulk replicates to generate.
+#' @param coverage.file.path String containing the output directory for generated coverage files.
+#' @param skip.se.creation Logical specifying whether to skip generating the pseudobulk summarized experiment.
+#' @param skip.coverage.file.creation Logical specifying whether to skip generating coverage files.
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
 #'
-#' @return \linkS4class{MultiAssayExperiment}
+#' @return \linkS4class{MultiAssayExperiment} with a new pseudobulk \linkS4class{SummarizedExperiment} and
+#' columns are added to the \linkS4class{SingleCellExperiment} colData specifying which pseudobulk cell composition.
+#' Lastly, psuedobulk coverage files containing the fragments coordinates are written to file and file names are specified in the pseudobulk \linkS4class{SummarizedExperiment} colData.
 #' 
 #' @author Natalie Fox
 #' @importFrom BiocParallel bptry bplapply bpparam

@@ -7,6 +7,7 @@
 addTSSEnrichmentScores(
   mae,
   experiment.name = "TileMatrix500",
+  experiment.name.for.gene.grs = "GeneExpressionMatrix",
   gene.grs = NULL,
   force = FALSE,
   BPPARAM = BiocParallel::bpparam()
@@ -17,7 +18,9 @@ addTSSEnrichmentScores(
 
 \item{experiment.name}{String specifying the experiment name to add the TSS Enrichment to the colData}
 
-\item{gene.grs}{A \linkS4class{GRanges} specifying genes. THe start coordinate will be used as the transcription start site.}
+\item{experiment.name.for.gene.grs}{String specifying the experiment name to use rowRanges start as for TSS. If this experiment name is not found in mae, then gene.grs must be specified. If both experiment.name.for.gene.grs and gene.grs are specified, then gene.grs takes precendence.}
+
+\item{gene.grs}{A \linkS4class{GRanges} specifying genes. The start coordinate will be used as the transcription start site.}
 
 \item{force}{Logical. If there is already a TSS Enrichment column whether to overwrite it (TRUE) or error (FALSE).}
 

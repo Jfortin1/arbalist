@@ -24,29 +24,29 @@ iterativeLSI(
 \arguments{
 \item{x}{input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features}
 
-\item{rank}{Number specifying the rank for irlba_realized}
+\item{rank}{Integer scalar specifying the rank for irlba_realized.}
 
-\item{iterations}{Number of LSI iterations to perform.}
+\item{iterations}{Integer scalar specifying number of LSI iterations to perform.}
 
-\item{num.features}{Number of accessible features to select when selecting the most accessible or most variable features.}
+\item{num.features}{Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.}
 
-\item{lsi.method}{Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf"}
+\item{lsi.method}{Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".}
 
-\item{cluster.method}{String specifying cluster method. Currently "kmeans" is the only supported option.}
+\item{cluster.method}{String containing cluster method. Currently "kmeans" is the only supported option.}
 
-\item{cluster.k}{Number of clusters to use}
+\item{cluster.k}{Integer scalar specifying how many clusters to use.}
 
-\item{correlation.cutoff}{Numeric cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the corCutOff, it will be excluded from analysis.}
+\item{correlation.cutoff}{Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the corCutOff, it will be excluded from analysis.}
 
-\item{scale.to}{Number specifying the center for TF-IDF normalization.}
+\item{scale.to}{Numeric scalar specifying the center for TF-IDF normalization.}
 
-\item{num.threads}{Number of threads to be used for parallel computing.}
+\item{num.threads}{Integer scalar specifying the number of threads to be used for parallel computing.}
 
-\item{seed}{Number to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.}
+\item{seed}{Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.}
 
-\item{total.features}{Number of features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.}
+\item{total.features}{Integer scalar specifying how many features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.}
 
-\item{filter.quantile}{Number 0,1 that indicates the quantile above which features should be removed based on insertion counts prior}
+\item{filter.quantile}{Numeric scalar between 0 and 1 inclusive that indicates the quantile above which features should be removed based on insertion counts prior.}
 }
 \value{
 A list is returned containing:

@@ -4,7 +4,8 @@
 #' 
 #' @param mae A \linkS4class{MultiAssayExperiment}
 #' @param experiment.name String specifying the experiment name to add the TSS Enrichment to the colData
-#' @param gene.grs A \linkS4class{GRanges} specifying genes. THe start coordinate will be used as the transcription start site.
+#' @param experiment.name.for.gene.grs String specifying the experiment name to use rowRanges start as for TSS. If this experiment name is not found in mae, then gene.grs must be specified. If both experiment.name.for.gene.grs and gene.grs are specified, then gene.grs takes precendence.
+#' @param gene.grs A \linkS4class{GRanges} specifying genes. The start coordinate will be used as the transcription start site.
 #' @param force Logical. If there is already a TSS Enrichment column whether to overwrite it (TRUE) or error (FALSE).
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
 #'
@@ -14,6 +15,7 @@
 addTSSEnrichmentScores <- function(
     mae,
     experiment.name = 'TileMatrix500',
+    experiment.name.for.gene.grs = 'GeneExpressionMatrix',
     gene.grs = NULL,
     force = FALSE,
     BPPARAM = BiocParallel::bpparam()
@@ -26,9 +28,9 @@ addTSSEnrichmentScores <- function(
   }
   
   if(is.null(gene.grs)) {
-    gene.sce.list <- findSCE(mae,'GeneExpressionMatrix')
+    gene.sce.list <- findSCE(mae,experiment.name.for.gene.grs)
     if(is.null(gene.sce.list)) {
-      stop('Cannot find a GeneExpressionMatrix to get gene coordinates from so please specify gene.grs')
+      stop(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs'))
     }
     gene.grs = GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
   }
