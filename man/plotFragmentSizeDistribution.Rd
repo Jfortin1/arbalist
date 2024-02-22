@@ -7,11 +7,11 @@
 plotFragmentSizeDistribution(mae, sample.name, xlim = c(0, 700))
 }
 \arguments{
-\item{mae}{\linkS4class{MultiAssayExperiment} containing fragment_file col in the colData}
+\item{mae}{\linkS4class{MultiAssayExperiment} containing fragment_file col in the colData.}
 
-\item{sample.name}{String speciying the sample name to plot}
+\item{sample.name}{String specifying the sample name to plot.}
 
-\item{xlim}{Numeric vector with a min and max for the x-axis limits}
+\item{xlim}{Numeric vector with a min and max for the x-axis limits.}
 }
 \description{
 Plot the fragment size distribution for a samples.

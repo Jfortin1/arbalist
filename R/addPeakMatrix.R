@@ -176,53 +176,6 @@ addPeakMatrix <- function(
   return(sce)
 }
 
-#.fastAnnoPeaks <- function(
-#    peaks = NULL, 
-#    BSgenome = NULL, 
-#    geneAnnotation = NULL, 
-#    promoterRegion = c(2000, 100)
-#){
-#  
-#  #Validate
-#  peaks <- .validGRanges(peaks)
-#  peakSummits <- GenomicRanges::resize(peaks,1,"center")
-#  geneAnnotation$genes <- .validGRanges(geneAnnotation$genes)
-#  geneAnnotation$exons <- .validGRanges(geneAnnotation$exons)
-#  geneAnnotation$TSS <- .validGRanges(geneAnnotation$TSS)
-#  BSgenome <- validBSgenome(BSgenome)
-#  
-#  #First Lets Get Distance to Nearest Gene Start
-#  distPeaks <- distanceToNearest(peakSummits, GenomicRanges::resize(geneAnnotation$genes, 1, "start"), ignore.strand = TRUE)
-#  mcols(peaks)$distToGeneStart <- mcols(distPeaks)$distance
-#  mcols(peaks)$nearestGene <- mcols(geneAnnotation$genes)$symbol[subjectHits(distPeaks)]
-#  promoters <- extendGR(GenomicRanges::resize(geneAnnotation$genes, 1, "start"), upstream = promoterRegion[1], downstream = promoterRegion[2])
-#  op <- overlapsAny(peakSummits, promoters, ignore.strand = TRUE)
-#  og <- overlapsAny(peakSummits, geneAnnotation$genes, ignore.strand = TRUE)
-#  oe <- overlapsAny(peakSummits, geneAnnotation$exons, ignore.strand = TRUE)
-#  type <- rep("Distal", length(peaks))
-#  type[which(og & oe)] <- "Exonic"
-#  type[which(og & !oe)] <- "Intronic"
-#  type[which(op)] <- "Promoter"
-#  mcols(peaks)$peakType <- type
-#  
-#  #First Lets Get Distance to Nearest TSS's
-#  .logMessage("Annotating Peaks : TSS", logFile = logFile)
-#  distTSS <- distanceToNearest(peakSummits, GenomicRanges::resize(geneAnnotation$TSS, 1, "start"), ignore.strand = TRUE)
-#  mcols(peaks)$distToTSS <- mcols(distTSS)$distance
-#  if("symbol" %in% colnames(mcols(geneAnnotation$TSS))){
-#    mcols(peaks)$nearestTSS <- mcols(geneAnnotation$TSS)$symbol[subjectHits(distTSS)]
-#  }else if("tx_name" %in% colnames(mcols(geneAnnotation$TSS))){
-#    mcols(peaks)$nearestTSS <- mcols(geneAnnotation$TSS)$tx_name[subjectHits(distTSS)]
-#  }
-#  
-#  #Get NucleoTide Content
-#  nucFreq <- BSgenome::alphabetFrequency(getSeq(BSgenome, peaks))
-#  mcols(peaks)$GC <- round(rowSums(nucFreq[,c("G","C")]) / rowSums(nucFreq),4)
-#  mcols(peaks)$N <- round(nucFreq[,c("N")] / rowSums(nucFreq),4)
-#  peaks
-#  
-#}
-
 #' @importFrom S4Vectors queryHits subjectHits 
 #' @importFrom IRanges overlapsAny
 #' @importFrom GenomicRanges resize

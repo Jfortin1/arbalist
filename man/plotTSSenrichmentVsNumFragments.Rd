@@ -7,9 +7,9 @@
 plotTSSenrichmentVsNumFragments(mae, sample.name)
 }
 \arguments{
-\item{mae}{\linkS4class{MultiAssayExperiment} containing a "TileMatrix500" experiment with "TSSEnrichment" and "fragments" columns in the colData}
+\item{mae}{\linkS4class{MultiAssayExperiment} containing a "TileMatrix500" experiment with "TSSEnrichment" and "fragments" columns in the colData.}
 
-\item{sample.name}{String speciying the sample name to plot}
+\item{sample.name}{String speciying the sample name to plot.}
 }
 \description{
 Create a per sample quality control plot looking at TSS Enrichment compared to number unique fragments.

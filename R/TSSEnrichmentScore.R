@@ -21,6 +21,10 @@ addTSSEnrichmentScores <- function(
     BPPARAM = BiocParallel::bpparam()
 ) {
   
+  if(!'fragment_file' %in% colnames(colData(mae))) {
+    stop('Please include the paths to the fragment files in the MultiAssayExperiment colData')
+  }
+  
   # Find the experiment result
   sce.list <- findSCE(mae, experiment.name)
   if(is.null(sce.list)) {
@@ -33,6 +37,9 @@ addTSSEnrichmentScores <- function(
       stop(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs'))
     }
     gene.grs = GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
+    if(length(gene.grs) == 0) {
+      stop(paste0('There are no interval specified in the rowData of ',experiment.name.for.gene.grs,' so please specify gene.grs'))
+    }
   }
   
   if('TSSEnrichment' %in% colnames(colData(mae[[sce.list$sce.idx]])) & !force) {
@@ -40,6 +47,7 @@ addTSSEnrichmentScores <- function(
   }
   
   fragment.files <- colData(mae)$fragment_file
+  names(fragment.files) <- rownames(colData(mae))
   
   tss.scores <- bptry(bplapply(
     names(fragment.files), 

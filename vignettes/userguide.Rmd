@@ -1,0 +1,204 @@
+---
+title: "Arbalist analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Arbalist analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Arbalist is designed to perform scATAC-seq analysis using similar methods to [ArchR](https://www.archrproject.com/) but utilizing `MultiAssayExperiment` and the bioconductor framework instead of the ArchR framework. The backend of arbalist is based on the C++ representation in the tatami library.
+
+# Setting up
+
+```{r, eval=FALSE}
+library(arbalist)
+library(MultiAssayExperiment)
+library(SummarizedExperiment)
+library(SingleCellExperiment)
+```
+
+We need to create a `MultiAssayExperiment` object from the fragment files. `arbalist::saveTileMatrix` creates a count matrix for tiles across the genome and `arbalist::saveRegionMatrix` creates a count matrix for user specified genomic regions.
+
+We are going to create some mock fragment files for this example. You should replace these with your fragment files.
+```{r, eval=FALSE}
+seq.lengths <- c(chrA = 6000, chrB = 5000, chrC = 3000, chrD = 2000)
+
+fragment.files <- c();
+for(i in 1:3) {
+  cell.names <- paste0(LETTERS,i)
+  fragment.files[i] <- tempfile(fileext = ".gz")
+  mockFragmentFile(fragment.files[i], seq.lengths, num.fragments = 10, cell.names = cell.names)
+}
+```
+
+
+First, let's create a count matrix for 500 bp genomic tiles.
+
+```{r, eval=FALSE}
+scatac.tile.matrices <- list();
+tiles.grs <- NULL
+for(i in seq_along(fragment.files)) {
+  res <- saveTileMatrix(
+    as.character(fragment.files[i]),
+    output.file = tempfile(fileext=".h5"),
+    output.name = 'tile_matrix',
+    tile.size = 500,
+    seq.lengths = seq.lengths
+  )
+  scatac.tile.matrices[i] <- res$counts
+  
+  # The genomic ranges should be the same for all the tile matrix so we are just saving one for later use
+  tiles.grs <- res$tiles
+}
+names(scatac.tile.matrices) <- paste0('sample',seq_along(scatac.tile.matrices))
+```
+
+We use `AmalgamatedArray` so that the results for each fragment file or sample can go into its own file. 
+
+```{r, eval=FALSE}
+mat <- alabaster.matrix::AmalgamatedArray(scatac.tile.matrices, along=2)
+```
+Map the cells back to samples and update colnames to include sample names.
+```{r, eval=FALSE}
+cell.to.sample <- unlist(sapply(names(scatac.tile.matrices),function(x) {rep(x,ncol(scatac.tile.matrices[[x]]))}))
+```
+
+Create a `SingleCellExperiment` for the tile matrix.
+```{r, eval=FALSE}
+mat.list <- list(counts=mat)
+se <-  SummarizedExperiment(mat.list)
+rowRanges(se) <- tiles.grs
+colnames(se) <- paste0(cell.to.sample,'#',colnames(se))
+colData(se)$Sample <- as.character(cell.to.sample)
+tile.sce <- as(se, 'SingleCellExperiment')
+```
+
+We wrap the `SingleCellExperiment` into a `MultiAssayExperiment`.
+
+```{r, eval=FALSE}
+el <- ExperimentList(list(
+  'TileMatrix500' = tile.sce
+))
+maplist <- lapply(el, function(se) {
+  data.frame(primary = se$Sample, colname = colnames(se), stringsAsFactors = FALSE)
+})
+sampMap <- listToMap(maplist)
+  
+# Create and annotate the MultiAssayExperiment
+mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
+```
+
+Add the fragment filenames to the mae colData for use in future analysis functions.
+```{r,eval=FALSE}
+colData(mae)$fragment_file <- fragment.files
+```
+
+## TSS Enrichment
+
+The TSS enrichment score evaluates accessibility at the transcription start site compared to flanking regions in the genome. 
+
+The start coordinate of each gene from the GeneExpressionMatrix is used as the transcription start site. That coordinate is used as the centre of a 100bp window around the TSS.
+
+We calculate this score as ratio of per-basepair accessibility centered at TSS regions compared to flanking regions.
+
+```{r tss, eval=FALSE}
+library(GenomicRanges)
+gene.grs <- GRanges(c("chrA:500-1000", "chrA:1200-1400", "chrA:1500-2700", "chrA:4500-5000","chrB:1000-2000", "chrB:3500-4200", "chrC:1500-2000", "chrC:2500-3000", "chrD:500-1000"))
+
+colData(mae)
+mae <- addTSSEnrichmentScores(mae, gene.grs = gene.grs)
+colData(mae)
+```
+A TSSEnrichment column was added to the MultiAssayExperiment colData.
+
+## Quality Control Plots
+
+Plotting fragment size distributions
+```{r fragplots, eval=FALSE}
+sample.names <- rownames(colData(mae))
+for(i in sample.names) {
+  plotFragmentSizeDistribution(mae,i)
+}
+```
+
+# Reduced Dimensions using Iterative LSI
+
+We use iterative LSI for dimensionality reduction of the scATAC-seq.
+
+```{r lsi, eval=FALSE}
+mae <- addIterativeLSI(mae, embedding.name = 'iterativeLSI')
+```
+
+# Cell clusters
+
+We calculate clusters of cells using the addClusters function, which is a wrapper on Seurat functions.
+
+```{r clusters, eval=FALSE}
+mae <- addClusters(mae, clusters.colname = 'Clusters')
+plotClusterConfusionMap(mae)
+```
+
+# Embeddings
+
+We calculate UMAP and tSNE embeddings of the reduced dimension features. Embeddings are useful for visualization.
+
+```{r embeddings, eval=FALSE}
+library(scater)
+
+# Add UMAP to SingleCellExperiment
+mae[['TileMatrix500']] <- runUMAP(mae[['TileMatrix500']], dimred = 'iterativeLSI', name = 'iterativeLSI_UMAP')
+
+# UMAP colored by Sample
+scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_UMAP', colour_by = 'Sample')
+
+# UMAP colored by Clusters
+scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_UMAP', colour_by = 'Clusters')
+
+# Add TSNE to SingleCellExperiment
+mae[['TileMatrix500']] <- runTSNE(mae[['TileMatrix500']], dimred = 'iterativeLSI', name = 'iterativeLSI_TSNE')
+
+# TSNE colored by Sample
+scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_TSNE', colour_by = 'Sample')
+
+# TSNE colored by Clusters
+scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_TSNE', colour_by = 'Clusters')
+```
+
+# Pseudobulk replicates
+
+```{r pseudobulk, eval=FALSE}
+mae <- addGroupCoverages(mae)
+```
+
+`arbalist::addGroupCoverages` performs 3 tasks. First, a pseudobulk `SummarizedExperment` is added to the `MultiAssayExperiment`.
+
+```{r, eval=FALSE}
+mae
+```
+
+Second, the cell composition of the pseudobulk replicates is added to the `SingleCellExperiment` `colData`.
+
+```{r, eval=FALSE}
+colData(mae[['TileMatrix500']])
+```
+
+Third, pseudobulk coverage files containing the fragments coordinates are written to file and file names are specified in the pseudobulk \linkS4class{SummarizedExperiment} colData.
+
+```{r, eval=FALSE}
+colData(mae[['TileMatrix500_pseudobulk']])
+```
+
+# Peak calling
+
+```{r peaks, eval=FALSE}
+mae <- addPeakMatrix(mae,maw.scatac::getEffectiveGenomeSize(mae[[1]]),output.dir ='.')
+mae
+```

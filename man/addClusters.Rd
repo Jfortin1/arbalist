@@ -19,7 +19,7 @@ addClusters(
 
 \item{name.iterative.lsi}{String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.}
 
-\item{clusters.colname}{String containing the column name to save the clusters as in the experiment column data}
+\item{clusters.colname}{String containing the column name to save the clusters as in the experiment column data.}
 
 \item{cluster.prefix}{String to prefix to the cluster number for saving in colData result.}
 
@@ -33,7 +33,7 @@ addClusters(
 A \linkS4class{MultiAssayExperiment} with cluster column added to the experiment colData.
 }
 \description{
-Creating cell clusters from iterative LSI reduced dimensions contained with a MAE and adding the cluster result back to the MAE
+Creating cell clusters from iterative LSI reduced dimensions contained within a MAE and adding the cluster result back to the MAE.
 }
 \author{
 Natalie Fox

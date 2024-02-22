@@ -18,7 +18,7 @@
 #'
 #' @return \linkS4class{MultiAssayExperiment} with a new pseudobulk \linkS4class{SummarizedExperiment} and
 #' columns are added to the \linkS4class{SingleCellExperiment} colData specifying which pseudobulk cell composition.
-#' Lastly, psuedobulk coverage files containing the fragments coordinates are written to file and file names are specified in the pseudobulk \linkS4class{SummarizedExperiment} colData.
+#' Lastly, pseudobulk coverage files containing the fragments coordinates are written to file and file names are specified in the pseudobulk \linkS4class{SummarizedExperiment} colData.
 #' 
 #' @author Natalie Fox
 #' @importFrom BiocParallel bptry bplapply bpparam
