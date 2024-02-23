@@ -49,8 +49,6 @@ addIterativeLSI(
 \item{total.features}{Integer scalar specifying how many features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.}
 
 \item{filter.quantile}{Numeric scalar between 0 and 1 inclusive that indicates the quantile above which features should be removed based on insertion counts prior.}
-
-\item{lsi.method}{Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".}
 }
 \value{
 \linkS4class{MultiAssayExperiment} with iterative LSI results added to the \linkS4class{SingleCellExperiment} reduced dimensions.

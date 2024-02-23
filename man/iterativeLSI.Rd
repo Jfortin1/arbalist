@@ -47,6 +47,8 @@ iterativeLSI(
 \item{total.features}{Integer scalar specifying how many features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.}
 
 \item{filter.quantile}{Numeric scalar between 0 and 1 inclusive that indicates the quantile above which features should be removed based on insertion counts prior.}
+
+\item{outlier.quantiles}{Numeric vector specifying the lower and upper quantiles for filtering cells based on the number of accessible regions.}
 }
 \value{
 A list is returned containing:
