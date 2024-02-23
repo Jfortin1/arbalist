@@ -13,7 +13,7 @@
 #' @param seed Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
 #' @param total.features Integer scalar specifying how many features to consider for use in LSI after ranking the features by the total number of insertions. These features are the only ones used throughout the variance identification and LSI.
 #' @param filter.quantile Numeric scalar between 0 and 1 inclusive that indicates the quantile above which features should be removed based on insertion counts prior.
-#'
+#' @param outlier.quantiles Numeric vector specifying the lower and upper quantiles for filtering cells based on the number of accessible regions.
 #' @return A list is returned containing:
 #' \itemize{
 #' \item \code{embedding}, a matrix containing the iterativeLSI embedding
@@ -110,6 +110,7 @@ iterativeLSI <- function(
 }
 
 #' @importFrom S4Vectors SimpleList
+
 .computeLSI <- function(
     mat, 
     lsi.method = 1,
@@ -209,6 +210,7 @@ iterativeLSI <- function(
   out
 }
 
+#' @importFrom Matrix diag
 .projectLSI <- function(mat, lsi.res, return.model = FALSE, verbose = FALSE){   
   
   require(Matrix)
@@ -252,6 +254,7 @@ iterativeLSI <- function(
   
 }
 
+#' @importFrom Matrix Diagonal
 # num.col and row.sums might not match mat. For example, when normalizing for the projection, mun.col na drun.sums will match the LSI result instead of mat.
 .apply.tf.idf.normalization <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
   if(!is(mat,'sparseMatrix')) {

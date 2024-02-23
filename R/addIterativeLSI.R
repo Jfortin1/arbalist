@@ -6,7 +6,6 @@
 #' @param rank Integer scalar specifying the rank for irlba_realized.
 #' @param iterations Integer scalar specifying number of LSI iterations to perform.
 #' @param num.features Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.
-#' @param lsi.method Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".
 #' @param cluster.method String containing cluster method. Currently "kmeans" is the only supported option.
 #' @param cluster.k Integer scalar specifying how many clusters to use.
 #' @param correlation.cutoff 	Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the corCutOff, it will be excluded from analysis.

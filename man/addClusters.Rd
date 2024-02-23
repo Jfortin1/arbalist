@@ -15,7 +15,7 @@ addClusters(
 )
 }
 \arguments{
-\item{mae}{\linkS4class.}
+\item{mae}{\linkS4class{MultiAssayExperiment}}
 
 \item{name.iterative.lsi}{String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.}
 

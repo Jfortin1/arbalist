@@ -42,7 +42,7 @@ Rcpp::IntegerVector count_fragment_size_distributions(std::string fragment_file)
   }
   
   if(counter.max_size_counted < counter.max_size_seen) {
-    std::printf("Warning: Observed fragment sizes larger than the distribution we are recording. Max fragment size observed is %i\n", counter.max_size_seen);
+    Rcpp::warning("Warning: Observed fragment sizes larger than the distribution we are recording. Max fragment size observed is %i\n", counter.max_size_seen);
   }
   
   Rcpp::IntegerVector res(counter.max_size_counted);
