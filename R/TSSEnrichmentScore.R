@@ -36,7 +36,7 @@ addTSSEnrichmentScores <- function(
     if(is.null(gene.sce.list)) {
       stop(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs'))
     }
-    gene.grs = GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
+    gene.grs <- GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
     if(length(gene.grs) == 0) {
       stop(paste0('There are no interval specified in the rowData of ',experiment.name.for.gene.grs,' so please specify gene.grs'))
     }

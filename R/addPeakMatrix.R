@@ -6,6 +6,7 @@
 #' @param genome.size Integer scalar specifying the effective genome size or the size of hte genome that is mappable to use in MACSr peak calling. See [MACSr::callpeak] for more details.
 #' @param pseudobulk.experiment.name String containing Experiment name for the pseudobulk \linkS4class{SummarizedExperiment} containing colData pointing to coverage files. This experiment can be created from arbalist::addGroupCoverages.
 #' @param sc.experiment.name String containing experiment name for \linkS4class{SingleCellExperiment} with cell barcodes as the rownames.
+#' @param gene.grs A \linkS4class{GRanges}. If the The start coordinate will be used as the transcription start site.
 #' @param reproducibility String that indicates how peak reproducibility should be handled. This string is dynamic and can be a function of n where n is the number of samples being assessed. For example, reproducibility = "2" means at least 2 samples must have a peak call at this locus and reproducibility = "(n+1)/2" means that the majority of samples must have a peak call at this locus.
 #' @param shift Integer scalar specifying how many base pairs to shift each Tn5 insertion. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
 #' @param extsize Integer scalar specifying how manybase pairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
@@ -32,6 +33,7 @@ addPeakMatrix <- function(
     genome.size,
     pseudobulk.experiment.name = 'TileMatrix500_pseudobulk',
     sc.experiment.name = 'TileMatrix500',
+    gene.grs = NULL,
     reproducibility = "2",
     shift = -75,
     extsize = 150,
@@ -147,6 +149,9 @@ addPeakMatrix <- function(
   
   new.mae <- c(mae, 'PeakMatrix'=peak.sce)
   
+  # Add gene info relative to the peaks
+  new.mae <- .peakGeneAnno(new.mae, gene.grs = gene.grs)
+  
   return(new.mae)
 }
 
@@ -233,4 +238,60 @@ addPeakMatrix <- function(
   combined.peaks$groupScoreQuantile <- round(trunc(rank(combined.peaks$replicateScoreQuantile))/length(combined.peaks),3)
   
   combined.peaks
+}
+
+#' @importFrom S4Vectors mcols subjectHits mcols<-
+#' @importFrom GenomicRanges GRanges distanceToNearest resize
+#' @importFrom IRanges overlapsAny
+#' @importFrom BiocGenerics start<- end<-
+.peakGeneAnno <- function(    
+    mae,
+    peak.experiment.name = 'PeakMatrix',
+    experiment.name.for.gene.grs = 'GeneExpressionMatrix',
+    gene.grs = NULL,
+    promoter.region = c(2000, 100)
+    ) {
+  
+  if(is.null(gene.grs)) {
+    gene.sce.list <- findSCE(mae,experiment.name.for.gene.grs)
+    if(is.null(gene.sce.list)) {
+      stop(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs'))
+    }
+    gene.grs <- GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
+    if(length(gene.grs) == 0) {
+      stop(paste0('There are no interval specified in the rowData of ',experiment.name.for.gene.grs,' so please specify gene.grs'))
+    }
+  }
+  
+  gene.sce.list <- findSCE(mae,experiment.name.for.gene.grs)
+  if(is.null(gene.sce.list)) {
+    stop(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs'))
+  }
+  
+  gene.grs <- GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
+  peaks.grs <- rowRanges(mae[[peak.experiment.name]])
+  
+  dist.to.peak.start <- GenomicRanges::distanceToNearest(peaks.grs, GenomicRanges::resize(gene.grs, 1, "start"), ignore.strand = TRUE)
+  mcols(peaks.grs)$distToGeneStart <- mcols(dist.to.peak.start)$distance
+  mcols(peaks.grs)$nearestGene <- rowData(gene.sce.list$sce)$name[subjectHits(dist.to.peak.start)]
+  promoters <- GenomicRanges::resize(gene.grs, 1, "start")
+  idx.grs.reverse <- BiocGenerics::which(strand(promoters) == "-")
+  idx.grs.forward <- BiocGenerics::which(strand(promoters) != "-")
+  start(promoters)[idx.grs.forward] <- start(promoters)[idx.grs.forward] - promoter.region[1]
+  end(promoters)[idx.grs.forward] <- end(promoters)[idx.grs.forward] + promoter.region[2]
+  end(promoters)[idx.grs.reverse] <- end(promoters)[idx.grs.reverse] + promoter.region[1]
+  start(promoters)[idx.grs.reverse] <- start(promoters)[idx.grs.reverse] - promoter.region[2]
+  logical.prompoter.overlap <- overlapsAny(peaks.grs, promoters, ignore.strand = TRUE)
+  logical.gene.overlap <- overlapsAny(peaks.grs, gene.grs, ignore.strand = TRUE)
+  logical.exon.overlap <- overlapsAny(peaks.grs, rowRanges(gene.sce.list$sce), ignore.strand = TRUE)
+  peak.type <- rep("Distal", length(peaks.grs))
+  peak.type[which(logical.gene.overlap & logical.exon.overlap)] <- "Exonic"
+  peak.type[which(logical.gene.overlap & !logical.exon.overlap)] <- "Intronic"
+  peak.type[which(logical.prompoter.overlap)] <- "Promoter"
+  mcols(peaks.grs)$peakType <- peak.type
+
+  rowRanges(mae[[peak.experiment.name]]) <- peaks.grs
+  
+  return(mae)
+  
 }

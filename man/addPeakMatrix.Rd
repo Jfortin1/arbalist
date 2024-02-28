@@ -9,6 +9,7 @@ addPeakMatrix(
   genome.size,
   pseudobulk.experiment.name = "TileMatrix500_pseudobulk",
   sc.experiment.name = "TileMatrix500",
+  gene.grs = NULL,
   reproducibility = "2",
   shift = -75,
   extsize = 150,
@@ -29,6 +30,8 @@ addPeakMatrix(
 \item{pseudobulk.experiment.name}{String containing Experiment name for the pseudobulk \linkS4class{SummarizedExperiment} containing colData pointing to coverage files. This experiment can be created from arbalist::addGroupCoverages.}
 
 \item{sc.experiment.name}{String containing experiment name for \linkS4class{SingleCellExperiment} with cell barcodes as the rownames.}
+
+\item{gene.grs}{A \linkS4class{GRanges}. If the The start coordinate will be used as the transcription start site.}
 
 \item{reproducibility}{String that indicates how peak reproducibility should be handled. This string is dynamic and can be a function of n where n is the number of samples being assessed. For example, reproducibility = "2" means at least 2 samples must have a peak call at this locus and reproducibility = "(n+1)/2" means that the majority of samples must have a peak call at this locus.}
 
