@@ -15,17 +15,17 @@ tssEnrichmentScores(
 )
 }
 \arguments{
-\item{fragment.file}{String specifying fragment file}
+\item{fragment.file}{String specifying fragment file.}
 
-\item{barcodes}{Vector or strings specified the cell barcodes to include from the fragment file}
+\item{barcodes}{Vector or strings specified the cell barcodes to include from the fragment file.}
 
-\item{gene.grs}{GRanges specifying gene where there start coordinate will be used as the TSS}
+\item{gene.grs}{A \linkS4class{GRanges} specifying genes. The start coordinate will be used as the transcription start site.}
 
-\item{window}{Number specifying the size in bp of the TSS window}
+\item{window}{Number specifying the size in bp of the TSS window.}
 
-\item{norm}{Number specifying the size in bp of the flanking region window}
+\item{norm}{Number specifying the size in bp of the flanking region window.}
 
-\item{flank}{Number specifying the bp distance for the flanking region from the TSS}
+\item{flank}{Number specifying the bp distance for the flanking region from the TSS.}
 
 \item{min.norm}{Number specifying the minimum allow for flanking region window. Avoids divide by zero error.}
 }

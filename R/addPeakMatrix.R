@@ -101,10 +101,10 @@ addPeakMatrix <- function(
     BPPARAM = BPPARAM
   ))
   
-  groupPeaks <- groupPeaks[which(unlist(lapply(groupPeaks,length)) > 0)]
+  groupPeaks <- groupPeaks[which(vapply(groupPeaks,length,FUN.VALUE=1L) > 0)]
   
   group.names <- unique(mae[[pseudobulk.experiment.name]]$group)
-  group.names <- names(which(sapply(group.names,function(x) {any(grep(x,names(groupPeaks)))})))
+  group.names <- names(which(vapply(group.names,function(x) {any(grep(x,names(groupPeaks)))},FUN.VALUE=TRUE)))
   names(group.names) <- group.names
   cluster.peak.sets <- bptry(bplapply(group.names, function(x) {
     return(.identifyReproduciblePeaks(groupPeaks[mae[[pseudobulk.experiment.name]]$ID[mae[[pseudobulk.experiment.name]]$group == x]], by = "score", reproducibility = reproducibility, extendSummits=extendSummits))

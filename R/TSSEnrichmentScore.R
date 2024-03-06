@@ -5,7 +5,7 @@
 #' @param mae A \linkS4class{MultiAssayExperiment}
 #' @param experiment.name String specifying the experiment name to add the TSS Enrichment to the colData
 #' @param experiment.name.for.gene.grs String specifying the experiment name to use rowRanges start as for TSS. If this experiment name is not found in mae, then gene.grs must be specified. If both experiment.name.for.gene.grs and gene.grs are specified, then gene.grs takes precendence.
-#' @param gene.grs A \linkS4class{GRanges} specifying genes. The start coordinate will be used as the transcription start site.
+#' @inheritParams tssEnrichmentScores
 #' @param force Logical. If there is already a TSS Enrichment column whether to overwrite it (TRUE) or error (FALSE).
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
 #'
@@ -17,6 +17,10 @@ addTSSEnrichmentScores <- function(
     experiment.name = 'TileMatrix500',
     experiment.name.for.gene.grs = 'GeneExpressionMatrix',
     gene.grs = NULL,
+    window = 101,
+    norm = 100,
+    flank = 2000,
+    min.norm = 0.2,
     force = FALSE,
     BPPARAM = BiocParallel::bpparam()
 ) {
@@ -55,12 +59,20 @@ addTSSEnrichmentScores <- function(
       per.sample.tss.scores <- tssEnrichmentScores(
         fragment.file = fragment.files[sample.name],
         barcodes = as.character(sub('.*#','',rownames(colData(sce)))[colData(sce)$Sample == sample.name]),
-        gene.grs = gene.grs
+        gene.grs = gene.grs,
+        window = window,
+        norm = norm,
+        flank = flank,
+        min.norm = min.norm
       );
       as.numeric(per.sample.tss.scores)
     },
     fragment.files = fragment.files,
     gene.grs = gene.grs,
+    window = window,
+    norm = norm,
+    flank = flank,
+    min.norm = min.norm,
     sce = sce.list$sce,
     BPPARAM = BPPARAM
   ))
@@ -76,12 +88,12 @@ addTSSEnrichmentScores <- function(
 #'
 #' Calculate TSS enrichment scores from one fragment.files.
 #' 
-#' @param fragment.file String specifying fragment file
-#' @param barcodes Vector or strings specified the cell barcodes to include from the fragment file
-#' @param gene.grs GRanges specifying gene where there start coordinate will be used as the TSS
-#' @param window Number specifying the size in bp of the TSS window
-#' @param norm Number specifying the size in bp of the flanking region window
-#' @param flank Number specifying the bp distance for the flanking region from the TSS 
+#' @param fragment.file String specifying fragment file.
+#' @param barcodes Vector or strings specified the cell barcodes to include from the fragment file.
+#' @param gene.grs A \linkS4class{GRanges} specifying genes. The start coordinate will be used as the transcription start site.
+#' @param window Number specifying the size in bp of the TSS window.
+#' @param norm Number specifying the size in bp of the flanking region window.
+#' @param flank Number specifying the bp distance for the flanking region from the TSS.
 #' @param min.norm Number specifying the minimum allow for flanking region window. Avoids divide by zero error.
 #'
 #' @author Natalie Fox

@@ -110,7 +110,6 @@ iterativeLSI <- function(
 }
 
 #' @importFrom S4Vectors SimpleList
-
 .computeLSI <- function(
     mat, 
     lsi.method = 1,

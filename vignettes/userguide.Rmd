@@ -198,7 +198,9 @@ colData(mae[['TileMatrix500_pseudobulk']])
 
 # Peak calling
 
+Peak calling is performed with MACSr. MACS peak calling requires the effective genome size is specified or defaults to human genome. MACS recommends 2.7e9 for the human genome and 1.87e9 for the mouse genome. For arbalist, we do not build in a default because the genome is not required to be specified as part of the structure metadata. However, for this example we will pretend this mock example is a human dataset.
+
 ```{r peaks, eval=FALSE}
-mae <- addPeakMatrix(mae,maw.scatac::getEffectiveGenomeSize(mae[[1]]),output.dir ='.')
+mae <- addPeakMatrix(mae, genome.size = 2.7e9, output.dir = '.')
 mae
 ```

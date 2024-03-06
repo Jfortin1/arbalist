@@ -54,7 +54,6 @@ SEXP apply_bind(Rcpp::List input, bool row) {
     Rcpp::RObject current = input[i];
     collected.push_back(extract_NumericMatrix_shared(current));
   }
-  
   if (row) {
     return new_MatrixChan(tatami::make_DelayedBind<0>(std::move(collected)));
   } else {

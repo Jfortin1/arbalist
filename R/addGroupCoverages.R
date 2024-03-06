@@ -85,12 +85,13 @@ addGroupCoverages <- function(
     
     selected.cells[[group.name]] <- list()
     
-    # There aren't enough cells from individual samples within the group so merge samples for sampling
-    if(any(sapply(x,length) < num.cells.to.sample.from.group.and.sample)) {
-      x.merged <- x[which(sapply(x,length) >= num.cells.to.sample.from.group.and.sample)]
-      x.merged[[length(x.merged)+1]] <- unlist(x[which(sapply(x,length) < num.cells.to.sample.from.group.and.sample)])
+    # If there aren't enough cells from individual samples within the group, merge samples for sampling
+    x.per.sample.length <- vapply(x,length,FUN.VALUE = 1L)
+    if(any(x.per.sample.length < num.cells.to.sample.from.group.and.sample)) {
+      x.merged <- x[which(x.per.sample.length >= num.cells.to.sample.from.group.and.sample)]
+      x.merged[[length(x.merged)+1]] <- unlist(x[which(x.per.sample.length < num.cells.to.sample.from.group.and.sample)])
       x <- x.merged
-      if(any(sapply(x,length) < num.cells.to.sample.from.group.and.sample)) {
+      if(any(vapply(x,length,FUN.VALUE = 1L) < num.cells.to.sample.from.group.and.sample)) {
         x <- list(unlist(x))
       }
       num.cells.to.sample.from.group.and.sample <- ceiling(min.cells/length(x))
