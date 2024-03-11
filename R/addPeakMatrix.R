@@ -155,32 +155,6 @@ addPeakMatrix <- function(
   return(new.mae)
 }
 
-#' @importFrom SingleCellExperiment SingleCellExperiment
-#' @importFrom SummarizedExperiment SummarizedExperiment rowRanges<-
-#' @importFrom methods as
-.getSCEFromH5List <- function(h5.res.list, grs) {
-  
-  # Combined the per sample results into one matrix
-  if(length(h5.res.list) == 1) {
-    mat <- h5.res.list[[1]]
-  } else {
-    mat <- AmalgamatedArray(h5.res.list, along=2)
-  }
-    
-  # Map the cells back to samples and update colnames to include sample names
-  cell.to.sample <- unlist(sapply(names(h5.res.list),function(x) {rep(x,ncol(h5.res.list[[x]]))}))
-  
-  # Create a SingleCellExperiment 
-  mat.list <- list(counts=mat)
-  se <-  SummarizedExperiment(mat.list)
-  rowRanges(se) <- grs
-  colnames(se) <- paste0(cell.to.sample,'#',colnames(se))
-  colData(se)$Sample <- as.character(cell.to.sample)
-  sce <- as(se, 'SingleCellExperiment')
-  
-  return(sce)
-}
-
 #' @importFrom S4Vectors queryHits subjectHits 
 #' @importFrom IRanges overlapsAny
 #' @importFrom GenomicRanges resize
