@@ -1,6 +1,6 @@
 Package: arbalist
-Version: 0.1.2
-Date: 2024-03-11
+Version: 0.1.3
+Date: 2024-03-22
 Title: Bringing ArchR to Bioconductor
 Description: 
     Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
@@ -32,14 +32,12 @@ Imports:
     matrixStats,
     methods,
     MultiAssayExperiment,
-    nabor,
     S4Vectors,
     scran,
     Seurat,
     SingleCellExperiment,
     SummarizedExperiment,
     stats,
-    uwot,
     ggplot2,
     ggpointdensity,
     pheatmap,

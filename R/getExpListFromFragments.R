@@ -40,6 +40,10 @@
   # check if the hdf5 files already exist
   matrix.name <- paste0('TileMatrix',tile.size)
   output.file.names <- paste0(output.dir,'/',matrix.name,'_',names(fragment.files),'.h5')
+  if(any(table(output.file.names) > 1)) {
+    # if two file names are the same then add a random component to the file name.
+    output.file.names <- tempfile(pattern=paste0(matrix.name,'_',names(fragment.files),'_'),tmpdir = output.dir, fileext='.h5')
+  }
   names(output.file.names) <- names(fragment.files)
   if(any(file.exists(output.file.names))) {
     stop(paste0(output.file.names[which(file.exists(output.file.names))[1]],' already exists. We do not want to overwrite the file in case it is being used. Either remove the file if you think it is safe to do so or specify a different output.dir.'))
@@ -47,7 +51,7 @@
   
   # For each fragment.file create a tile matrix hdf5 file
   # Parallelizing per sample
-  res.list <- bptry(bplapply(names(fragment.files), .saveTileMatrixCall, fragment.files=fragment.files, output.file.names=output.file.names, tile.size=tile.size, seq.lengths=seq.lengths, barcodes.list=barcodes.list, BPPARAM = BPPARAM))
+  res.list <- bptry(bplapply(seq_along(fragment.files), .saveTileMatrixCall, fragment.files=fragment.files, output.file.names=output.file.names, tile.size=tile.size, seq.lengths=seq.lengths, barcodes.list=barcodes.list, BPPARAM = BPPARAM))
   tile.res.list <- sapply(res.list,function(x){x$counts})
   names(tile.res.list) <- names(fragment.files)
   tile.grs <- res.list[[1]]$tiles
@@ -65,13 +69,18 @@
     # check if the hdf5 files already exist
     output.file.names <- paste0(output.dir,'/',matrix.name,'_',names(fragment.files),'.h5')
     names(output.file.names) <- names(fragment.files)
+    if(any(table(output.file.names) > 1)) {
+      # if two file names are the same then add a random component to the file name.
+      output.file.names <- tempfile(pattern=paste0(matrix.name,'_',names(fragment.files),'_'),tmpdir = output.dir, fileext='.h5')
+    }
+    names(output.file.names) <- names(fragment.files)
     if(any(file.exists(output.file.names))) {
       stop(paste0(output.file.names[which(file.exists(output.file.names))[1]],' already exists. We do not want to overwrite the file in case it is being used. Either remove the file if you think it is safe to do so or specify a different output.dir.'))
     }
-    
+
     # For each fragment.file create a gene score matrix hdf5 file
     # Parallelizing per sample
-    gs.res.list <- bptry(bplapply(names(fragment.files), .saveRegionMatrixCall, fragment.files=fragment.files, output.file.names=output.file.names, regions=gene.grs, barcodes.list=barcodes.list, BPPARAM = BPPARAM))
+    gs.res.list <- bptry(bplapply(seq_along(fragment.files), .saveRegionMatrixCall, fragment.files=fragment.files, output.file.names=output.file.names, regions=gene.grs, barcodes.list=barcodes.list, BPPARAM = BPPARAM))
     names(gs.res.list) <- names(fragment.files)
     
     # Create a SingleCellExperiment for the Gene regions (ATAC-seq results)

@@ -4,12 +4,24 @@
 \alias{plotTSSenrichmentVsNumFragments}
 \title{Create per sample TSS enrichment plot}
 \usage{
-plotTSSenrichmentVsNumFragments(mae, sample.name)
+plotTSSenrichmentVsNumFragments(
+  mae,
+  sample.name,
+  tss.threshold = NULL,
+  nfrag.threshold = NULL,
+  max.nfrag = NULL
+)
 }
 \arguments{
 \item{mae}{\linkS4class{MultiAssayExperiment} containing a "TileMatrix500" experiment with "TSSEnrichment" and "fragments" columns in the colData.}
 
-\item{sample.name}{String speciying the sample name to plot.}
+\item{sample.name}{String specifying the sample name to plot.}
+
+\item{tss.threshold}{Numeric scalar specifying the TSS enrichment score threshold or horizontal line to mark on the plot.}
+
+\item{nfrag.threshold}{Integer scalar specifying the number of fragments threshold or vertical line to mark on the plot.}
+
+\item{max.nfrag}{Integer scalar specifying the maximum number of fragments to plot. Cells with a greater number of fragments will be plotted at this value.}
 }
 \description{
 Create a per sample quality control plot looking at TSS Enrichment compared to number unique fragments.

@@ -6,18 +6,20 @@
 \usage{
 addClusters(
   mae,
-  name.iterative.lsi = "iterativeLSI",
+  name.reduced.dim = "iterativeLSI",
   clusters.colname = "Clusters",
   cluster.prefix = "C",
   method = "Seurat",
   dims.to.use = NULL,
+  seed = 17,
+  num.cells.to.sample = NULL,
   force = FALSE
 )
 }
 \arguments{
 \item{mae}{\linkS4class{MultiAssayExperiment}}
 
-\item{name.iterative.lsi}{String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.}
+\item{name.reduced.dim}{String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.}
 
 \item{clusters.colname}{String containing the column name to save the clusters as in the experiment column data.}
 
@@ -25,7 +27,11 @@ addClusters(
 
 \item{method}{String containing the method for creating clusters. Valid options are "Seurat" or "scran".}
 
-\item{dims.to.use}{Numeric vector or list of numeric vectors specifying which of the columns to use from the reduced dimensions.}
+\item{dims.to.use}{Numeric vector or list of numeric vectors specifying which of the columns to use from the reduced dimensions. Columns are the reduced dimension features.}
+
+\item{seed}{Integer scalar for random number generation required for sampling cells to cluster}
+
+\item{num.cells.to.sample}{Integer scalar specifying the number of cells to sample for subsampling of cells when clustering.}
 
 \item{force}{Logical whether to overwrite existing columns with clusters.colname column name.}
 }

@@ -23,7 +23,7 @@
 #' @author Natalie Fox
 #' @importFrom BiocParallel bptry bplapply bpparam
 #' @importFrom SummarizedExperiment colData rowRanges
-#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap
+#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap experiments
 #' @importFrom S4Vectors DataFrame metadata metadata<-
 #' @importFrom SingleCellExperiment altExp altExpNames
 #' @importFrom beachmat initializeCpp flushMemoryCache

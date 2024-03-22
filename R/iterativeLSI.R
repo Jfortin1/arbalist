@@ -18,7 +18,7 @@
 #' \itemize{
 #' \item \code{embedding}, a matrix containing the iterativeLSI embedding
 #' \item \code{projection}, 
-#' \item \code{subset}, a vectory of indices specifying the selected subset of features
+#' \item \code{subset}, a vector of indices specifying the selected subset of features
 #' }
 #' 
 
@@ -110,6 +110,7 @@ iterativeLSI <- function(
 }
 
 #' @importFrom S4Vectors SimpleList
+#' @importFrom stats quantile
 .computeLSI <- function(
     mat, 
     lsi.method = 1,

@@ -25,6 +25,7 @@
 #' @importFrom S4Vectors DataFrame
 #' @importFrom SingleCellExperiment altExp<-
 #' @importFrom SummarizedExperiment SummarizedExperiment colData colData<-
+#' @importFrom BiocParallel bpparam
 #' @export
 createArbalistMAE <- function(
   sample.names,

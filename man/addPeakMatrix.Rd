@@ -25,7 +25,7 @@ addPeakMatrix(
 \arguments{
 \item{mae}{\linkS4class{MultiAssayExperiment}.}
 
-\item{genome.size}{Integer scalar specifying the effective genome size or the size of hte genome that is mappable to use in MACSr peak calling. See [MACSr::callpeak] for more details.}
+\item{genome.size}{Integer scalar specifying the effective genome size or the size of the genome that is mappable to use in MACSr peak calling. See [MACSr::callpeak] for more details.}
 
 \item{pseudobulk.experiment.name}{String containing Experiment name for the pseudobulk \linkS4class{SummarizedExperiment} containing colData pointing to coverage files. This experiment can be created from arbalist::addGroupCoverages.}
 
@@ -37,7 +37,7 @@ addPeakMatrix(
 
 \item{shift}{Integer scalar specifying how many base pairs to shift each Tn5 insertion. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.}
 
-\item{extsize}{Integer scalar specifying how manybase pairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.}
+\item{extsize}{Integer scalar specifying how many base pairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.}
 
 \item{method}{String containing the method to use for significance testing in MACS2. Options are "p" for p-value and "q" for q-value. When combined with cutOff this gives the method and significance threshold for peak calling (see MACS2 documentation).}
 

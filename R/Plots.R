@@ -3,25 +3,36 @@
 #' Create a per sample quality control plot looking at TSS Enrichment compared to number unique fragments.
 #'
 #' @param mae \linkS4class{MultiAssayExperiment} containing a "TileMatrix500" experiment with "TSSEnrichment" and "fragments" columns in the colData.
-#' @param sample.name String speciying the sample name to plot.
+#' @param sample.name String specifying the sample name to plot.
+#' @param tss.threshold Numeric scalar specifying the TSS enrichment score threshold or horizontal line to mark on the plot.
+#' @param nfrag.threshold Integer scalar specifying the number of fragments threshold or vertical line to mark on the plot.
+#' @param max.nfrag Integer scalar specifying the maximum number of fragments to plot. Cells with a greater number of fragments will be plotted at this value.
 #'
 #' @author Natalie Fox
-#' @importFrom ggplot2 ggplot aes theme_classic xlab ylab ggtitle
+#' @importFrom ggplot2 ggplot aes theme_classic xlab ylab ggtitle geom_hline geom_vline
 #' @importFrom ggpointdensity geom_pointdensity
 #' @importFrom viridis scale_color_viridis
 #' @importFrom SummarizedExperiment colData
 #' @export
-plotTSSenrichmentVsNumFragments <- function(mae, sample.name) {
+plotTSSenrichmentVsNumFragments <- function(mae, sample.name, tss.threshold = NULL, nfrag.threshold = NULL, max.nfrag = NULL) {
   tile.matrix.coldata <- colData(findSCE(mae,'TileMatrix500')$sce)
   plot.data <- as.data.frame(tile.matrix.coldata[tile.matrix.coldata$Sample == sample.name,])
   plot.data$fragments <- log10(plot.data$fragments)
 
-  plot.data$fragments <- pmin(plot.data$fragments,5) + rnorm(length(plot.data$fragments), sd = 0.00001)
-  plot.data$TSSEnrichment <- plot.data$TSSEnrichment + rnorm(length(plot.data$fragments), sd = 0.00001)
+  if(!is.null(max.nfrag)) {
+    plot.data$fragments <- pmin(plot.data$fragments, max.nfrag)
+  }
   
-  ggplot(plot.data,aes(y=TSSEnrichment,x=fragments)) + 
+  plot <- ggplot(plot.data,aes(y=TSSEnrichment,x=fragments)) + 
     geom_pointdensity() + theme_classic() + ylab('TSS Enrichment') +
     xlab(bquote(log[10] ~ "Number of Fragments")) + scale_color_viridis() + ggtitle(sample.name)
+  if(!is.null(tss.threshold)) {
+    plot <- plot + geom_hline(yintercept=tss.threshold, linetype="dashed")
+  }
+  if(!is.null(nfrag.threshold)) {
+    plot <- plot + geom_vline(xintercept=log10(nfrag.threshold), linetype="dashed")
+  }
+  plot
 }
 
 #' Plot Fragment size distribution

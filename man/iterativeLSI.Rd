@@ -55,7 +55,7 @@ A list is returned containing:
 \itemize{
 \item \code{embedding}, a matrix containing the iterativeLSI embedding
 \item \code{projection}, 
-\item \code{subset}, a vectory of indices specifying the selected subset of features
+\item \code{subset}, a vector of indices specifying the selected subset of features
 }
 }
 \description{

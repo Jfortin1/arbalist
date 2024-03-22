@@ -3,11 +3,13 @@
 #' Creating cell clusters from iterative LSI reduced dimensions contained within a MAE and adding the cluster result back to the MAE.
 #' 
 #' @param mae \linkS4class{MultiAssayExperiment}
-#' @param name.iterative.lsi String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.
+#' @param name.reduced.dim String containing the name of the reduced dimensions to create clusters from. If there are multiple reduced dimensions in the MultiAssayExperiment with the same name, then specify the experiment name in the vector's names. This can also be a vector or strings if you want to cluster based on the combination of reduced dimensions.
 #' @param clusters.colname String containing the column name to save the clusters as in the experiment column data.
 #' @param cluster.prefix String to prefix to the cluster number for saving in colData result.
 #' @param method String containing the method for creating clusters. Valid options are "Seurat" or "scran".
-#' @param dims.to.use Numeric vector or list of numeric vectors specifying which of the columns to use from the reduced dimensions.
+#' @param dims.to.use Numeric vector or list of numeric vectors specifying which of the columns to use from the reduced dimensions. Columns are the reduced dimension features.
+#' @param seed Integer scalar for random number generation required for sampling cells to cluster
+#' @param num.cells.to.sample Integer scalar specifying the number of cells to sample for subsampling of cells when clustering.
 #' @param force Logical whether to overwrite existing columns with clusters.colname column name.
 #' 
 #' @return A \linkS4class{MultiAssayExperiment} with cluster column added to the experiment colData.
@@ -20,31 +22,35 @@
 #' @importFrom stats rnorm
 addClusters <- function(
   mae,
-  name.iterative.lsi = "iterativeLSI",
+  name.reduced.dim = "iterativeLSI",
   clusters.colname = "Clusters",
   cluster.prefix = "C",
   method = "Seurat",
   dims.to.use = NULL,
+  seed = 17,
+  num.cells.to.sample = NULL,
   force = FALSE
 ) {
   
-  # retrieve the reduced dimension (probably iterative lsi) matrix from the MAE
+  # retrieve the reduced dimension (probably iterative LSI) matrix from the MAE
   reduced.dim.list <- list()
-  for(i in name.iterative.lsi) {
+  for(i in name.reduced.dim) {
     reduced.dim.list[[i]] <- findReducedDimRes(mae,i)
   }
 
+  # if dims.to.use is set, filter to the specified dimensions for the first reduced dimension specified
   if(is.null(dims.to.use)) {
-    reduced.dim.matrix <- reduced.dim.list[[1]]$matrix;
+    reduced.dim.matrix <- reduced.dim.list[[1]]$matrix
   } else if(is(dims.to.use,'list')) {
     if(length(dims.to.use) != length(reduced.dim.list)) {
-      stop('if including multiple dim.to.use vectors then there must be the same number of entries in the list as values in name.iterative.lsi')
+      stop('if including multiple dim.to.use vectors then there must be the same number of entries in the list as values in name.reduced.dim')
     }
-    reduced.dim.matrix <- reduced.dim.list[[1]]$matrix[,dims.to.use[[1]]];
+    reduced.dim.matrix <- reduced.dim.list[[1]]$matrix[,dims.to.use[[1]]]
   } else {
-    reduced.dim.matrix <- reduced.dim.list[[1]]$matrix[,dims.to.use];
+    reduced.dim.matrix <- reduced.dim.list[[1]]$matrix[,dims.to.use]
   }
   
+  # if more than one reduced dimension specified then combine them into one matrix (account for dims.to.use)
   if(length(reduced.dim.list) > 1) {
     for(i in 2:length(reduced.dim.list)) {
       if(nrow(reduced.dim.matrix) != nrow(reduced.dim.list[[i]]$matrix)) {
@@ -53,10 +59,20 @@ addClusters <- function(
       if(is.null(dims.to.use)) {
         reduced.dim.matrix <- cbind(reduced.dim.matrix,reduced.dim.list[[i]]$matrix)
       } else if(is(dims.to.use,'list')) {
-        reduced.dim.matrix <- cbind(reduced.dim.matrix,reduced.dim.list[[i]]$matrix[,dims.to.use[[i]]]);
+        reduced.dim.matrix <- cbind(reduced.dim.matrix,reduced.dim.list[[i]]$matrix[,dims.to.use[[i]]])
       } else {
-        reduced.dim.matrix <- cbind(reduced.dim.matrix,reduced.dim.list[[i]]$matrix[,dims.to.use]);
+        reduced.dim.matrix <- cbind(reduced.dim.matrix,reduced.dim.list[[i]]$matrix[,dims.to.use])
       }
+    }
+  }
+  
+  # Sample cells for clustering
+  set.seed(seed)
+  if(!is.null(num.cells.to.sample)) {
+    if(num.cells.sample <- nrow(reduced.dim.matrix)) {
+      reduced.dim.matrix.sampled <- reduced.dim.matrix[,sample(seq_len(nrow(reduced.dim.matrix)),num.cells.to.sample)]
+    } else {
+      stop(paste0('num.cells.sample (',num.cells.to.sample,') needs to be less than the number of cells in the reduced dimentison after dim.to.use filtering (',nrow(reduced.dim.matrix),').'))
     }
   }
   

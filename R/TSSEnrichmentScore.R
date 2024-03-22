@@ -4,7 +4,7 @@
 #' 
 #' @param mae A \linkS4class{MultiAssayExperiment}
 #' @param experiment.name String specifying the experiment name to add the TSS Enrichment to the colData
-#' @param experiment.name.for.gene.grs String specifying the experiment name to use rowRanges start as for TSS. If this experiment name is not found in mae, then gene.grs must be specified. If both experiment.name.for.gene.grs and gene.grs are specified, then gene.grs takes precendence.
+#' @param experiment.name.for.gene.grs String specifying the experiment name to use rowRanges start as for TSS. If this experiment name is not found in mae, then gene.grs must be specified. If both experiment.name.for.gene.grs and gene.grs are specified, then gene.grs takes precedence.
 #' @inheritParams tssEnrichmentScores
 #' @param force Logical. If there is already a TSS Enrichment column whether to overwrite it (TRUE) or error (FALSE).
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
@@ -55,7 +55,7 @@ addTSSEnrichmentScores <- function(
   
   tss.scores <- bptry(bplapply(
     names(fragment.files), 
-    function(sample.name, fragment.files, gene.grs, sce) {
+    function(sample.name, fragment.files, gene.grs, window,norm, flank, min.norm, sce) {
       per.sample.tss.scores <- tssEnrichmentScores(
         fragment.file = fragment.files[sample.name],
         barcodes = as.character(sub('.*#','',rownames(colData(sce)))[colData(sce)$Sample == sample.name]),

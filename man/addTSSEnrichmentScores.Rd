@@ -22,7 +22,7 @@ addTSSEnrichmentScores(
 
 \item{experiment.name}{String specifying the experiment name to add the TSS Enrichment to the colData}
 
-\item{experiment.name.for.gene.grs}{String specifying the experiment name to use rowRanges start as for TSS. If this experiment name is not found in mae, then gene.grs must be specified. If both experiment.name.for.gene.grs and gene.grs are specified, then gene.grs takes precendence.}
+\item{experiment.name.for.gene.grs}{String specifying the experiment name to use rowRanges start as for TSS. If this experiment name is not found in mae, then gene.grs must be specified. If both experiment.name.for.gene.grs and gene.grs are specified, then gene.grs takes precedence.}
 
 \item{gene.grs}{A \linkS4class{GRanges} specifying genes. The start coordinate will be used as the transcription start site.}
 
