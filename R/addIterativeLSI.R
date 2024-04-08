@@ -1,4 +1,6 @@
 #' Add new iterative LSI embeddings to MultiAssayExperiment
+#' 
+#' Calculate iterative LSI dimensionality reduction and add the embedding to the reduceDim field of the specified experiment.
 #'
 #' @param mae \linkS4class{MultiAssayExperiment} 
 #' @param experiment.name String containing the name of the experiment to create the embedding from and add reduced dimensions to.
@@ -26,7 +28,8 @@ addIterativeLSI <- function(
   seed = 5,
   total.features = 500000,
   filter.quantile = 0.995,
-  outlier.quantiles = c(0.02, 0.98)
+  outlier.quantiles = c(0.02, 0.98),
+  binarize = TRUE
 ) {
 
   # Find the experiment result

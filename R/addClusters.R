@@ -10,6 +10,7 @@
 #' @param dims.to.use Numeric vector or list of numeric vectors specifying which of the columns to use from the reduced dimensions. Columns are the reduced dimension features.
 #' @param seed Integer scalar for random number generation required for sampling cells to cluster
 #' @param num.cells.to.sample Integer scalar specifying the number of cells to sample for subsampling of cells when clustering.
+#' @param knn.k Integer scalar specifying the number of nearest neighbors to use during assigning clusters to the cells not subsampled.
 #' @param force Logical whether to overwrite existing columns with clusters.colname column name.
 #' 
 #' @return A \linkS4class{MultiAssayExperiment} with cluster column added to the experiment colData.
@@ -20,6 +21,7 @@
 #' @importFrom SingleCellExperiment altExp reducedDim<- reducedDim altExpNames altExp<- reducedDimNames
 #' @importFrom SummarizedExperiment colData colData<-
 #' @importFrom stats rnorm
+#' @importFrom nabor knn
 addClusters <- function(
   mae,
   name.reduced.dim = "iterativeLSI",
@@ -29,6 +31,7 @@ addClusters <- function(
   dims.to.use = NULL,
   seed = 17,
   num.cells.to.sample = NULL,
+  knn.k = 10,
   force = FALSE
 ) {
   
@@ -68,15 +71,18 @@ addClusters <- function(
   
   # Sample cells for clustering
   set.seed(seed)
+  estimating.clusters <- FALSE
   if(!is.null(num.cells.to.sample)) {
-    if(num.cells.sample <- nrow(reduced.dim.matrix)) {
-      reduced.dim.matrix.sampled <- reduced.dim.matrix[,sample(seq_len(nrow(reduced.dim.matrix)),num.cells.to.sample)]
+    if(num.cells.to.sample < nrow(reduced.dim.matrix)) {
+      reduced.dim.matrix.all <- reduced.dim.matrix
+      reduced.dim.matrix <- reduced.dim.matrix[sample(seq_len(nrow(reduced.dim.matrix)),num.cells.to.sample),]
+      estimating.clusters <- TRUE
     } else {
       stop(paste0('num.cells.sample (',num.cells.to.sample,') needs to be less than the number of cells in the reduced dimentison after dim.to.use filtering (',nrow(reduced.dim.matrix),').'))
     }
   }
   
-  if(grep('seurat',tolower(method))) {
+  if(any(grep('seurat',tolower(method)))) {
     
     # create a fake matrix to fill the input data slot to represent the cell dimension
     mat.fake <- matrix(rnorm(nrow(reduced.dim.matrix) * 3, 10), ncol = nrow(reduced.dim.matrix), nrow = 3)
@@ -93,13 +99,25 @@ addClusters <- function(
     clust <- seurat.obj@meta.data[,ncol(seurat.obj@meta.data)]
     clust <- paste0(cluster.prefix,match(clust, unique(clust)))
     names(clust) <- rownames(reduced.dim.matrix)
-    clust <- clust[rownames(reduced.dim.matrix)]
 
-  } else if(grep('seurat',tolower(method))) {
+  } else if(any(grep('scran',tolower(method)))) {
+    
     g <- scran::buildSNNGraph(x = t(reduced.dim.matrix), d = ncol(reduced.dim.matrix))
     clust <- paste0(cluster.prefix,igraph::cluster_walktrap(g)$membership)
+    names(clust) <- rownames(reduced.dim.matrix)
+    
   } else {
     stop(paste0(method,' is not one of the current clustering method options. Try "Seurat" or "scran".'))
+  }
+  
+  # if subsampled the cells then estimate the clusters for the remaining cells
+  if(estimating.clusters) {
+    missing.clusters <- setdiff(rownames(reduced.dim.matrix.all),rownames(reduced.dim.matrix))
+    # calculate the k nearest neighbors
+    knn.idx <- nabor::knn(data = reduced.dim.matrix, query = reduced.dim.matrix.all[missing.clusters,], k = knn.k)$nn.idx
+    # find the most common cluster classificaiton in the nearest neighbors
+    clust.estimated <- apply(knn.idx, 1, function(x) { names(rev(sort(table(clust[x]))))[1] })
+    names(clust.estimated) <- missing.clusters
   }
   
   # save the new reduced dimensions to the MAE
@@ -108,15 +126,23 @@ addClusters <- function(
       if(clusters.colname %in% colnames(colData(mae[[reduced.dim.list[[i]]$exp.idx]])) && !force) {
         stop(paste0(clusters.colname,' is already a column name in ',names(mae)[reduced.dim.list[[i]]$exp.idx],' experiment colData. Set force = TRUE if you want to overwrite it.'))
       }
-      colData(mae[[reduced.dim.list[[i]]$exp.idx]])[,clusters.colname] <- as.character(clust)
+      colData(mae[[reduced.dim.list[[i]]$exp.idx]])[,clusters.colname] <- rep(NA,nrow(colData(mae[[reduced.dim.list[[i]]$exp.idx]])))
+      colData(mae[[reduced.dim.list[[i]]$exp.idx]])[names(clust),clusters.colname] <- as.character(clust)
+      if(estimating.clusters) {
+        colData(mae[[reduced.dim.list[[i]]$exp.idx]])[names(clust.estimated),clusters.colname] <- as.character(clust.estimated)
+      }
     } else {
       if(clusters.colname %in% colnames(colData(altExp(mae[[reduced.dim.list[[i]]$exp.idx]], reduced.dim.list[[i]]$alt.exp.name))) && !force) {
         stop(paste0(clusters.colname,' is already a column name in ',names(mae)[reduced.dim.list[[i]]$exp.idx],' experiment colData. Set force = TRUE if you want to overwrite it.'))
       }
-      colData(altExp(mae[[reduced.dim.list[[i]]$exp.idx]], reduced.dim.list[[i]]$alt.exp.name))[,clusters.colname] <- as.character(clust)
+      colData(altExp(mae[[reduced.dim.list[[i]]$exp.idx]], reduced.dim.list[[i]]$alt.exp.name))[,clusters.colname] <- rep(NA,nrow(colData(altExp(mae[[reduced.dim.list[[i]]$exp.idx]], reduced.dim.list[[i]]$alt.exp.name))))
+      colData(altExp(mae[[reduced.dim.list[[i]]$exp.idx]], reduced.dim.list[[i]]$alt.exp.name))[names(clust),clusters.colname] <- as.character(clust)
+      if(estimating.clusters) {
+        colData(altExp(mae[[reduced.dim.list[[i]]$exp.idx]], reduced.dim.list[[i]]$alt.exp.name))[names(clust.estimated),clusters.colname] <- as.character(clust.estimated)
+      }
     }
   }
   
   mae
-  
+
 }

@@ -13,6 +13,7 @@ addClusters(
   dims.to.use = NULL,
   seed = 17,
   num.cells.to.sample = NULL,
+  knn.k = 10,
   force = FALSE
 )
 }
@@ -32,6 +33,8 @@ addClusters(
 \item{seed}{Integer scalar for random number generation required for sampling cells to cluster}
 
 \item{num.cells.to.sample}{Integer scalar specifying the number of cells to sample for subsampling of cells when clustering.}
+
+\item{knn.k}{Integer scalar specifying the number of nearest neighbors to use during assigning clusters to the cells not subsampled.}
 
 \item{force}{Logical whether to overwrite existing columns with clusters.colname column name.}
 }

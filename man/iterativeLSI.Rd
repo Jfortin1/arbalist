@@ -2,7 +2,7 @@
 % Please edit documentation in R/iterativeLSI.R
 \name{iterativeLSI}
 \alias{iterativeLSI}
-\title{Create iterative LSI embeddings}
+\title{Calculate iterative LSI dimensionality reduction}
 \usage{
 iterativeLSI(
   x,
@@ -18,7 +18,8 @@ iterativeLSI(
   seed = 5,
   total.features = 5e+05,
   filter.quantile = 0.995,
-  outlier.quantiles = c(0.02, 0.98)
+  outlier.quantiles = c(0.02, 0.98),
+  binarize = TRUE
 )
 }
 \arguments{
@@ -36,7 +37,7 @@ iterativeLSI(
 
 \item{cluster.k}{Integer scalar specifying how many clusters to use.}
 
-\item{correlation.cutoff}{Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the corCutOff, it will be excluded from analysis.}
+\item{correlation.cutoff}{Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.}
 
 \item{scale.to}{Numeric scalar specifying the center for TF-IDF normalization.}
 
@@ -49,6 +50,8 @@ iterativeLSI(
 \item{filter.quantile}{Numeric scalar between 0 and 1 inclusive that indicates the quantile above which features should be removed based on insertion counts prior.}
 
 \item{outlier.quantiles}{Numeric vector specifying the lower and upper quantiles for filtering cells based on the number of accessible regions.}
+
+\item{binarize}{Logical specifying whether to binarize the matrix while creating iterative LSI reduced dimensions.}
 }
 \value{
 A list is returned containing:
@@ -59,13 +62,7 @@ A list is returned containing:
 }
 }
 \description{
-Create iterative LSI embeddings
-}
-\examples{
-\dontrun{
-mae <- maw.scatac::importScAtac('FRS15024')
-res <- iterativeLSI(MultiAssayExperiment::assay(mae[[1]]))
-}
+Calculate iterative LSI dimensionality reduction
 }
 \author{
 Natalie Fox

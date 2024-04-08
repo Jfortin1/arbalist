@@ -173,7 +173,7 @@ addGroupCoverages <- function(
 
   if(!skip.se.creation) {
     beachmat::flushMemoryCache()
-    ptr <- beachmat::initializeCpp(x, memorize=TRUE)
+    ptr <- beachmat::initializeCpp(x, memorize=FALSE)
     # Create matrix for pseudobulk experiment
     for(i in 1:nrow(replicates.matrix.coldata)) {
       output.file <- replicates.matrix.coldata$coverage.file[i]
