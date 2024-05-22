@@ -5,7 +5,7 @@
 #include <iostream>
 
 //[[Rcpp::export(rng=false)]]
-Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, int nthreads) {
+Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, int nthreads, bool binarize) {
     auto shared = extract_NumericMatrix_shared(input);
     int NR = shared->nrow();
     int NC = shared->ncol();
@@ -26,7 +26,13 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
                     auto ptr = buffer.data() + r * ngroups;
                     auto range = wrk->fetch(r, vbuffer.data(), ibuffer.data());
                     for (int i = 0; i < range.number; i++) {
+                      if(binarize) {
+                          if(range.value[i] > 0) {
+                              ptr[grouping[range.index[i]]] += 1;
+                          }
+                      } else {
                         ptr[grouping[range.index[i]]] += range.value[i];
+                      }
                   }
               }
 
@@ -36,7 +42,13 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
                   auto ptr = buffer.data() + r * ngroups;
                   auto found = wrk->fetch(r, vbuffer.data());
                   for (int i = 0; i < NC; i++) {
-                      ptr[grouping[i]] += found[i];
+                      if(binarize) {
+                          if(found[i] > 0) {
+                            ptr[grouping[i]] += 1;
+                          }
+                      } else {
+                          ptr[grouping[i]] += found[i];
+                      }
                   }
               }
           }
@@ -71,7 +83,13 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
                   auto range = wrk->fetch(c, vbuffer.data(), ibuffer.data());
                   auto ptr = doutput.data() + grouping[c] * NR;
                   for (int i = 0; i < range.number; i++) {
-                      ptr[range.index[i]] += range.value[i];
+                      if(binarize) {
+                          if(range.index[i] > 0) {
+                              ptr[range.index[i]] += 1;
+                          }
+                      } else {
+                          ptr[range.index[i]] += range.value[i];
+                      }
                   }
               }
           } else {
@@ -80,12 +98,17 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
                   auto found = wrk->fetch(c, vbuffer.data());
                   auto ptr = doutput.data() + grouping[c] * NR;
                   for (int i = 0; i < NR; i++) {
-                      ptr[start + i] += found[i];
+                      if(binarize) {
+                          if(found[i] > 0) {
+                              ptr[start + i] += 1;
+                          }
+                      } else {
+                        ptr[start + i] += found[i];
+                      }
                   }
               }
           }
       }, NR, nthreads);
-
         // Copying values over.
         for (int c = 0; c < ngroups; ++c) {
             for (int t = 0; t < nthreads; ++t) {

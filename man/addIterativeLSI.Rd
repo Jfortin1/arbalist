@@ -11,6 +11,7 @@ addIterativeLSI(
   rank = 30,
   iterations = 2,
   num.features = 25000,
+  lsi.method = 1,
   cluster.method = "kmeans",
   cluster.k = 20,
   correlation.cutoff = 0.75,
@@ -35,6 +36,8 @@ addIterativeLSI(
 \item{iterations}{Integer scalar specifying number of LSI iterations to perform.}
 
 \item{num.features}{Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.}
+
+\item{lsi.method}{Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".}
 
 \item{cluster.method}{String containing cluster method. Currently "kmeans" is the only supported option.}
 

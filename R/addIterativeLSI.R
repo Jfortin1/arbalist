@@ -20,6 +20,7 @@ addIterativeLSI <- function(
   rank = 30,
   iterations = 2,
   num.features = 25000,
+  lsi.method = 1,
   cluster.method = "kmeans",
   cluster.k = 20,
   correlation.cutoff = 0.75,
@@ -47,7 +48,6 @@ addIterativeLSI <- function(
   
   res <- iterativeLSI(
     x = assay(se),
-    rank = rank,
     iterations = iterations,
     num.features = num.features,
     cluster.method = cluster.method,

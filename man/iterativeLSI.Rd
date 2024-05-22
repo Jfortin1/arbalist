@@ -6,6 +6,7 @@
 \usage{
 iterativeLSI(
   x,
+  col.subset = NULL,
   rank = 30,
   iterations = 2,
   num.features = 25000,
@@ -23,7 +24,9 @@ iterativeLSI(
 )
 }
 \arguments{
-\item{x}{input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features}
+\item{x}{input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features.}
+
+\item{col.subset}{Integer vector specifying the subset of the columns to include in the iterative LSI calculations.}
 
 \item{rank}{Integer scalar specifying the rank for irlba_realized.}
 

@@ -11,14 +11,15 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // aggregate_counts
-Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, int nthreads);
-RcppExport SEXP _arbalist_aggregate_counts(SEXP inputSEXP, SEXP groupingSEXP, SEXP nthreadsSEXP) {
+Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, int nthreads, bool binarize);
+RcppExport SEXP _arbalist_aggregate_counts(SEXP inputSEXP, SEXP groupingSEXP, SEXP nthreadsSEXP, SEXP binarizeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
     Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type grouping(groupingSEXP);
     Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(aggregate_counts(input, grouping, nthreads));
+    Rcpp::traits::input_parameter< bool >::type binarize(binarizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(aggregate_counts(input, grouping, nthreads, binarize));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -264,7 +265,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_arbalist_aggregate_counts", (DL_FUNC) &_arbalist_aggregate_counts, 3},
+    {"_arbalist_aggregate_counts", (DL_FUNC) &_arbalist_aggregate_counts, 4},
     {"_arbalist_count_fragment_size_distributions", (DL_FUNC) &_arbalist_count_fragment_size_distributions, 1},
     {"_arbalist_fragments_to_regions", (DL_FUNC) &_arbalist_fragments_to_regions, 11},
     {"_arbalist_fragments_to_tiles", (DL_FUNC) &_arbalist_fragments_to_tiles, 9},

@@ -146,3 +146,41 @@ addClusters <- function(
   mae
 
 }
+
+cluster.matrix <- function(
+    mat,
+    method = 'seurat',
+    cluster.prefix = "C",
+    resolution = 0.8
+) {
+
+  if(any(grep('seurat',tolower(method)))) {
+    
+    # create a fake matrix to fill the input data slot to represent the cell dimension
+    mat.fake <- matrix(rnorm(nrow(mat) * 3, 10), ncol = nrow(mat), nrow = 3)
+    colnames(mat.fake) <- rownames(mat)
+    rownames(mat.fake) <- paste0("t",seq_len(nrow(mat.fake)))
+    
+    seurat.obj <- Seurat::CreateSeuratObject(mat.fake, project='scATAC', min.cells=0, min.features=0)
+    seurat.obj[['pca']] <- Seurat::CreateDimReducObject(embeddings=mat, key='PC_', assay='RNA')
+    
+    seurat.obj <- Seurat::FindNeighbors(seurat.obj, reduction = 'pca', dims = seq_len(ncol(mat)))
+    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(mat)), resolution = resolution)
+    
+    # get clusters form Seurat Object
+    clust <- seurat.obj@meta.data[,ncol(seurat.obj@meta.data)]
+    clust <- paste0(cluster.prefix,match(clust, unique(clust)))
+    names(clust) <- rownames(mat)
+    
+  } else if(any(grep('scran',tolower(method)))) {
+    
+    g <- scran::buildSNNGraph(x = t(mat), d = ncol(mat))
+    clust <- paste0(cluster.prefix,igraph::cluster_walktrap(g)$membership)
+    names(clust) <- rownames(mat)
+    
+  } else {
+    stop(paste0(method,' is not one of the current clustering method options. Try "Seurat" or "scran".'))
+  }
+  
+  return(clust)
+}

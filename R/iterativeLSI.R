@@ -1,6 +1,7 @@
 #' Calculate iterative LSI dimensionality reduction
 #'
-#' @param x input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features
+#' @param x input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features.
+#' @param col.subset Integer vector specifying the subset of the columns to include in the iterative LSI calculations.
 #' @param rank Integer scalar specifying the rank for irlba_realized.
 #' @param iterations Integer scalar specifying number of LSI iterations to perform.
 #' @param num.features Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.
@@ -30,6 +31,7 @@
 #' @importFrom utils head
 iterativeLSI <- function(
     x,
+    col.subset = NULL,
     rank = 30,
     iterations = 2,
     num.features = 25000,
@@ -45,7 +47,7 @@ iterativeLSI <- function(
     outlier.quantiles = c(0.02, 0.98),
     binarize = TRUE
 ) {
-
+  
   if (cluster.method == "kmeans") {
     cluster.method <- function(x) kmeans(x, centers = cluster.k)$cluster
   }
@@ -53,24 +55,36 @@ iterativeLSI <- function(
   # select the top features based on accessibility of the binarized features
   beachmat::flushMemoryCache()
   ptr <- beachmat::initializeCpp(x, memorize = TRUE)
+  if(is.null(col.subset)) {
+    col.subset <- seq(1, ncol(x))
+  } else {
+    col.subset <- sort(unique(col.subset),decreasing = TRUE)
+    if(length(col.subset) <= ncol(x)) {
+     ptr <- apply_subset(ptr, col.subset, row = FALSE)
+    } else {
+      stop('There are more entries in the column subset to select than the number of columns.')
+    }
+  }
   stats <- lsi_matrix_stats(ptr, nthreads = num.threads) # sums = colSums, frequency = # non-zero per row
   row.accessibility <- stats$frequency
   rm.top <- floor((1-filter.quantile) * total.features)
   row.subset <- head(order(row.accessibility, decreasing = TRUE), num.features + rm.top )[-seq_len(rm.top)]
-
+  
   # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-  lsi.res <- .computeLSI(x, ptr, row.subset = row.subset, lsi.method = lsi.method, scale.to = scale.to, outlier.quantiles = outlier.quantiles, seed = seed, binarize = binarize, num.threads = num.threads)
+  lsi.res <- .computeLSI(x, ptr, col.subset = col.subset, row.subset = row.subset, lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, binarize = binarize, num.threads = num.threads)
   embedding <- lsi.res$matSVD
-
   for (i in seq_len(iterations-1)) {
     # drop embeddings that are correlated with the library size
-    embedding <- embedding[,which(cor(embedding, stats$sums[colnames(x) %in% rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
-
+    embedding <- embedding[,which(cor(embedding, stats$sums[colnames(x)[col.subset] %in% rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
+    
     # find cell clusters
-    cluster.output <- cluster.method(embedding)
-
+    cluster.output <- cluster.matrix(embedding)
+    if(length(table(cluster.output)) == 1) {
+      warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
+      return(NULL)
+    }
     # aggregate counts for each cluster and find the most variable features
-    aggregated <- aggregate_counts(ptr, as.integer(factor(cluster.output)) - 1L, nthreads = num.threads)
+    aggregated <- aggregate_counts(ptr, as.integer(factor(cluster.output)) - 1L, nthreads = num.threads, binarize = binarize)
     sums <- colSums(aggregated)
     center_sf <- function(y) {
       center <- if (is.null(scale.to)) mean(y) else scale.to
@@ -82,15 +96,15 @@ iterativeLSI <- function(
     normalized <- log1p(t(t(aggregated) / sf2))
     row.vars <- rowVars(normalized)
     keep <- head(order(row.vars, decreasing=TRUE), num.features)
-    row.subset <- sort(keep) 
+    row.subset <- sort(keep)
 
     # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-    lsi.res <- .computeLSI(x, ptr, row.subset = row.subset, lsi.method = lsi.method, scale.to = scale.to, outlier.quantiles = outlier.quantiles, seed = seed, binarize = binarize, num.threads = num.threads)
+    lsi.res <- .computeLSI(x, ptr, col.subset = col.subset, row.subset = row.subset, lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, binarize = binarize, num.threads = num.threads)
     embedding <- lsi.res$matSVD
   }
   beachmat::flushMemoryCache()
-
-  list(embedding = embedding, projection = lsi.res$v, subset = row.subset)
+  
+  list(embedding = embedding, projection = lsi.res$svd$v, subset = row.subset, details = lsi.res)
 }
 
 #' @importFrom S4Vectors SimpleList
@@ -98,6 +112,7 @@ iterativeLSI <- function(
 .computeLSI <- function(
     x,
     ptr,
+    col.subset = seq(1, ncol(x)),
     row.subset = NULL,
     lsi.method = 1,
     scale.to = 10^4,
@@ -110,11 +125,9 @@ iterativeLSI <- function(
 ){
   
   set.seed(seed)
-  
   if(!is.null(row.subset)) {
     ptr <- apply_subset(ptr, row.subset, row = TRUE)
   }
-
   # compute column sums and remove columns with only zero values
   if(binarize) {
     ptr.t <- apply_transpose(ptr)
@@ -126,11 +139,10 @@ iterativeLSI <- function(
   }
   if(any(col.sums == 0)){
     warning(paste0('removing ',length(which(col.sums == 0)),' columns that do not have non-zero values for the features being used.'))
-    col.subset <- which(col.sums != 0)
-    ptr <- apply_subset(ptr, col.subset, row = FALSE)
-    col.sums <- col.sums[col.subset]
-  } else {
-    col.subset <- seq(ncol(x))
+    idx <- which(col.sums != 0)
+    col.subset <- col.subset[idx]
+    ptr <- apply_subset(ptr, idx, row = FALSE)
+    col.sums <- col.sums[idx]
   }
 
   # filter outliers
@@ -149,7 +161,6 @@ iterativeLSI <- function(
       filter.outliers <- TRUE
     }
   }
-  
   # clean up zero rows
   if(binarize) {
     stats <- lsi_matrix_stats(ptr, nthreads = num.threads) # sums = colSums, frequency = # non-zero per row
@@ -162,10 +173,12 @@ iterativeLSI <- function(
   idx <- which(row.sums > 0)
   row.subset <- row.subset[idx]
   row.sums <- row.sums[idx]
-
   # apply normalization
-  mat <- .apply.tf.idf.normalization(x[row.subset, col.subset], ncol(x), row.sums, lsi.method = lsi.method, scale.to = scale.to, binarize = binarize)
-
+  if(is.null(row.subset)) {
+    mat <- .apply.tf.idf.normalization(x[, col.subset], ncol(x), row.sums, lsi.method = lsi.method, scale.to = scale.to, binarize = binarize)
+  } else {
+    mat <- .apply.tf.idf.normalization(x[row.subset, col.subset], ncol(x), row.sums, lsi.method = lsi.method, scale.to = scale.to, binarize = binarize)
+  }
   # calculate SVD then LSI
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)
   svdDiag <- matrix(0, nrow = num.dimensions, ncol = num.dimensions)
@@ -173,7 +186,6 @@ iterativeLSI <- function(
   matSVD <- t(svdDiag %*% t(svd$v))
   rownames(matSVD) <- colnames(mat)
   colnames(matSVD) <- paste0("LSI",seq_len(ncol(matSVD)))
-
   # Return Object
   out <- SimpleList(
     matSVD = matSVD, 
@@ -185,13 +197,15 @@ iterativeLSI <- function(
     lsi.method = lsi.method,
     outliers = NA,
     date = Sys.Date(),
-    seed = seed
+    seed = seed, 
+    row.subset = row.subset
   )
-
+  
   if(filter.outliers){
+    
     # Quick Check LSI-Projection Works
     pCheck <- .projectLSI(mat = x[row.subset, col.idx2, drop = FALSE], lsi.res = out, verbose = verbose)
-    pCheck2 <- out[[1]][rownames(pCheck), ]
+    pCheck2 <- out$matSVD[rownames(pCheck), ]
     pCheck3 <- unlist(lapply(seq_len(ncol(pCheck)), function(x){
       cor(pCheck[,x], pCheck2[,x])
     }))
@@ -201,12 +215,12 @@ iterativeLSI <- function(
     # Project LSI Outliers
     out$outliers <- colnames(x)[col.idx.outlier]
     outlierLSI <- .projectLSI(mat = x[row.subset, col.idx.outlier, drop = FALSE], lsi.res = out, verbose = verbose)
-    allLSI <- rbind(out[[1]], outlierLSI)
-    allLSI <- allLSI[cn, , drop = FALSE] #Re-Order Correctly to original
-    out[[1]] <- allLSI
+    allLSI <- rbind(out$matSVD, outlierLSI)
+  #  allLSI <- allLSI[cn, , drop = FALSE] #Re-Order to original
+    out$matSVD <- allLSI
   }
   gc()
-
+  
   out
 }
 
@@ -215,7 +229,7 @@ iterativeLSI <- function(
   
   require(Matrix)
   set.seed(lsi.res$seed)
-
+  
   # sparse matrix in memory is returned from .apply.tf.idf.normalization
   mat <- .apply.tf.idf.normalization(mat, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method, binarize = binarize) 
   
@@ -264,7 +278,7 @@ iterativeLSI <- function(
   }
   # divide each value by its column sum
   mat@x <- mat@x / rep.int(col.sums, Matrix::diff(mat@p)) 
-
+  
   if(lsi.method == 1 | tolower(lsi.method) == "tf-logidf"){
     # Adapted from Casanovich et al.
     # compute Inverse Document Frequency
@@ -284,19 +298,17 @@ iterativeLSI <- function(
   }else{
     stop("lsi.method unrecognized please select valid method!")
   }
-
+  
   # compute TF-IDF Matrix
   # TF-IDF
   mat <- as(Matrix::Diagonal(x = as.vector(idf)), "sparseMatrix") %*% mat
-  ## ^ takes the ith value from idf and multiple's all the values in the ith row of mat by it
-  ##ptr <- apply_multiplication(mat, idf, right = FALSE, row=TRUE)
-
+  
   if(lsi.method == 2 | tolower(lsi.method) == "log(tf-idf)"){
     # Log transform TF-IDF
     mat@x <- log(mat@x * scale.to + 1)  
   }
-
+  
   gc()
-
+  
   return(mat)
 }
