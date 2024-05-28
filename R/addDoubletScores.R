@@ -7,17 +7,20 @@
 #' @param seed Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
 #' @param num.trials Integer scalar specifying the number of times to simulate the number of cells in the sample for doublets.
 #' @param num.threads Integer scalar specifying the number of threads to be used for parallel computing.
-#' @param num.dimensions Integer scalar specifying the number of iterative LSI dimensions to use doublet scoring
-#' @param plot.out.dir String spcifying the output path for doublet score quality control plots
-#' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how doublet scoring should be parallelized per sample.
+#' @param num.dimensions Integer scalar specifying the number of iterative LSI dimensions to use doublet scoring.
+#' @param num.doublet.per.iteration Integer scalar specifying how many doublets to estimate at one time this allows adjustment of memory usage/run time.
+#' @param max.num.synthetic.doublets Integer scalar specifying the maximum number of doublets to run per sample. This is used if num.trials * number of cells in the sample is more than this number.
+#' @param plot.out.dir String specifying the output path for doublet score quality control plots.
+#' @param selected.samples Vector of strings specifying which samples to calculate doublet scores for. By default (NULL), all that have enough cells will be run.
+#' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how doublet scoring should be parallelized per iteration of doublets.
 #'
-#' @return \linkS4class{MultiAssayExperiment} with doublet scores column added to the experiment colData.
+#' @return \linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
 #'
 #' @author Natalie Fox
 #' @importFrom scran buildKNNGraph
 #' @importFrom igraph as_adjacency_matrix
 #' @importFrom ggplot2 ggplot geom_point aes ggsave theme_classic scale_colour_gradientn
-#' @importFrom BiocParallel bplapply bpparam
+#' @importFrom BiocParallel bplapply bpparam SerialParam bptry
 #' @importFrom BiocGenerics Reduce
 addDoubletScores <- function(
     mae,
@@ -26,118 +29,165 @@ addDoubletScores <- function(
     num.trials = 5,
     num.threads = 1,
     num.dimensions = 30,
+    num.doublets.per.iteration = 200,
+    max.num.synthetic.doublets = 2000,
     plot.out.dir = '.',
+    selected.samples = NULL,
     BPPARAM = bpparam()
 ) {
   
-  # Find the experiment result and get the matrix
-  sce.list <- findSCE(mae,experiment.name)
+  # Find the experiment result in the MAE so we can retrieve the matrix, this accounts for using the main or alternative experiment
+  sce.list <- findSCE(mae, experiment.name)
   if(is.null(sce.list)) {
     stop(paste0(experiment.name,' is not found in mae'))
   }
-  se <- sce.list$sce
-  main.exp.name <- names(mae)[sce.list$sce.idx]
-  alt.exp.name <- sce.list$alt.exp.name
-  
-  per.sample.cell.counts <- sort(table(colData(se)$Sample), decreasing = TRUE)
-  if(any(per.sample.cell.counts <= num.dimensions)) {
-    warning(paste0(
-      paste(names(per.sample.cell.counts)[which(per.sample.cell.counts <= num.dimensions)],collapse=', '),
-      ' samples have less than num.dimensions (',num.dimensions,') cells with ',
-      paste(as.numeric(per.sample.cell.counts[which(per.sample.cell.counts <= num.dimensions)]),collapse=', '),
-      ' cell counts respectively'))
-    per.sample.cell.counts <- per.sample.cell.counts[which(per.sample.cell.counts > num.dimensions)]
+
+  # Add DoubletScore and DoubletEnrichment columns to the colData, if not already there
+  if(! 'DoubletScore' %in% colnames(colData(mae[[sce.list$sce.idx]]))) {
+    colData(mae[[sce.list$sce.idx]])$DoubletScore <- rep(NA,nrow(colData(mae[[sce.list$sce.idx]])))
   }
-  if(length(per.sample.cell.counts) > 2) {
-    new.order <- NULL
-    end.i <- length(per.sample.cell.counts)
-    for(i in seq(1,length(per.sample.cell.counts)/2)) {
-      if(i >= end.i) {
-        if(new.order[length(new.order)] != i) {
-          new.order <- c(new.order,i)
-        }
-        break
-      }
-      new.order <- c(new.order,i)
-      if(i >= end.i) {
-        break
-      }
-      new.order <- c(new.order, end.i)
-      end.i <- end.i - 1
-      if(i >= end.i) {
-        break
-      }
-      new.order <- c(new.order, end.i)
-      end.i <- end.i - 1
+  if(! 'DoubletEnrichment' %in% colnames(colData(mae[[sce.list$sce.idx]]))) {
+    colData(mae[[sce.list$sce.idx]])$DoubletEnrichment <- rep(NA,nrow(colData(mae[[sce.list$sce.idx]])))
+  }
+  
+  # Get sample names and check them have enough cells to calculate doublets
+  if(is.null(selected.samples)) {
+    per.sample.cell.counts <- sort(table(colData(sce.list$sce)$Sample), decreasing = TRUE) # sort largest to smallest number of cells so that if there isn't enough memory we'll error quicker
+    if(any(per.sample.cell.counts <= num.dimensions)) {
+      warning(paste0(
+        paste(names(per.sample.cell.counts)[which(per.sample.cell.counts <= num.dimensions)],collapse=', '),
+        ' samples have less than num.dimensions (',num.dimensions,') cells with ',
+        paste(as.numeric(per.sample.cell.counts[which(per.sample.cell.counts <= num.dimensions)]),collapse=', '),
+        ' cell counts respectively'))
+      per.sample.cell.counts <- per.sample.cell.counts[which(per.sample.cell.counts > num.dimensions)]
     }
-    per.sample.cell.counts <- per.sample.cell.counts[new.order]
+    selected.samples <- names(per.sample.cell.counts)[which(per.sample.cell.counts > num.dimensions)]
   }
   
-  parallelized.res <- bptry(bplapply(
-    names(per.sample.cell.counts)[which(per.sample.cell.counts > num.dimensions)],
-    .doublet.calculations.per.sample,
-    se = se,
-    plot.out.dir = plot.out.dir,
-    num.trials = num.trials,
-    num.threads = num.threads,
-    num.dimensions = num.dimensions,
-    BPPARAM = BPPARAM
-  ))
-  
-  doublet.res <- Reduce(rbind, parallelized.res)
-  
-  colData(mae[[sce.list$sce.idx]])$DoubletScore <- rep(NA,nrow(colData(mae[[sce.list$sce.idx]])))
-  colData(mae[[sce.list$sce.idx]])$DoubletEnrichment <- rep(NA,nrow(colData(mae[[sce.list$sce.idx]])))
-  
-  colData(mae[[sce.list$sce.idx]])[rownames(doublet.res),'DoubletScore'] <- doublet.res$score
-  colData(mae[[sce.list$sce.idx]])[rownames(doublet.res),'DoubletEnrichment'] <- doublet.res$enrichment
-  
+  # Calculate doublet scores per sample
+  for(sample.name in selected.samples) {
+    
+    # Decide how many doublets to simulate and therefore how many iterations we will need to run
+    num.synthetic.doublets <- num.trials * sum(colData(sce.list$sce)$Sample == sample.name)
+    if(num.synthetic.doublets > max.num.synthetic.doublets) {
+      num.synthetic.doublets <- max.num.synthetic.doublets
+    }
+    sample.columns <- which(colData(sce.list$sce)$Sample == sample.name)
+    if(length(sample.columns) < 2*num.doublets.per.iteration) {
+      num.doublets.per.iteration  <- floor(length(sample.columns)/2)
+    }
+    num.iterations <- ceiling(num.synthetic.doublets/num.doublets.per.iteration)
+    
+    # Calculate the iterativeLSI embedding for the sample's cells
+    lsi.res <- iterativeLSI(assay(sce.list$sce)[,sample.columns], rank = num.dimensions)
+    gc()
+    if(is.null(lsi.res)) {
+      next
+    }
+    
+    # Simulate doublets and project them into the LSI reduced dimensions
+    set.seed(seed)
+    parallelized.res <- bptry(bplapply(
+      seq(num.iterations),
+      .doublet.simulation,
+      mat = assay(sce.list$sce)[,sample.columns],
+      lsi.res = lsi.res,
+      num.iterations = num.iterations,
+      num.synthetic.doublets = num.synthetic.doublets,
+      num.doublets.per.iteration = num.doublets.per.iteration,
+      num.threads = num.threads,
+      BPPARAM = BPPARAM
+    ))
+    mat.lsi.doublet.combined <- Reduce(rbind, parallelized.res)
+    rownames(mat.lsi.doublet.combined) <- paste0('doublet',seq(nrow(mat.lsi.doublet.combined)))
+
+    # Calculate the UMAP embedding
+    umap.res <- scater::calculateUMAP(t(rbind(lsi.res$embedding, mat.lsi.doublet.combined)))
+    umap.res <- as.data.frame(umap.res)
+    umap.res$doublet <- c(rep(FALSE,nrow(lsi.res$embedding)), rep(TRUE,num.synthetic.doublets))
+    umap.res <- umap.res[rev(seq(nrow(umap.res))),]
+    
+    if(!is.null(plot.out.dir)) {
+      # Plot doublets relative to the cells
+      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet)) + theme_classic() + ggtitle(sample.name)
+      ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_umap_plot.pdf'), height = 4, width = 5)
+    }
+    
+    # Find nearest neighbours to the doublets for calculating a score
+    knnDoub <- nabor::knn(lsi.res$embedding, mat.lsi.doublet.combined, k = 10)$nn.idx
+    countKnn <- rep(0, nrow(lsi.res$details$matSVD))
+    names(countKnn) <- rownames(lsi.res$details$matSVD)
+    tabDoub <- table(as.vector(knnDoub))
+    countKnn[as.integer(names(tabDoub))] <-  countKnn[as.integer(names(tabDoub))] + tabDoub
+    
+    scale.to <- 10000
+    scale.by <- scale.to / num.synthetic.doublets
+    
+    # P-Values
+    pvalBinomDoub <- unlist(lapply(seq_along(countKnn), function(x){
+      # Round prediction
+      countKnnx <- round(countKnn[x] * scale.by)
+      sumKnnx <- round(sum(countKnn) * scale.by)
+      pbinom(countKnnx - 1, sumKnnx, 1 / scale.to, lower.tail = FALSE)
+    }))
+    padjBinomDoub <- p.adjust(pvalBinomDoub, method = "bonferroni")
+    
+    # Convert adjusted p-values too doublet scores
+    doublet.res <- data.frame(
+      score = -log10(pmax(padjBinomDoub, 4.940656e-324)),
+      enrichment = (countKnn / sum(countKnn)) / (1 / nrow(lsi.res$details$matSVD))
+    )
+    doublet.res$enrichment <- 10000 * doublet.res$enrichment / length(countKnn) #Enrichment Per 10000 Cells in Data Set
+    rownames(doublet.res) <- names(countKnn)
+    
+    if(!is.null(plot.out.dir)) {
+      # Plot UMAP of cells coloured by doublet scores and doublet enrichment
+      umap.res <- umap.res[rownames(doublet.res),]
+      umap.res$doublet.scores <- doublet.res$score
+      umap.res$doublet.enrichment <- doublet.res$enrichment
+      
+      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.res$score)) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
+      ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_score_umap_plot.pdf'), height = 4, width = 5)
+      
+      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.res$enrichment)) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
+      ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_enrichment_umap_plot.pdf'), height = 4, width = 5)
+    }
+    
+    # Add doublet scores/enrichment to the colData
+    colData(mae[[sce.list$sce.idx]])[rownames(doublet.res),'DoubletScore'] <- doublet.res$score
+    colData(mae[[sce.list$sce.idx]])[rownames(doublet.res),'DoubletEnrichment'] <- doublet.res$enrichment
+  }
+
   return(mae)
 }
 
-#' @importFrom stats pbinom p.adjust
-.doublet.calculations.per.sample <- function(
-    sample.name,
-    se,
-    plot.out.dir = '.',
-    num.trials = 5,
-    num.threads = 1, 
-    num.dimensions = 30,
-    num.doublets.per.iteration = 10
+.doublet.simulation <- function(
+  i,
+  mat,
+  lsi.res,
+  num.iterations,
+  num.synthetic.doublets,
+  num.doublets.per.iteration,
+  num.threads
 ){
   
-  num.synthetic.doublets <- num.trials * sum(colData(se)$Sample == sample.name)
-  mat <- assay(se)[,which(colData(se)$Sample == sample.name)]
-  
-  # Calculate the iterativeLSI embedding for the sample
-  lsi.res <- iterativeLSI(mat, rank = num.dimensions)
-  if(is.null(lsi.res)) {
-    return(NULL)
+  if(i == num.iterations) {
+    # Adjust for the number of doublets not being evenly divisible by the number of iterations
+    remainder <- num.synthetic.doublets %% num.doublets.per.iteration
+    if(remainder != 0) {
+      num.doublets.per.iteration <- remainder
+    }
   }
-  # Simulate Doublets
+  
+  # Randomly select cells for doublets and then combine them in pairs to simulate doublets
   beachmat::flushMemoryCache()
-  ptr <- beachmat::initializeCpp(mat, memorize=TRUE)
-  mat.doublet <- NULL
-  num.iterations <- ceiling(num.synthetic.doublets/num.doublets.per.iteration)
-  for(i in seq(num.iterations)) {
-    if(i == num.iterations) {
-      remainder <- num.synthetic.doublets %% num.doublets.per.iteration
-      if(remainder != 0) {
-        num.doublets.per.iteration <- num.synthetic.doublets %% num.doublets.per.iteration
-      }
-    }
-    random.cells <- rev(sort(sample(1:ncol(mat), 2*num.doublets.per.iteration, replace = FALSE)))
-    ptr.subset <- apply_subset(ptr, random.cells, row = FALSE)
-    doublet.sparse.column <- as(aggregate_counts(ptr.subset, rep(seq(1,num.doublets.per.iteration),2)-1L, nthreads = num.threads, binarize = FALSE), "sparseMatrix")/2
-    if(is.null(mat.doublet)) {
-      mat.doublet <- doublet.sparse.column
-    } else {
-      mat.doublet <- cbind(mat.doublet, doublet.sparse.column)
-    }
-  }
-  colnames(mat.doublet) <- paste0('doublet',seq(ncol(mat.doublet)))
+  ptr <- beachmat::initializeCpp(mat, memorize=FALSE)
+  random.cells <- sort(sample(seq(1,ncol(mat)), 2*num.doublets.per.iteration, replace = FALSE), decreasing = TRUE)
+  ptr.subset <- apply_subset(ptr, random.cells, row = FALSE)
+  mat.doublet <- as(aggregate_counts(ptr.subset, sample(rep(seq(1,length(random.cells)/2),2))-1L, nthreads = num.threads, binarize = FALSE), "sparseMatrix")/2
+  gc()
   
-  # Project the Doublets into the UMAP embedding
+  # Project the doublets into the UMAP embedding
   require(Matrix)
   mat.doublet.normalized <- .apply.tf.idf.normalization(mat.doublet[lsi.res$details$row.subset,], lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
   idxNA <- Matrix::which(is.na(mat.doublet.normalized), arr.ind = TRUE)
@@ -151,58 +201,6 @@ addDoubletScores <- function(
   mat.lsi.doublet <- as.matrix(mat.lsi.doublet)
   rownames(mat.lsi.doublet) <- colnames(mat.doublet.normalized)
   colnames(mat.lsi.doublet) <- paste0("LSI",seq_len(ncol(mat.lsi.doublet)))
-  
-  # Calculate the UMAP embedding
-  combined.mat <- rbind(lsi.res$embedding,mat.lsi.doublet)
-  umap.res <- scater::calculateUMAP(t(combined.mat))
-  umap.res <- as.data.frame(umap.res)
-  umap.res$doublet <- c(rep(FALSE,nrow(lsi.res$embedding)), rep(TRUE,num.synthetic.doublets))
-  umap.res <- umap.res[rev(seq(nrow(umap.res))),]
-  
-  if(!is.null(plot.out.dir)) {
-    ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet)) + theme_classic() + ggtitle(sample.name)
-    ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_umap_plot.pdf'), height = 4, width = 5)
-  }
-  
-  knnDoub <- nabor::knn(lsi.res$embedding, mat.lsi.doublet, k = 10)$nn.idx
-  
-  countKnn <- rep(0, nrow(lsi.res$details$matSVD))
-  names(countKnn) <- rownames(lsi.res$details$matSVD)
-  
-  tabDoub <- table(as.vector(knnDoub))
-  countKnn[as.integer(names(tabDoub))] <-  countKnn[as.integer(names(tabDoub))] + tabDoub
-  
-  scale.to <- 10000
-  scale.by <- scale.to / num.synthetic.doublets
-  
-  # P-Values
-  pvalBinomDoub <- unlist(lapply(seq_along(countKnn), function(x){
-    #Round Prediction
-    countKnnx <- round(countKnn[x] * scale.by)
-    sumKnnx <- round(sum(countKnn) * scale.by)
-    pbinom(countKnnx - 1, sumKnnx, 1 / scale.to, lower.tail = FALSE)
-  }))
-  
-  # Adjust
-  padjBinomDoub <- p.adjust(pvalBinomDoub, method = "bonferroni")
-  
-  # Convert To Scores
-  doublet.res <- data.frame(
-    score = -log10(pmax(padjBinomDoub, 4.940656e-324)),
-    enrichment = (countKnn / sum(countKnn)) / (1 / nrow(lsi.res$details$matSVD))
-  )
-  doublet.res$enrichment <- 10000 * doublet.res$enrichment / length(countKnn) #Enrichment Per 10000 Cells in Data Set
-  rownames(doublet.res) <- names(countKnn)
-  
-  if(!is.null(plot.out.dir)) {
-    umap.res <- umap.res[rownames(doublet.res),]
-    umap.res$doublet.scores <- doublet.res$score
-    umap.res$doublet.enrichment <- doublet.res$enrichment
-    ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.res$score)) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
-    ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_score_umap_plot.pdf'), height = 4, width = 5)
-    ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.res$enrichment)) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
-    ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_enrichment_umap_plot.pdf'), height = 4, width = 5)
-  }
-  
-  return(doublet.res)
+
+  return(mat.lsi.doublet)
 }
