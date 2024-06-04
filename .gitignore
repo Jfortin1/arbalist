@@ -6,3 +6,5 @@ inst/source-*
 *.so
 *.html
 *.tmp
+/doc/
+/Meta/

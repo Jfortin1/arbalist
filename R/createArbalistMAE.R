@@ -133,14 +133,21 @@ createArbalistMAE <- function(
   # Add barcode information to the SE colData
   if(!is.null(barcode.anno)) {
     for(i in intersect(names(mae),c('TileMatrix500','GeneScoreMatrix','GeneAccessibilityMatrix'))) {
-      barcode.anno.atac.col <- barcode.anno[rownames(colData(mae[[i]])), setdiff(colnames(barcode.anno)[grep('atac_',colnames(barcode.anno))],c('atac_barcode','atac_peak_region_fragments','atac_peak_region_cutsites'))]
-      colnames(barcode.anno.atac.col) <- sub('atac_','',colnames(barcode.anno.atac.col))
-      colData(mae[[i]]) <- cbind(colData(mae[[i]]),barcode.anno.atac.col)
+      if(any(grep('atac_',colnames(barcode.anno)))) {
+        barcode.anno.atac.col <- barcode.anno[rownames(colData(mae[[i]])), setdiff(colnames(barcode.anno)[grep('atac_',colnames(barcode.anno))],c('atac_barcode','atac_peak_region_fragments','atac_peak_region_cutsites'))]
+        colnames(barcode.anno.atac.col) <- sub('atac_','',colnames(barcode.anno.atac.col))
+        colData(mae[[i]]) <- cbind(colData(mae[[i]]), barcode.anno.atac.col)
+      } else {
+        if(any(which(colnames(barcode.anno) == 'passed_filters')) && !any(which(colnames(barcode.anno) == 'fragments')))  {
+          colnames(barcode.anno)[which(colnames(barcode.anno) == 'passed_filters')] <- 'fragments'
+        }
+        colData(mae[[i]]) <- cbind(colData(mae[[i]]), barcode.anno[rownames(colData(mae[[i]])),])
+      }
     }
     for(i in intersect(names(mae),c('GeneExpressionMatrix'))) {
       barcode.anno.gex.col <- barcode.anno[rownames(colData(mae[[i]])), grep('gex_',colnames(barcode.anno))]
       colnames(barcode.anno.gex.col) <- sub('gex_','',colnames(barcode.anno.gex.col))
-      colData(mae[[i]]) <- cbind(colData(mae[[i]]),barcode.anno.gex.col)
+      colData(mae[[i]]) <- cbind(colData(mae[[i]]), barcode.anno.gex.col)
     }
   }
   

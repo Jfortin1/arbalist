@@ -6,8 +6,7 @@
 #' @param iterations Integer scalar specifying number of LSI iterations to perform.
 #' @param num.features Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.
 #' @param lsi.method Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".
-#' @param cluster.method String containing cluster method. Currently "kmeans" is the only supported option.
-#' @param cluster.k Integer scalar specifying how many clusters to use.
+#' @param cluster.method String containing cluster method. Current options: "seurat", "scran".
 #' @param correlation.cutoff 	Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.
 #' @param scale.to Numeric scalar specifying the center for TF-IDF normalization.
 #' @param num.threads Integer scalar specifying the number of threads to be used for parallel computing.
@@ -36,8 +35,7 @@ iterativeLSI <- function(
     iterations = 2,
     num.features = 25000,
     lsi.method = 1,
-    cluster.method = "kmeans",
-    cluster.k = 20,
+    cluster.method = "Seurat",
     correlation.cutoff = 0.75,
     scale.to = 10000,
     num.threads = 1,
@@ -47,10 +45,6 @@ iterativeLSI <- function(
     outlier.quantiles = c(0.02, 0.98),
     binarize = TRUE
 ) {
-  
-  if (cluster.method == "kmeans") {
-    cluster.method <- function(x) kmeans(x, centers = cluster.k)$cluster
-  }
   
   # select the top features based on accessibility of the binarized features
   beachmat::flushMemoryCache()
@@ -78,7 +72,7 @@ iterativeLSI <- function(
     embedding <- embedding[,which(cor(embedding, stats$sums[colnames(x)[col.subset] %in% rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
     
     # find cell clusters
-    cluster.output <- cluster.matrix(embedding)
+    cluster.output <- cluster.matrix(embedding, method = cluster.method)
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
       return(NULL)

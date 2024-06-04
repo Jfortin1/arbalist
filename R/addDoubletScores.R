@@ -8,7 +8,7 @@
 #' @param num.trials Integer scalar specifying the number of times to simulate the number of cells in the sample for doublets.
 #' @param num.threads Integer scalar specifying the number of threads to be used for parallel computing.
 #' @param num.dimensions Integer scalar specifying the number of iterative LSI dimensions to use doublet scoring.
-#' @param num.doublet.per.iteration Integer scalar specifying how many doublets to estimate at one time this allows adjustment of memory usage/run time.
+#' @param num.doublets.per.iteration Integer scalar specifying how many doublets to estimate at one time this allows adjustment of memory usage/run time.
 #' @param max.num.synthetic.doublets Integer scalar specifying the maximum number of doublets to run per sample. This is used if num.trials * number of cells in the sample is more than this number.
 #' @param plot.out.dir String specifying the output path for doublet score quality control plots.
 #' @param selected.samples Vector of strings specifying which samples to calculate doublet scores for. By default (NULL), all that have enough cells will be run.
@@ -22,6 +22,7 @@
 #' @importFrom ggplot2 ggplot geom_point aes ggsave theme_classic scale_colour_gradientn
 #' @importFrom BiocParallel bplapply bpparam SerialParam bptry
 #' @importFrom BiocGenerics Reduce
+#' @importFrom stats p.adjust pbinom
 addDoubletScores <- function(
     mae,
     experiment.name = 'TileMatrix500',
@@ -61,7 +62,7 @@ addDoubletScores <- function(
         ' cell counts respectively'))
       per.sample.cell.counts <- per.sample.cell.counts[which(per.sample.cell.counts > num.dimensions)]
     }
-    selected.samples <- names(per.sample.cell.counts)[which(per.sample.cell.counts > num.dimensions)]
+    selected.samples <- names(per.sample.cell.counts)
   }
   
   # Calculate doublet scores per sample
@@ -90,7 +91,7 @@ addDoubletScores <- function(
     parallelized.res <- bptry(bplapply(
       seq(num.iterations),
       .doublet.simulation,
-      mat = assay(sce.list$sce)[,sample.columns],
+      mat = assay(sce.list$sce)[lsi.res$details$row.subset,sample.columns],
       lsi.res = lsi.res,
       num.iterations = num.iterations,
       num.synthetic.doublets = num.synthetic.doublets,
@@ -189,7 +190,7 @@ addDoubletScores <- function(
   
   # Project the doublets into the UMAP embedding
   require(Matrix)
-  mat.doublet.normalized <- .apply.tf.idf.normalization(mat.doublet[lsi.res$details$row.subset,], lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
+  mat.doublet.normalized <- .apply.tf.idf.normalization(mat.doublet, lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
   idxNA <- Matrix::which(is.na(mat.doublet.normalized), arr.ind = TRUE)
   if(length(idxNA) > 0){
     mat.doublet.normalized[idxNA] <- 0

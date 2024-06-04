@@ -31,6 +31,8 @@ addDoubletScores(
 
 \item{num.dimensions}{Integer scalar specifying the number of iterative LSI dimensions to use doublet scoring.}
 
+\item{num.doublets.per.iteration}{Integer scalar specifying how many doublets to estimate at one time this allows adjustment of memory usage/run time.}
+
 \item{max.num.synthetic.doublets}{Integer scalar specifying the maximum number of doublets to run per sample. This is used if num.trials * number of cells in the sample is more than this number.}
 
 \item{plot.out.dir}{String specifying the output path for doublet score quality control plots.}
@@ -38,11 +40,9 @@ addDoubletScores(
 \item{selected.samples}{Vector of strings specifying which samples to calculate doublet scores for. By default (NULL), all that have enough cells will be run.}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how doublet scoring should be parallelized per iteration of doublets.}
-
-\item{num.doublet.per.iteration}{Integer scalar specifying how many doublets to estimate at one time this allows adjustment of memory usage/run time.}
 }
 \value{
-\linkS4class{MultiAssayExperiment} with doublet scores column added to the experiment colData.
+\linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
 }
 \description{
 Calculate doublet scores and add them to the MultiAssayExperiment.

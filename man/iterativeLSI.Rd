@@ -11,8 +11,7 @@ iterativeLSI(
   iterations = 2,
   num.features = 25000,
   lsi.method = 1,
-  cluster.method = "kmeans",
-  cluster.k = 20,
+  cluster.method = "Seurat",
   correlation.cutoff = 0.75,
   scale.to = 10000,
   num.threads = 1,
@@ -36,9 +35,7 @@ iterativeLSI(
 
 \item{lsi.method}{Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".}
 
-\item{cluster.method}{String containing cluster method. Currently "kmeans" is the only supported option.}
-
-\item{cluster.k}{Integer scalar specifying how many clusters to use.}
+\item{cluster.method}{String containing cluster method. Current options: "seurat", "scran".}
 
 \item{correlation.cutoff}{Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.}
 

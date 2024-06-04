@@ -11,7 +11,7 @@ findSCE <- function(mae,experiment.name) {
     sce <- mae[[sce.idx]]
   } else {
     for(i in seq_len(length(mae))) {
-      if(experiment.name %in% altExpNames(mae[[i]])) {
+      if(is(mae[[i]],'SingleCellExperiment') && experiment.name %in% altExpNames(mae[[i]])) {
         sce <- altExp(mae[[i]],experiment.name)
         # record where the iterative LSI was saved so we can put the UMAP in the same place
         sce.idx <- i

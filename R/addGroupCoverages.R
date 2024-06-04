@@ -179,7 +179,7 @@ addGroupCoverages <- function(
       output.file <- replicates.matrix.coldata$coverage.file[i]
       pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[i]]][[replicates.matrix.coldata$rep[i]]])
       ptr.subset <- apply_subset(ptr, which(colnames(sce) %in% pseudobulk.cells), FALSE)
-      replicates.matrix[,i] <- aggregate_counts(ptr.subset, rep(1,length(pseudobulk.cells))-1L, nthreads = 1)
+      replicates.matrix[,i] <- aggregate_counts(ptr.subset, rep(1,length(pseudobulk.cells))-1L, nthreads = 1, binarize = FALSE)
       replicates.matrix.coldata$num.cells <- length(pseudobulk.cells)
     }
     replicates.matrix <- as(replicates.matrix, 'sparseMatrix')

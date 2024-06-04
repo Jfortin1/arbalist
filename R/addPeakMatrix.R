@@ -47,7 +47,7 @@ addPeakMatrix <- function(
 ){
   
   # Find the single cell experiment result
-  sce <- findSCE(mae,sc.experiment.name)$sce
+  sce <- findSCE(mae, experiment.name = sc.experiment.name)$sce
 
   ## Calculate peak set ##
   
@@ -226,20 +226,22 @@ addPeakMatrix <- function(
     promoter.region = c(2000, 100)
     ) {
   
+  gene.sce.list <- findSCE(mae, experiment.name.for.gene.grs)
+  
   if(is.null(gene.grs)) {
-    gene.sce.list <- findSCE(mae,experiment.name.for.gene.grs)
     if(is.null(gene.sce.list)) {
-      stop(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs'))
+      warning(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs if you want peak to gene annotation'))
+      return(mae)
     }
     gene.grs <- GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
     if(length(gene.grs) == 0) {
-      stop(paste0('There are no interval specified in the rowData of ',experiment.name.for.gene.grs,' so please specify gene.grs'))
+      warning(paste0('There are no interval specified in the rowData of ',experiment.name.for.gene.grs,' so please specify gene.grs if you want peak to gene annotation'))
+      return(mae)
     }
   }
-  
-  gene.sce.list <- findSCE(mae,experiment.name.for.gene.grs)
   if(is.null(gene.sce.list)) {
-    stop(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs'))
+    warning(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs if you want peak to gene annotation'))
+    return(mae)
   }
   
   gene.grs <- GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
