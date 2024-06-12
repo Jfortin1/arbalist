@@ -23,6 +23,7 @@
 #' @importFrom BiocParallel bplapply bpparam SerialParam bptry
 #' @importFrom BiocGenerics Reduce
 #' @importFrom stats p.adjust pbinom
+#' @export
 addDoubletScores <- function(
     mae,
     experiment.name = 'TileMatrix500',

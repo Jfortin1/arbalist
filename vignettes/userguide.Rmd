@@ -1,6 +1,9 @@
 ---
 title: "Arbalist analysis"
-output: rmarkdown::html_vignette
+output:
+  BiocStyle::html_document:
+    number_sections: yes
+    toc: true
 vignette: >
   %\VignetteIndexEntry{Arbalist analysis}
   %\VignetteEngine{knitr::rmarkdown}
@@ -14,7 +17,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-Arbalist is designed to perform scATAC-seq analysis using similar methods to [ArchR](https://www.archrproject.com/) but utilizing `MultiAssayExperiment` and the bioconductor framework instead of the ArchR framework. The backend of arbalist is based on the C++ representation in the tatami library.
+Arbalist is designed to perform scATAC-seq analysis using similar methods to [ArchR](https://www.archrproject.com/) but utilizing `MultiAssayExperiment` and the bioconductor framework instead of the ArchR framework. The backend of arbalist is based on the C++ representation in the [tatami library](https://github.com/tatami-inc).
 
 # Setting up
 
@@ -27,7 +30,7 @@ library(SingleCellExperiment)
 
 We need to create a `MultiAssayExperiment` object from the fragment files. `arbalist::saveTileMatrix` creates a count matrix for tiles across the genome and `arbalist::saveRegionMatrix` creates a count matrix for user specified genomic regions.
 
-We are going to create some mock fragment files for this example. You should replace these with your fragment files.
+We are going to create some mock fragment files for this example. You should replace these with your fragment files. Fragment files can be created using the 10x cellranger workflows: [Cell Ranger ARC](https://www.10xgenomics.com/support/software/cell-ranger-arc/latest) or [Single Cell ATAC](https://support.10xgenomics.com/single-cell-atac/software/overview/welcome).
 
 ```{r, eval=FALSE}
 seq.lengths <- c(chrA = 6000, chrB = 5000, chrC = 3000, chrD = 2000)
@@ -55,19 +58,19 @@ for(i in seq_along(fragment.files)) {
   )
   scatac.tile.matrices[i] <- res$counts
   
-  # The genomic ranges should be the same for all the tile matrix so we are just saving one for later use
+  # The genomic ranges should be the same for all the tile matrix
   tiles.grs <- res$tiles
 }
 names(scatac.tile.matrices) <- paste0('sample',seq_along(scatac.tile.matrices))
 ```
 
-We use `AmalgamatedArray` to combine the dataset together so that the results for each fragment file or sample can go into its own file. 
+We use `AmalgamatedArray` to combine the dataset together so that the results for each fragment file or sample can go into its own hdf5 file. 
 
 ```{r, eval=FALSE}
 mat <- alabaster.matrix::AmalgamatedArray(scatac.tile.matrices, along=2)
 ```
 
-Create a `SingleCellExperiment` for the tile matrix and wrap it into a `MultiAssayExperiment`.
+Next, we create a `SingleCellExperiment` for the tile matrix and wrap it into a `MultiAssayExperiment`.
 
 ```{r, eval=FALSE}
 mat.list <- list(counts=mat)
@@ -87,7 +90,7 @@ sampMap <- listToMap(maplist)
 mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
 ```
 
-Finally, we add the fragment file names to the `MultiAssayExperiment` `colData` for use by arbalist functions.
+Finally, we add the fragment file names to the `MultiAssayExperiment` `colData` for use by other arbalist functions.
 
 ```{r,eval=FALSE}
 colData(mae)$fragment_file <- fragment.files
@@ -97,7 +100,8 @@ colData(mae)$fragment_file <- fragment.files
 
 ## Fragment size distribution
 
-Plotting fragment size distributions
+For each sample, we check the fragment size distribution using `arablist::plotFragmentSizeDistribution`.
+
 ```{r fragplots, eval=FALSE}
 sample.names <- rownames(colData(mae))
 for(i in sample.names) {
@@ -107,7 +111,7 @@ for(i in sample.names) {
 
 ## TSS enrichment
 
-The TSS enrichment score evaluates accessibility at the transcription start site compared to flanking regions in the genome. The start coordinate of each gene is used as the transcription start site. For multiome (scATAC+RNA) datasets, a gene matrix can also be added to the `MultiAssayExperiment` as the GeneExpressionMatrix and arbalist will default to extracting gene ranges from the GeneExpressionMatrix. For datasets without a GeneExpressionMatrix, gene genomic ranges need to be specified.
+The TSS enrichment score evaluates accessibility at the transcription start site (TSS) compared to flanking regions in the genome. The start coordinate from each gene is used as the TSS. For multiome (scATAC+RNA) datasets, a gene expression matrix from 10x cellranger results can also be added to the `MultiAssayExperiment`. `arbalist::addTSSEnrichmentScores` will default to extracting gene ranges from any experiment named "GeneExpressionMatrix". For datasets without a "GeneExpressionMatrix", gene genomic ranges need to be specified.
 
 ```{r tss, eval=FALSE}
 library(GenomicRanges)
