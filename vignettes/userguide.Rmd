@@ -39,7 +39,12 @@ fragment.files <- c();
 for(i in 1:3) {
   cell.names <- paste0(LETTERS,i)
   fragment.files[i] <- tempfile(fileext = ".gz")
-  mockFragmentFile(fragment.files[i], seq.lengths, num.fragments = 10, cell.names = cell.names)
+  mockFragmentFile(
+    fragment.files[i], 
+    seq.lengths, 
+    num.fragments = 10, 
+    cell.names = cell.names
+    )
 }
 ```
 
@@ -76,7 +81,10 @@ Next, we create a `SingleCellExperiment` for the tile matrix and wrap it into a 
 mat.list <- list(counts=mat)
 se <-  SummarizedExperiment(mat.list)
 rowRanges(se) <- tiles.grs
-cell.to.sample <- unlist(sapply(names(scatac.tile.matrices),function(x) {rep(x,ncol(scatac.tile.matrices[[x]]))}))
+cell.to.sample <- unlist(sapply(
+  names(scatac.tile.matrices),
+  function(x) {rep(x,ncol(scatac.tile.matrices[[x]]))}
+  ))
 colnames(se) <- paste0(cell.to.sample,'#',colnames(se))
 colData(se)$Sample <- as.character(cell.to.sample)
 tile.sce <- as(se, 'SingleCellExperiment')
@@ -84,10 +92,18 @@ el <- ExperimentList(list(
   'TileMatrix500' = tile.sce
 ))
 maplist <- lapply(el, function(se) {
-  data.frame(primary = se$Sample, colname = colnames(se), stringsAsFactors = FALSE)
+  data.frame(
+    primary = se$Sample,
+    colname = colnames(se),
+    stringsAsFactors = FALSE
+    )
 })
 sampMap <- listToMap(maplist)
-mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
+mae <- MultiAssayExperiment(
+  el, 
+  sampleMap = sampMap, 
+  colData = DataFrame(row.names=unique(sampMap$primary))
+  )
 ```
 
 Finally, we add the fragment file names to the `MultiAssayExperiment` `colData` for use by other arbalist functions.
@@ -115,7 +131,9 @@ The TSS enrichment score evaluates accessibility at the transcription start site
 
 ```{r tss, eval=FALSE}
 library(GenomicRanges)
-gene.grs <- GRanges(c("chrA:500-1000", "chrA:1200-1400", "chrA:1500-2700", "chrA:4500-5000","chrB:1000-2000", "chrB:3500-4200", "chrC:1500-2000", "chrC:2500-3000", "chrD:500-1000"))
+gene.grs <- GRanges(c("chrA:500-1000", "chrA:1200-1400", "chrA:1500-2700", 
+                      "chrA:4500-5000","chrB:1000-2000", "chrB:3500-4200", 
+                      "chrC:1500-2000", "chrC:2500-3000", "chrD:500-1000"))
 
 colData(mae)
 mae <- addTSSEnrichmentScores(mae, gene.grs = gene.grs)
@@ -131,7 +149,8 @@ We calculate doublet scores and filter cells based on the doublet enrichment sco
 mae <- addDoubletScores(mae)
 summary(colData(mae[['TileMatrix500']])$DoubletScore)
 summary(colData(mae[['TileMatrix500']])$DoubletEnrichment)
-mae[['TileMatrix500']] <- mae[['TileMatrix500']][,colData(mae[['TileMatrix500']])$DoubletEnrichment >= 1]
+selected.cells <- colData(mae[['TileMatrix500']])$DoubletEnrichment >= 1
+mae[['TileMatrix500']] <- mae[['TileMatrix500']][,selected.cells]
 ```
 
 # Reduced dimensions using iterative LSI
@@ -159,22 +178,44 @@ We calculate UMAP and tSNE embeddings of the reduced dimension features. Embeddi
 library(scater)
 
 # Add UMAP to SingleCellExperiment
-mae[['TileMatrix500']] <- runUMAP(mae[['TileMatrix500']], dimred = 'iterativeLSI', name = 'iterativeLSI_UMAP')
+mae[['TileMatrix500']] <- runUMAP(
+  mae[['TileMatrix500']], 
+  dimred = 'iterativeLSI', 
+  name = 'iterativeLSI_UMAP'
+  )
 
 # UMAP colored by Sample
-scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_UMAP', colour_by = 'Sample')
+scater::plotReducedDim(
+  mae[['TileMatrix500']], 
+  dimred = 'iterativeLSI_UMAP', 
+  colour_by = 'Sample'
+  )
 
 # UMAP colored by Clusters
-scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_UMAP', colour_by = 'Clusters')
+scater::plotReducedDim(
+  mae[['TileMatrix500']], 
+  dimred = 'iterativeLSI_UMAP', 
+  colour_by = 'Clusters'
+  )
 
 # Add TSNE to SingleCellExperiment
-mae[['TileMatrix500']] <- runTSNE(mae[['TileMatrix500']], dimred = 'iterativeLSI', name = 'iterativeLSI_TSNE')
+mae[['TileMatrix500']] <- runTSNE(
+  mae[['TileMatrix500']], 
+  dimred = 'iterativeLSI',
+  name = 'iterativeLSI_TSNE'
+  )
 
 # TSNE colored by Sample
-scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_TSNE', colour_by = 'Sample')
+scater::plotReducedDim(
+  mae[['TileMatrix500']], 
+  dimred = 'iterativeLSI_TSNE',
+  colour_by = 'Sample'
+  )
 
 # TSNE colored by Clusters
-scater::plotReducedDim(mae[['TileMatrix500']], dimred = 'iterativeLSI_TSNE', colour_by = 'Clusters')
+scater::plotReducedDim(
+  mae[['TileMatrix500']], 
+  dimred = 'iterativeLSI_TSNE', colour_by = 'Clusters')
 ```
 
 # Pseudobulk replicates

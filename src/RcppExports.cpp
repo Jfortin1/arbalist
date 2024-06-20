@@ -23,6 +23,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// data_distribtion
+Rcpp::List data_distribtion(SEXP mat, int max);
+RcppExport SEXP _arbalist_data_distribtion(SEXP matSEXP, SEXP maxSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< SEXP >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< int >::type max(maxSEXP);
+    rcpp_result_gen = Rcpp::wrap(data_distribtion(mat, max));
+    return rcpp_result_gen;
+END_RCPP
+}
 // count_fragment_size_distributions
 Rcpp::IntegerVector count_fragment_size_distributions(std::string fragment_file);
 RcppExport SEXP _arbalist_count_fragment_size_distributions(SEXP fragment_fileSEXP) {
@@ -266,6 +277,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_aggregate_counts", (DL_FUNC) &_arbalist_aggregate_counts, 4},
+    {"_arbalist_data_distribtion", (DL_FUNC) &_arbalist_data_distribtion, 2},
     {"_arbalist_count_fragment_size_distributions", (DL_FUNC) &_arbalist_count_fragment_size_distributions, 1},
     {"_arbalist_fragments_to_regions", (DL_FUNC) &_arbalist_fragments_to_regions, 11},
     {"_arbalist_fragments_to_tiles", (DL_FUNC) &_arbalist_fragments_to_tiles, 9},

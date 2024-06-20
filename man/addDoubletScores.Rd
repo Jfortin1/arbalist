@@ -21,7 +21,7 @@ addDoubletScores(
 \arguments{
 \item{mae}{\linkS4class{MultiAssayExperiment}.}
 
-\item{experiment.name}{String containing thr experiment name to calculate doublet scores.}
+\item{experiment.name}{String containing the experiment name to calculate doublet scores.}
 
 \item{seed}{Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.}
 

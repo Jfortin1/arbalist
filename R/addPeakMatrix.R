@@ -146,6 +146,7 @@ addPeakMatrix <- function(
   names(peak.res.list) <- names(fragment.files)
   
   peak.sce <- .getSCEFromH5List(peak.res.list, res.peak.set)
+  mainExpName(peak.sce) <- 'PeakMatrix'
   
   new.mae <- c(mae, 'PeakMatrix'=peak.sce)
   

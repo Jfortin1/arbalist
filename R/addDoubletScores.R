@@ -3,7 +3,7 @@
 #' Calculate doublet scores and add them to the MultiAssayExperiment.
 #' 
 #' @param mae \linkS4class{MultiAssayExperiment}.
-#' @param experiment.name String containing thr experiment name to calculate doublet scores.
+#' @param experiment.name String containing the experiment name to calculate doublet scores.
 #' @param seed Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
 #' @param num.trials Integer scalar specifying the number of times to simulate the number of cells in the sample for doublets.
 #' @param num.threads Integer scalar specifying the number of threads to be used for parallel computing.
@@ -111,7 +111,7 @@ addDoubletScores <- function(
     
     if(!is.null(plot.out.dir)) {
       # Plot doublets relative to the cells
-      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet)) + theme_classic() + ggtitle(sample.name)
+      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet), size = 0.5) + theme_classic() + ggtitle(sample.name)
       ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_umap_plot.pdf'), height = 4, width = 5)
     }
     
@@ -148,11 +148,13 @@ addDoubletScores <- function(
       umap.res$doublet.scores <- doublet.res$score
       umap.res$doublet.enrichment <- doublet.res$enrichment
       
-      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.res$score)) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
-      ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_score_umap_plot.pdf'), height = 4, width = 5)
+      umap.res <- umap.res[order(umap.res$doublet.scores),]
+      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.scores), size = 0.5) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
+      ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_score_umap_plot.pdf'), height = 5.5, width = 7)
       
-      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.res$enrichment)) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
-      ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_enrichment_umap_plot.pdf'), height = 4, width = 5)
+      umap.res <- umap.res[order(umap.res$doublet.enrichment),]
+      ggplot(umap.res, aes(x=UMAP1,y=UMAP2)) + geom_point(aes(color=doublet.enrichment), size = 0.5) + theme_classic() + ggtitle(sample.name) + ggplot2::scale_colour_gradientn(colours=c("grey", "#FB8861FF", "#B63679FF", "#51127CFF", "#000004FF"))
+      ggsave(paste0(plot.out.dir,'/',sample.name,'_doublet_enrichment_umap_plot.pdf'), height = 5.5, width = 7)
     }
     
     # Add doublet scores/enrichment to the colData

@@ -5,6 +5,10 @@ aggregate_counts <- function(input, grouping, nthreads, binarize) {
     .Call('_arbalist_aggregate_counts', PACKAGE = 'arbalist', input, grouping, nthreads, binarize)
 }
 
+data_distribtion <- function(mat, max) {
+    .Call('_arbalist_data_distribtion', PACKAGE = 'arbalist', mat, max)
+}
+
 count_fragment_size_distributions <- function(fragment_file) {
     .Call('_arbalist_count_fragment_size_distributions', PACKAGE = 'arbalist', fragment_file)
 }

@@ -1,6 +1,6 @@
 Package: arbalist
-Version: 0.1.8
-Date: 2024-06-11
+Version: 0.1.9
+Date: 2024-06-20
 Title: Bringing ArchR to Bioconductor
 Description: 
     Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
@@ -42,7 +42,8 @@ Imports:
     ggplot2,
     ggpointdensity,
     pheatmap,
-    viridis
+    viridis,
+    presto
 LinkingTo:
     Rcpp,
     Rhdf5lib,
@@ -50,7 +51,8 @@ LinkingTo:
 Suggests:
     testthat,
     knitr,
-    rmarkdown
+    rmarkdown,
+    BiocStyle
 VignetteBuilder: 
     knitr
 SystemRequirements: 
