@@ -2,7 +2,7 @@
 % Please edit documentation in R/addMarkerFeatures.R
 \name{addMarkerFeatures}
 \alias{addMarkerFeatures}
-\title{Differential features}
+\title{Differential feature analysis}
 \usage{
 addMarkerFeatures(
   mae,
@@ -30,7 +30,7 @@ addMarkerFeatures(
 \linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
 }
 \description{
-Calculate gene score matrix to estimate gene expression and add the matrix to the MultiAssayExperiment.
+For each of the groups specified, perform differential analysis for the specified features by comparing that group of cells to cells with similar distribution across the features from the other cell groups.
 }
 \author{
 Natalie Fox

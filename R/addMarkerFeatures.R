@@ -1,6 +1,6 @@
-#' Differential features
+#' Differential feature analysis
 #'
-#' Calculate gene score matrix to estimate gene expression and add the matrix to the MultiAssayExperiment.
+#' For each of the groups specified, perform differential analysis for the specified features by comparing that group of cells to cells with similar distribution across the features from the other cell groups.
 #' 
 #' @param mae \linkS4class{MultiAssayExperiment}.
 #' @param experiment.name String containing the experiment name for selecting the features to use for differential analysis.
@@ -23,27 +23,28 @@ addMarkerFeatures <- function(
     num.threads = 1,
     sampleLabels = "Sample"
 ) {
+  # Pull the necessary data from the MAE
   sce.list <- findSCE(mae, experiment.name)
   se <- sce.list$sce
   main.exp.name <- names(mae)[sce.list$sce.idx]
   alt.exp.name <- sce.list$alt.exp.name
-  
   if(is.null(group.experiment.name)) {
     group.experiment.name <- experiment.name
   }
   group.sce.list <- findSCE(mae, group.experiment.name)
   
+  # Perform differential analysis
   diff.res <- markerDiff(
     mat = assay(se),
     group.classification = colData(group.sce.list$sce)[,group.colname]
     )
   
+  # Add the new SummarizedExperiment to a list of the existing experiments
   exp.list <- experiments(mae)
   new.exp.name <- paste0(experiment.name,'_marker_features')
   new.se <- SummarizedExperiment(assays=diff.res,rowRanges=rowRanges(se))
   exp.list[[new.exp.name]] <- SummarizedExperiment(assays=diff.res,rowRanges=rowRanges(se))
   colData(exp.list[[new.exp.name]])$ID <- colnames(diff.res[[1]])
-  
   el <- ExperimentList(exp.list)
   maplist <- lapply(exp.list, function(se) {
     if(sampleLabels %in% colnames(colData(se))) {
@@ -54,12 +55,11 @@ addMarkerFeatures <- function(
   })
   sampMap <- listToMap(maplist)
   
-  # Create and annotate the MultiAssayExperiment
+  # Create a new MultiAssayExperiment matching the old MAE but with the new experiment
   new.mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
   colData.filler <- matrix(NA,ncol=ncol(colData(mae)),nrow=ncol(new.se))
   colnames(colData.filler) <- colnames(colData(mae))
   rownames(colData.filler) <- colnames(new.se)
-  
   colData(new.mae) <- rbind(colData(mae),colData.filler)
   metadata(new.mae) <- metadata(mae)
   
@@ -70,15 +70,20 @@ addMarkerFeatures <- function(
 #' @importFrom nabor knn
 markerDiff <- function(mat, group.classification) {
   
+  # set up a pointer to the data for profiling the columns for matching cells between groups
   beachmat::flushMemoryCache()
   ptr <- beachmat::initializeCpp(mat, memorize = TRUE)
+  # get the maximum of the data so that we can get the distribution of the data in one pass and minimizing memory usage.
   stats <- lsi_matrix_stats(ptr, nthreads = num.threads) # sums = colSums, frequency = # non-zero per row
-
+  # get the data distribution of each column
   data.column.hist <- t(as.data.frame(data_distribtion(ptr, max = stats$max)$distribution))
   rownames(data.column.hist) <- NULL
 
-  diff.res <- list()
-  for( group.name in unique(group.classification)) {
+  # For each group, compare the cells to matched cells from the other groups to assess feature differences
+  diff.res.list <- list()
+  for( group.name in unique(group.classification) ) {
+    
+    # find the nearest neighbours from the cells not in the group to used as a matched group for comparison
     match.num <- min(sum(group.classification != group.name), sum(group.classification == group.name))
     group.idxs <- which(group.classification == group.name)
     match.option.idxs <- which(group.classification != group.name)
@@ -86,33 +91,31 @@ markerDiff <- function(mat, group.classification) {
     knnx <- nabor::knn(data = data.column.hist[match.option.idxs,], query = data.column.hist[group.idxs,], k = match.num)$nn.idx
     bkgd.matched.idxs <- match.option.idxs[unique(as.numeric(knnx[sample(nrow(knnx)),]))[1:match.num]]
     
-    mat1 <- as(mat[,group.idxs],"sparseMatrix")# cells in group
+    mat1 <- as(mat[,group.idxs],"sparseMatrix") # cells in one group
     mat2 <- as(mat[,bkgd.matched.idxs],"sparseMatrix")# matched cells with similar column wide distribution
     
-    n1 <- ncol(mat1)
-    n2 <- ncol(mat2)
+    # perform wilcoxon test for the features
+    diff.res <- wilcoxauc(cbind(mat1,mat2), c(rep(group.name, ncol(mat1)),rep(paste0(group.name,'_matched'), ncol(mat2))))
+    diff.res <- diff.res [which(diff.res$group==group.name),]
     
-    df <- wilcoxauc(cbind(mat1,mat2), c(rep(group.name, ncol(mat1)),rep(paste0(group.name,'_matched'), ncol(mat2))))
-    df <- df[which(df$group==group.name),]
-    
-    #Sparse Row Sums
+    # pull together differential results
     m1 <- Matrix::rowSums(mat1, na.rm=TRUE)
     m2 <- Matrix::rowSums(mat2, na.rm=TRUE)
     offset <- 1
     log2FC <- log2((m1 + offset) / (m2 + offset))
     log2Mean <- log2(((m1 + offset) + (m2 + offset)) / 2)
     
-    diff.res[[group.name]] <- data.frame(
+    diff.res.list[[group.name]] <- data.frame(
       log2Mean = log2Mean,
       log2FC = log2FC,
-      fdr = df$padj, 
-      pval = df$pval, 
+      fdr = diff.res$padj, 
+      pval = diff.res$pval, 
       mean1 = Matrix::rowMeans(mat1, na.rm=TRUE), 
       mean2 = Matrix::rowMeans(mat2, na.rm=TRUE), 
       n = ncol(mat1),
-      auc = df$auc
+      auc = diff.res$auc
     )
   }
 
-  return(diff.res)
+  return(diff.res.list)
 }
