@@ -7,16 +7,13 @@
 #' @param filtered.feature.matrix.files String vector containing the filtered feature matrix file names and paths. ex. 10x cellranger result output filtered_feature_bc_matrix.h5 or filtered_tf_bc_matrix.h5
 #' @param barcode.annotation.files String vector containing barcode annotation to put in the SingleCellExperiment colData. ex. 10x cellranger result output per_barcode_metrics.csv or singlecell.csv
 #' @param sample.annotation.files String vector containing sample annotation to put in the MultiAssayExperiment colData. ex. 10x cellranger result output summary.csv
-#' @param output.dir String containing the directory where files should be output while creating the \linkS4class{MultiAssayExperiment}.
 #' @param multiome Logical whether to use createMultiomeRNASCE on the filtered.feature.matrix.files to extrct the RNA features and create a SingleCellExperiment. If NULL, then will become TRUE if filtered.feature.matrix.files contain "filtered_feature_bc_matrix.h5" otherwise FALSE.
 #' @param min.frags Number specifying the minimum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing greater than or equal to min.frags total fragments will be retained.
 #' @param max.frags Number specifying the maximum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing less than or equal to max.frags total fragments will be retained.
-#' @param tile.size Number specifying size of the tiles across the genome in base pairs.
-#' @param seq.lengths Named integer vector containing the lengths of the reference sequences used for alignment.
 #' @param gene.grs Genomic Ranges specifying gene coordinates for creating the gene score matrix. If NULL, then the geneset will be selected based on the genome version.
 #' @param use.alt.exp Logical for selecting the MultiAssayExperiment structure. TRUE means that there will only be one experiment in the MultiAssayExperiment and all other experiments will be in alternative experiments. This option is only available if the columns are the same for all Matrices. FALSE means that each Matrix will be a separate experiment in the MAE.
 #' @param main.exp.name String containing the name of the experiment that will be the main experiment when use.alt.exp is TRUE.
-#' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
+#' @inheritParams .getExpListFromFragments
 #'
 #' @return A \linkS4class{MultiAssayExperiment}
 #' 

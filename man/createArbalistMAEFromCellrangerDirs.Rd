@@ -26,9 +26,11 @@ createArbalistMAEFromCellrangerDirs(
 
 \item{max.frags}{Number specifying the maximum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing less than or equal to max.frags total fragments will be retained.}
 
-\item{tile.size}{Number specifying size of the tiles across the genome in base pairs.}
+\item{tile.size}{Integer scalar specifying the size of the tiles in base pairs.}
 
-\item{seq.lengths}{Named integer vector containing the lengths of the reference sequences used for alignment.}
+\item{seq.lengths}{Named integer vector containing the lengths of the reference sequences used for alignment.
+Vector names should correspond to the names of the sequences, in the same order of occurrence as in the fragment file.
+If \code{NULL}, this is obtained from the reference genome used by Cellranger (itself located by scanning the header of the fragment file).}
 
 \item{gene.grs}{Genomic Ranges specifying gene coordinates for creating the gene score matrix. If NULL, then the geneset will be selected based on the genome version.}
 

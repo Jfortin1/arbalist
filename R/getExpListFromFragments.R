@@ -3,12 +3,11 @@
 #' Create a list of single cell experiments from fragment files
 #' 
 #' @param fragment.files Vector of strings specifying fragment files. Vector names need to be sample names.
-#' @param tile.size Number specifying size of the tiles across the genome in base pairs.
 #' @param output.dir String containing the directory where files should be output while creating the \linkS4class{MultiAssayExperiment}.
-#' @param seq.lengths Named integer vector containing the lengths of the reference sequences used for alignment.
 #' @param gene.grs Genomic Ranges specifying gene coordinates for creating the gene score matrix. If NA, the gene accessibility matrix will not be created.
 #' @param barcodes.list A List with samples as names and the values a vector of barcodes for that sample. If NULL, all barcodes from the fragment file will be used.
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
+#' @inheritParams saveTileMatrix
 #' 
 #' @return A list of experiments
 #' 
@@ -20,7 +19,6 @@
 #' @importFrom SummarizedExperiment SummarizedExperiment colData
 #' @importFrom BiocParallel bptry bplapply bpparam
 #' @importFrom BiocGenerics type type<-
-#' @noRd
 .getExpListFromFragments <- function(
   fragment.files,
   output.dir = tempdir(),
@@ -47,6 +45,14 @@
   names(output.file.names) <- names(fragment.files)
   if(any(file.exists(output.file.names))) {
     stop(paste0(output.file.names[which(file.exists(output.file.names))[1]],' already exists. We do not want to overwrite the file in case it is being used. Either remove the file if you think it is safe to do so or specify a different output.dir.'))
+  }
+  
+  # check that fragment headers contained required information
+  if(is.null(seq.lengths)) {
+    info <- .process_fragment_header(fragment.files[1])
+    if(! 'reference_path' %in% names(info)) {
+      stop('the fragment file header does not have reference_path information so please specify the seq.lengths argument')
+    }
   }
   
   # For each fragment.file create a tile matrix hdf5 file

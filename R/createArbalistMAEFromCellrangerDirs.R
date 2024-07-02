@@ -3,15 +3,7 @@
 #' Import results from scATAC-seq or multiome cellranger directories into a MultiAssayExperiment.
 #' 
 #' @param cellranger.res.dirs Vector of strings specifying a sunrise scATAC-seq or multiome cellranger results directory. Vector names need to be sample names.
-#' @param output.dir String containing the directory where files should be output while creating the \linkS4class{MultiAssayExperiment}.
-#' @param min.frags Number specifying the minimum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing greater than or equal to min.frags total fragments will be retained.
-#' @param max.frags Number specifying the maximum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing less than or equal to max.frags total fragments will be retained.
-#' @param tile.size Number specifying size of the tiles across the genome in base pairs.
-#' @param seq.lengths Named integer vector containing the lengths of the reference sequences used for alignment.
-#' @param gene.grs Genomic Ranges specifying gene coordinates for creating the gene score matrix. If NULL, then the geneset will be selected based on the genome version.
-#' @param use.alt.exp Logical for selecting the MultiAssayExperiment structure. TRUE means that there will only be one experiment in the MultiAssayExperiment and all other experiments will be in alternative experiments. This option is only available if the columns are the same for all Matrices. FALSE means that each Matrix will be a separate experiment in the MAE.
-#' @param main.exp.name String containing the name of the experiment that will be the main experiment when use.alt.exp is TRUE.
-#' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
+#' @inheritParams createArbalistMAE
 #'
 #' @return A \linkS4class{MultiAssayExperiment}
 #' 
@@ -54,8 +46,8 @@ createArbalistMAEFromCellrangerDirs <- function(
   return(mae)
 }
 
-.getFilesFromResDirs <- function(res.dirs,file.name.options) {
-  selected.files <- as.character(sapply(
+.getFilesFromResDirs <- function(res.dirs, file.name.options) {
+  selected.files <- unlist(sapply(
     res.dirs,
     function(x,file.name.options){
       for(i in file.name.options) {
