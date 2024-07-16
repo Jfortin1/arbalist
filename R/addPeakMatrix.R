@@ -46,6 +46,10 @@ addPeakMatrix <- function(
     BPPARAM = bpparam()
 ){
   
+  if(!is.numeric(genome.size)) {
+    stop('genome.size must be numeric')
+  }
+  
   # Find the single cell experiment result
   sce <- findSCE(mae, experiment.name = sc.experiment.name)$sce
 

@@ -36,7 +36,8 @@ addMarkerFeatures <- function(
   # Perform differential analysis
   diff.res <- markerDiff(
     mat = assay(se),
-    group.classification = colData(group.sce.list$sce)[,group.colname]
+    group.classification = colData(group.sce.list$sce)[,group.colname],
+    num.threads = num.threads
     )
   
   # Add the new SummarizedExperiment to a list of the existing experiments
@@ -68,7 +69,7 @@ addMarkerFeatures <- function(
 
 #' @importFrom presto wilcoxauc
 #' @importFrom nabor knn
-markerDiff <- function(mat, group.classification) {
+markerDiff <- function(mat, group.classification, num.threads = 1) {
   
   # set up a pointer to the data for profiling the columns for matching cells between groups
   beachmat::flushMemoryCache()

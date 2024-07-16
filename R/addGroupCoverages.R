@@ -173,7 +173,11 @@ addGroupCoverages <- function(
 
   if(!skip.se.creation) {
     beachmat::flushMemoryCache()
-    ptr <- beachmat::initializeCpp(x, memorize=FALSE)
+    if(is(x,"DelayedArray")) {
+      ptr <- beachmat.hdf5::initializeCpp(x, memorize=FALSE)
+    } else {
+      ptr <- beachmat::initializeCpp(x, memorize=FALSE)
+    }
     # Create matrix for pseudobulk experiment
     for(i in 1:nrow(replicates.matrix.coldata)) {
       output.file <- replicates.matrix.coldata$coverage.file[i]

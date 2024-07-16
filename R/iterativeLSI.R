@@ -48,7 +48,11 @@ iterativeLSI <- function(
   
   # select the top features based on accessibility of the binarized features
   beachmat::flushMemoryCache()
-  ptr <- beachmat::initializeCpp(x, memorize = TRUE)
+  if(is(x,"DelayedArray")) {
+    ptr <- beachmat.hdf5::initializeCpp(x, memorize=TRUE)
+  } else {
+    ptr <- beachmat::initializeCpp(x, memorize = TRUE)
+  }
   if(is.null(col.subset)) {
     col.subset <- seq(1, ncol(x))
   } else {

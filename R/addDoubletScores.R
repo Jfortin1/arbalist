@@ -23,6 +23,7 @@
 #' @importFrom BiocParallel bplapply bpparam SerialParam bptry
 #' @importFrom BiocGenerics Reduce
 #' @importFrom stats p.adjust pbinom
+#' @importFrom scater calculateUMAP
 #' @export
 addDoubletScores <- function(
     mae,
@@ -79,14 +80,13 @@ addDoubletScores <- function(
       num.doublets.per.iteration  <- floor(length(sample.columns)/2)
     }
     num.iterations <- ceiling(num.synthetic.doublets/num.doublets.per.iteration)
-    
+  
     # Calculate the iterativeLSI embedding for the sample's cells
     lsi.res <- iterativeLSI(assay(sce.list$sce)[,sample.columns], rank = num.dimensions)
     gc()
     if(is.null(lsi.res)) {
       next
     }
-    
     # Simulate doublets and project them into the LSI reduced dimensions
     set.seed(seed)
     parallelized.res <- bptry(bplapply(
@@ -185,7 +185,11 @@ addDoubletScores <- function(
   
   # Randomly select cells for doublets and then combine them in pairs to simulate doublets
   beachmat::flushMemoryCache()
-  ptr <- beachmat::initializeCpp(mat, memorize=FALSE)
+  if(is(mat,"DelayedArray")) {
+    ptr <- beachmat.hdf5::initializeCpp(mat, memorize=FALSE)
+  } else {
+    ptr <- beachmat::initializeCpp(mat, memorize=FALSE)
+  }
   random.cells <- sort(sample(seq(1,ncol(mat)), 2*num.doublets.per.iteration, replace = FALSE), decreasing = TRUE)
   ptr.subset <- apply_subset(ptr, random.cells, row = FALSE)
   mat.doublet <- as(aggregate_counts(ptr.subset, sample(rep(seq(1,length(random.cells)/2),2))-1L, nthreads = num.threads, binarize = FALSE), "sparseMatrix")/2
