@@ -34,6 +34,7 @@ addPeakMatrix <- function(
     pseudobulk.experiment.name = 'TileMatrix500_pseudobulk',
     sc.experiment.name = 'TileMatrix500',
     gene.grs = NULL,
+    exon.grs = NULL,
     reproducibility = "2",
     shift = -75,
     extsize = 150,
@@ -155,7 +156,7 @@ addPeakMatrix <- function(
   new.mae <- c(mae, 'PeakMatrix'=peak.sce)
   
   # Add gene info relative to the peaks
-  new.mae <- .peakGeneAnno(new.mae, gene.grs = gene.grs)
+#  new.mae <- .peakGeneAnno(new.mae, gene.grs = gene.grs)
   
   return(new.mae)
 }
@@ -228,33 +229,45 @@ addPeakMatrix <- function(
     peak.experiment.name = 'PeakMatrix',
     experiment.name.for.gene.grs = 'GeneExpressionMatrix',
     gene.grs = NULL,
+    exon.grs = NULL,
     promoter.region = c(2000, 100)
     ) {
   
-  gene.sce.list <- findSCE(mae, experiment.name.for.gene.grs)
+  peaks.grs <- rowRanges(mae[[peak.experiment.name]])
   
   if(is.null(gene.grs)) {
+    gene.sce.list <- findSCE(mae, experiment.name.for.gene.grs)
     if(is.null(gene.sce.list)) {
       warning(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs if you want peak to gene annotation'))
       return(mae)
     }
+    gene.grs$name <- rowData(gene.sce.list$sce)$name
     gene.grs <- GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
+    gene.grs$name <- rowData(gene.sce.list$sce)$name[rowData(gene.sce.list$sce)$interval != 'NA']
+    if(is.null(exon.grs)) {
+      exon.grs <- rowRanges(gene.sce.list$sce)
+    }
     if(length(gene.grs) == 0) {
       warning(paste0('There are no interval specified in the rowData of ',experiment.name.for.gene.grs,' so please specify gene.grs if you want peak to gene annotation'))
       return(mae)
     }
   }
-  if(is.null(gene.sce.list)) {
-    warning(paste0('Cannot find a ',experiment.name.for.gene.grs,' to get gene coordinates from so please specify gene.grs if you want peak to gene annotation'))
-    return(mae)
+  if(!'name' %in% colnames(mcols(gene.grs))) {
+    if('symbol' %in% colnames(mcols(gene.grs))) {
+      gene.grs$name <- gene.grs$symbol
+    } else if(grep('name',colnames(mcols(gene.grs)))) {
+      gene.grs$name <- mcols(gene.grs)[grep('name',colnames(mcols(gene.grs)))[1]]
+    } else if(grep('id',colnames(mcols(gene.grs)))) {
+      gene.grs$name <- mcols(gene.grs)[grep('id',colnames(mcols(gene.grs)))[1]]
+    } else {
+      warning('there is no names for the genes so skipping gene annotation')
+      return(mae)
+    }
   }
-  
-  gene.grs <- GRanges(rowData(gene.sce.list$sce)$interval[rowData(gene.sce.list$sce)$interval != 'NA'])
-  peaks.grs <- rowRanges(mae[[peak.experiment.name]])
   
   dist.to.peak.start <- GenomicRanges::distanceToNearest(peaks.grs, GenomicRanges::resize(gene.grs, 1, "start"), ignore.strand = TRUE)
   mcols(peaks.grs)$distToGeneStart <- mcols(dist.to.peak.start)$distance
-  mcols(peaks.grs)$nearestGene <- rowData(gene.sce.list$sce)$name[subjectHits(dist.to.peak.start)]
+  mcols(peaks.grs)$nearestGene <- gene.grs$name[subjectHits(dist.to.peak.start)]
   promoters <- GenomicRanges::resize(gene.grs, 1, "start")
   idx.grs.reverse <- BiocGenerics::which(strand(promoters) == "-")
   idx.grs.forward <- BiocGenerics::which(strand(promoters) != "-")
@@ -264,7 +277,7 @@ addPeakMatrix <- function(
   start(promoters)[idx.grs.reverse] <- start(promoters)[idx.grs.reverse] - promoter.region[2]
   logical.prompoter.overlap <- overlapsAny(peaks.grs, promoters, ignore.strand = TRUE)
   logical.gene.overlap <- overlapsAny(peaks.grs, gene.grs, ignore.strand = TRUE)
-  logical.exon.overlap <- overlapsAny(peaks.grs, rowRanges(gene.sce.list$sce), ignore.strand = TRUE)
+  logical.exon.overlap <- overlapsAny(peaks.grs, exon.grs, ignore.strand = TRUE)
   peak.type <- rep("Distal", length(peaks.grs))
   peak.type[which(logical.gene.overlap & logical.exon.overlap)] <- "Exonic"
   peak.type[which(logical.gene.overlap & !logical.exon.overlap)] <- "Intronic"

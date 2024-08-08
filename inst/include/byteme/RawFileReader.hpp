@@ -23,21 +23,12 @@ namespace byteme {
  * Mostly provided because I always forget how to interact with `ifstream` objects when I want a sequence of bytes.
  */
 class RawFileReader : public Reader {
-private:
-    /**
-     * @cond
-     */
-    friend class SomeFileReader;
-    /**
-     * @endcond
-     */
-
 public:
     /**
      * @param path Path to the file.
      * @param buffer_size Size of the buffer to use for reading.
      */
-    RawFileReader(const char* path, size_t buffer_size = 65536) : file(path, "rb"), buffer_(buffer_size) {}
+    RawFileReader(const char* path, size_t buffer_size = 65536) : my_file(path, "rb"), my_buffer(buffer_size) {}
 
     /**
      * @param path Path to the file.
@@ -45,31 +36,39 @@ public:
      */
     RawFileReader(const std::string& path, size_t buffer_size = 65536) : RawFileReader(path.c_str(), buffer_size) {}
 
-    bool operator()() {
-        auto& handle = file.handle;
-        read = std::fread(buffer_.data(), sizeof(unsigned char), buffer_.size(), handle);
-        if (read != buffer_.size()) {
+public:
+    bool load() {
+        if (!my_okay) {
+            return false;
+        }
+
+        auto& handle = my_file.handle;
+        my_read = std::fread(my_buffer.data(), sizeof(unsigned char), my_buffer.size(), handle);
+
+        if (my_read < my_buffer.size()) {
             if (std::feof(handle)) {
-                return false;
+                my_okay = false;
             } else {
                 throw std::runtime_error("failed to read raw binary file (fread error " + std::to_string(std::ferror(handle)) + ")");
             }
         }
+
         return true;
     }
 
     const unsigned char* buffer() const {
-        return buffer_.data();
+        return my_buffer.data();
     }
 
     size_t available() const {
-        return read;
+        return my_read;
     }
 
 private:
-    SelfClosingFILE file;
-    std::vector<unsigned char> buffer_;
-    size_t read = 0;
+    SelfClosingFILE my_file;
+    std::vector<unsigned char> my_buffer;
+    size_t my_read = 0;
+    bool my_okay = true;
 };
 
 }

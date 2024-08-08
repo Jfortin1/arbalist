@@ -82,32 +82,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// irlba_realized
-Rcpp::List irlba_realized(SEXP input, int rank, int nthreads, int seed);
-RcppExport SEXP _arbalist_irlba_realized(SEXP inputSEXP, SEXP rankSEXP, SEXP nthreadsSEXP, SEXP seedSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
-    Rcpp::traits::input_parameter< int >::type rank(rankSEXP);
-    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    Rcpp::traits::input_parameter< int >::type seed(seedSEXP);
-    rcpp_result_gen = Rcpp::wrap(irlba_realized(input, rank, nthreads, seed));
-    return rcpp_result_gen;
-END_RCPP
-}
-// irlba_tatami
-Rcpp::List irlba_tatami(SEXP input, int rank, int nthreads, int seed);
-RcppExport SEXP _arbalist_irlba_tatami(SEXP inputSEXP, SEXP rankSEXP, SEXP nthreadsSEXP, SEXP seedSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< SEXP >::type input(inputSEXP);
-    Rcpp::traits::input_parameter< int >::type rank(rankSEXP);
-    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    Rcpp::traits::input_parameter< int >::type seed(seedSEXP);
-    rcpp_result_gen = Rcpp::wrap(irlba_tatami(input, rank, nthreads, seed));
-    return rcpp_result_gen;
-END_RCPP
-}
 // lsi_matrix_stats
 Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads);
 RcppExport SEXP _arbalist_lsi_matrix_stats(SEXP matSEXP, SEXP nthreadsSEXP) {
@@ -281,8 +255,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_count_fragment_size_distributions", (DL_FUNC) &_arbalist_count_fragment_size_distributions, 1},
     {"_arbalist_fragments_to_regions", (DL_FUNC) &_arbalist_fragments_to_regions, 11},
     {"_arbalist_fragments_to_tiles", (DL_FUNC) &_arbalist_fragments_to_tiles, 9},
-    {"_arbalist_irlba_realized", (DL_FUNC) &_arbalist_irlba_realized, 4},
-    {"_arbalist_irlba_tatami", (DL_FUNC) &_arbalist_irlba_tatami, 4},
     {"_arbalist_lsi_matrix_stats", (DL_FUNC) &_arbalist_lsi_matrix_stats, 2},
     {"_arbalist_create_pseudobulk_file", (DL_FUNC) &_arbalist_create_pseudobulk_file, 3},
     {"_arbalist_apply_subset", (DL_FUNC) &_arbalist_apply_subset, 3},

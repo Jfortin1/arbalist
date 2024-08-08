@@ -92,7 +92,7 @@ public:
         /*** Reading through all the comments at the start. ***/
         bool in_comment = false;
         do {
-            remaining = gzreader();
+            remaining = gzreader.load();
             const unsigned char* buffer = gzreader.buffer();
             size_t available = gzreader.available();
             auto ptr = reinterpret_cast<const char*>(buffer);
@@ -122,7 +122,7 @@ public:
 
         /*** Now actually doing the parsing.  ***/
         do {
-            remaining = gzreader();
+            remaining = gzreader.load();
             const unsigned char* buffer = gzreader.buffer();
             size_t available = gzreader.available();
             auto ptr = reinterpret_cast<const char*>(buffer);

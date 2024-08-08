@@ -21,14 +21,6 @@ fragments_to_tiles <- function(fragment_file, tile_size, output_file, output_gro
     .Call('_arbalist_fragments_to_tiles', PACKAGE = 'arbalist', fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim)
 }
 
-irlba_realized <- function(input, rank, nthreads, seed) {
-    .Call('_arbalist_irlba_realized', PACKAGE = 'arbalist', input, rank, nthreads, seed)
-}
-
-irlba_tatami <- function(input, rank, nthreads, seed) {
-    .Call('_arbalist_irlba_tatami', PACKAGE = 'arbalist', input, rank, nthreads, seed)
-}
-
 lsi_matrix_stats <- function(mat, nthreads) {
     .Call('_arbalist_lsi_matrix_stats', PACKAGE = 'arbalist', mat, nthreads)
 }

@@ -38,7 +38,7 @@ createArbalistMAEFromCellrangerDirs <- function(
     tile.size = tile.size,
     seq.lengths = seq.lengths,
     gene.grs = gene.grs,
-    use.alt.exp = use.alt.exp ,
+    use.alt.exp = use.alt.exp,
     main.exp.name = main.exp.name,
     BPPARAM = BPPARAM
   )

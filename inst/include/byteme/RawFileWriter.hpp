@@ -1,5 +1,5 @@
-#ifndef BYTEME_RAW_BUFFER_READER_HPP
-#define BYTEME_RAW_BUFFER_READER_HPP
+#ifndef BYTEME_RAW_FILE_WRITER_HPP
+#define BYTEME_RAW_FILE_WRITER_HPP
 
 #include <vector>
 #include <stdexcept>
@@ -28,8 +28,8 @@ public:
      * @param path Path to the file.
      * @param buffer_size Size of the buffer to use for writing.
      */
-    RawFileWriter(const char* path, size_t buffer_size = 65536) : file(path, "wb") {
-        if (std::setvbuf(file.handle, nullptr, _IOFBF, buffer_size)) {
+    RawFileWriter(const char* path, size_t buffer_size = 65536) : my_file(path, "wb") {
+        if (std::setvbuf(my_file.handle, nullptr, _IOFBF, buffer_size)) {
             throw std::runtime_error("failed to set a buffer size for file writing");
         }
     }
@@ -41,22 +41,24 @@ public:
     RawFileWriter(const std::string& path, size_t buffer_size = 65536) : RawFileWriter(path.c_str(), buffer_size) {}
 
 public:
+    using Writer::write;
+
     void write(const unsigned char* buffer, size_t n) {
-        size_t ok = std::fwrite(buffer, sizeof(unsigned char), n, file.handle);
+        size_t ok = std::fwrite(buffer, sizeof(unsigned char), n, my_file.handle);
         if (ok < n) {
-            throw std::runtime_error("failed to write raw binary file (fwrite error " + std::to_string(std::ferror(file.handle)) + ")");
+            throw std::runtime_error("failed to write raw binary file (fwrite error " + std::to_string(std::ferror(my_file.handle)) + ")");
         }
     }
 
     void finish() {
-        if (std::fclose(file.handle)) {
+        if (std::fclose(my_file.handle)) {
             throw std::runtime_error("failed to close raw binary file");
         }
-        file.handle = nullptr;
+        my_file.handle = nullptr;
     }
 
 private:
-    SelfClosingFILE file;
+    SelfClosingFILE my_file;
 };
 
 }

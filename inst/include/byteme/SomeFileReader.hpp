@@ -37,9 +37,9 @@ public:
         }
 
         if (is_gzip(header, read)) {
-            source.reset(new GzipFileReader(path, buffer_size));
+            my_source.reset(new GzipFileReader(path, buffer_size));
         } else {
-            source.reset(new RawFileReader(path, buffer_size));
+            my_source.reset(new RawFileReader(path, buffer_size));
         }
     }
 
@@ -49,20 +49,21 @@ public:
      */
     SomeFileReader(const std::string& path, size_t buffer_size = 65536) : SomeFileReader(path.c_str(), buffer_size) {}
 
-    bool operator()() {
-        return source->operator()();
+public:
+    bool load() {
+        return my_source->load();
     }
 
     const unsigned char* buffer() const {
-        return source->buffer();
+        return my_source->buffer();
     }
 
     size_t available() const {
-        return source->available();
+        return my_source->available();
     }
 
 private:
-    std::unique_ptr<Reader> source;
+    std::unique_ptr<Reader> my_source;
 };
 
 }

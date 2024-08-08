@@ -21,26 +21,38 @@ namespace byteme {
 class RawBufferReader : public Reader {
 public:
     /**
-     * @param buffer Buffer containing text.
+     * @param[in] buffer Pointer to an array of bytes, usually containing text.
      * @param length Length of the buffer.
      */
-    RawBufferReader(const unsigned char* buffer, size_t length) : buffer_(buffer), len_(length) {}
+    RawBufferReader(const unsigned char* buffer, size_t length) : my_buffer(buffer), my_length(length) {}
 
-    bool operator()() {
-        return false;
+    /**
+     * @param[in] buffer Pointer to an array of bytes, usually containing text.
+     * @param length Length of the buffer.
+     */
+    RawBufferReader(const char* buffer, size_t length) : RawBufferReader(reinterpret_cast<const unsigned char*>(buffer), length) {}
+
+public:
+    bool load() {
+        if (my_used) {
+            return false;
+        }
+        my_used = true;
+        return true;
     }
 
     const unsigned char* buffer() const {
-        return buffer_;
+        return my_buffer;
     }
 
     size_t available() const {
-        return len_;
+        return my_length;
     }
 
 private:
-    const unsigned char* buffer_;
-    size_t len_;
+    const unsigned char* my_buffer;
+    size_t my_length;
+    bool my_used = false;
 };
 
 }

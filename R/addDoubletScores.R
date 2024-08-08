@@ -186,9 +186,9 @@ addDoubletScores <- function(
   # Randomly select cells for doublets and then combine them in pairs to simulate doublets
   beachmat::flushMemoryCache()
   if(is(mat,"DelayedArray")) {
-    ptr <- beachmat.hdf5::initializeCpp(mat, memorize=FALSE)
+    ptr <- beachmat.hdf5::initializeCpp(mat, memorize=TRUE)
   } else {
-    ptr <- beachmat::initializeCpp(mat, memorize=FALSE)
+    ptr <- beachmat::initializeCpp(mat, memorize=TRUE)
   }
   random.cells <- sort(sample(seq(1,ncol(mat)), 2*num.doublets.per.iteration, replace = FALSE), decreasing = TRUE)
   ptr.subset <- apply_subset(ptr, random.cells, row = FALSE)

@@ -6,6 +6,7 @@
 
 //[[Rcpp::export(rng=false)]]
 Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, int nthreads, bool binarize) {
+
     auto shared = extract_NumericMatrix_shared(input);
     int NR = shared->nrow();
     int NC = shared->ncol();
@@ -20,7 +21,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
           std::vector<double> vbuffer(length);
 
           if (shared->sparse()) {
-              auto wrk = tatami::consecutive_extractor<true, true>(shared.get(), 0, NR, start, length);
+              auto wrk = tatami::consecutive_extractor<true>(shared.get(), true, start, length);
               std::vector<int> ibuffer(NC);
               for (int r = 0; r < NR; ++r) { 
                     auto ptr = buffer.data() + r * ngroups;
@@ -35,16 +36,15 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
                       }
                   }
               }
-
           } else {
-              auto wrk = tatami::consecutive_extractor<true, false>(shared.get(), 0, NR, start, length);
+              auto wrk = tatami::consecutive_extractor<false>(shared.get(), true, start, length);
               for (int r = 0; r < NR; ++r) { 
                   auto ptr = buffer.data() + r * ngroups;
                   auto found = wrk->fetch(r, vbuffer.data());
                   for (int i = 0; i < NC; i++) {
                       if(binarize) {
                           if(found[i] > 0) {
-                            ptr[grouping[i]] += 1;
+                          ptr[grouping[i]] += 1;
                           }
                       } else {
                           ptr[grouping[i]] += found[i];
@@ -64,6 +64,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
         }
 
     } else {
+      
         std::vector<std::vector<double> > partials(nthreads);
         std::vector<int> starts(nthreads, -1), lengths(nthreads, -1);
 
@@ -77,7 +78,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
           doutput.resize(NR * ngroups);
 
           if (shared->sparse()) {
-              auto wrk = tatami::consecutive_extractor<false, true>(shared.get(), start, length);
+              auto wrk = tatami::consecutive_extractor<true>(shared.get(), false, start, length);
               std::vector<int> ibuffer(length);
               for (int c = 0; c < NC; ++c) { 
                   auto range = wrk->fetch(c, vbuffer.data(), ibuffer.data());
@@ -93,7 +94,7 @@ Rcpp::NumericMatrix aggregate_counts(SEXP input, Rcpp::IntegerVector grouping, i
                   }
               }
           } else {
-              auto wrk = tatami::consecutive_extractor<false, false>(shared.get(), start, length);
+              auto wrk = tatami::consecutive_extractor<false>(shared.get(), false, start, length);
               for (int c = 0; c < NC; ++c) { 
                   auto found = wrk->fetch(c, vbuffer.data());
                   auto ptr = doutput.data() + grouping[c] * NR;

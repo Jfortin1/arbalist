@@ -10,6 +10,7 @@ addPeakMatrix(
   pseudobulk.experiment.name = "TileMatrix500_pseudobulk",
   sc.experiment.name = "TileMatrix500",
   gene.grs = NULL,
+  exon.grs = NULL,
   reproducibility = "2",
   shift = -75,
   extsize = 150,

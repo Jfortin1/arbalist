@@ -26,11 +26,11 @@ public:
      * @param compression_level Gzip compression level. 
      * @param buffer_size Size of the internal buffer. 
      */
-    GzipFileWriter(const char* path, int compression_level = 6, size_t buffer_size = 65536) : gz(path, "wb") {
-        if (gzbuffer(gz.handle, buffer_size)) {
+    GzipFileWriter(const char* path, int compression_level = 6, size_t buffer_size = 65536) : my_gzfile(path, "wb") {
+        if (gzbuffer(my_gzfile.handle, buffer_size)) {
             throw std::runtime_error("failed to set the Gzip compression buffer");
         }
-        if (gzsetparams(gz.handle, compression_level, Z_DEFAULT_STRATEGY) != Z_OK) {
+        if (gzsetparams(my_gzfile.handle, compression_level, Z_DEFAULT_STRATEGY) != Z_OK) {
             throw std::runtime_error("failed to set the Gzip compression parameters");
         }
     }
@@ -43,9 +43,11 @@ public:
     GzipFileWriter(const std::string& path, int compression_level = 6, size_t buffer_size = 65536) : GzipFileWriter(path.c_str(), compression_level, buffer_size) {}
 
 public:
+    using Writer::write;
+
     void write(const unsigned char* buffer, size_t n) {
         if (n) {
-            size_t ok = gzwrite(gz.handle, buffer, n);
+            size_t ok = gzwrite(my_gzfile.handle, buffer, n);
             if (ok != n) {
                 throw std::runtime_error("failed to write to the Gzip-compressed file");
             }
@@ -53,14 +55,14 @@ public:
     }
 
     void finish() {
-        gz.closed = true;
-        if (gzclose(gz.handle) != Z_OK) {
+        my_gzfile.closed = true;
+        if (gzclose(my_gzfile.handle) != Z_OK) {
             throw std::runtime_error("failed to close the Gzip-compressed file after writing");
         }
     }
 
 private:
-    SelfClosingGzFile gz;
+    SelfClosingGzFile my_gzfile;
 };
 
 }

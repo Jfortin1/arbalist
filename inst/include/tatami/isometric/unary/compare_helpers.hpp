@@ -1,15 +1,14 @@
-#ifndef TATAMI_COMPARE_HELPERS_H
-#define TATAMI_COMPARE_HELPERS_H
+#ifndef TATAMI_ISOMETRIC_UNARY_COMPARE_HELPERS_H
+#define TATAMI_ISOMETRIC_UNARY_COMPARE_HELPERS_H
 
 #include "../compare_utils.hpp"
 #include <vector>
+#include <type_traits>
 
 /**
  * @file compare_helpers.hpp
  *
- * @brief Helper classes for delayed unary comparison operations.
- * 
- * Classes defined here should be used as the `OP` in the `DelayedUnaryIsometricOp` class.
+ * @brief Helper classes for delayed unary isometric comparison operations.
  */
 
 namespace tatami {
@@ -17,18 +16,24 @@ namespace tatami {
 /**
  * @cond
  */
-template<DelayedCompareOp op_, typename Scalar_, typename Value_, typename Index_>
-void delayed_compare_run_simple(Scalar_ scalar, Index_ length, Value_* buffer) {
+template<CompareOperation op_, typename InputValue_, typename Index_, typename OutputValue_>
+void delayed_compare_run_simple(const InputValue_* input, Index_ length, InputValue_ scalar, OutputValue_* output) {
+#ifdef _OPENMP
+    #pragma omp simd 
+#endif
     for (Index_ i = 0; i < length; ++i) {
-        delayed_compare_run<op_>(buffer[i], scalar);
+        if constexpr(std::is_same<InputValue_, OutputValue_>::value) {
+            auto& val = output[i];
+            val = delayed_compare<op_>(val, scalar);
+        } else {
+            output[i] = delayed_compare<op_>(input[i], scalar);
+        }
     }
 }
 
-template<DelayedCompareOp op_, typename Value_, typename Scalar_>
-bool delayed_compare_actual_sparse(Scalar_ scalar) {
-    Value_ output = 0;
-    delayed_compare_run<op_>(output, scalar);
-    return output == 0;
+template<CompareOperation op_, typename InputValue_>
+bool delayed_compare_actual_sparse(InputValue_ scalar) {
+    return !delayed_compare<op_, InputValue_>(0, scalar);
 }
 /**
  * @endcond
@@ -37,39 +42,36 @@ bool delayed_compare_actual_sparse(Scalar_ scalar) {
 /**
  * @brief Delayed scalar comparison.
  *
- * This should be used as the `OP` in the `DelayedUnaryIsometricOp` class.
+ * This class compares each element of a `Matrix` to a scalar.
+ * It should be used as the `Operation_` in the `DelayedUnaryIsometricOperation` class.
+ * It may be used regardless of whether `InputValue_` and `OutputValue_` are equal (or not).
  *
  * @tparam op_ The comparison operation.
- * @tparam Value_ Type of the data value.
- * @tparam Scalar_ Type of the scalar value.
+ * @tparam InputValue_ Type of the matrix value to use in the comparison.
  */
-template<DelayedCompareOp op_, typename Value_ = double, typename Scalar_ = Value_>
-struct DelayedCompareScalarHelper {
+template<CompareOperation op_, typename InputValue_>
+class DelayedUnaryIsometricCompareScalar {
+public:
     /**
-     * @param s Scalar value to be added.
+     * @param scalar Scalar to be compared to the matrix values.
+     * The matrix value is assumed to be on the left hand side of the comparison, while `scalar` is on the right.
      */
-    DelayedCompareScalarHelper(Scalar_ s) : scalar(s) {
-        still_sparse = delayed_compare_actual_sparse<op_, Value_>(scalar);
+    DelayedUnaryIsometricCompareScalar(InputValue_ scalar) : my_scalar(scalar) {
+        my_sparse = delayed_compare_actual_sparse<op_>(my_scalar);
     }
 
 private:
-    const Scalar_ scalar;
-    bool still_sparse;
+    InputValue_ my_scalar;
+    bool my_sparse;
 
 public:
     /**
      * @cond
      */
-    static constexpr bool needs_row = false;
+    static constexpr bool is_basic = false;
 
-    static constexpr bool needs_column = false;
-
-    static constexpr bool always_dense = false;
-
-    static constexpr bool always_sparse = false;
-
-    bool actual_sparse() const {
-        return still_sparse;
+    bool is_sparse() const {
+        return my_sparse;
     }
     /**
      * @endcond
@@ -79,21 +81,24 @@ public:
     /**
      * @cond
      */
-    template<bool, typename Index_, typename ExtractType_>
-    void dense(Index_, ExtractType_, Index_ length, Value_* buffer) const {
-        delayed_compare_run_simple<op_>(scalar, length, buffer);
+    template<typename Index_, typename OutputValue_>
+    void dense(bool, Index_, Index_, Index_ length, const InputValue_* input, OutputValue_* output) const {
+        delayed_compare_run_simple<op_>(input, length, my_scalar, output);
     }
 
-    template<bool, typename Index_>
-    void sparse(Index_, Index_ number, Value_* buffer, const Index_*) const {
-        delayed_compare_run_simple<op_>(scalar, number, buffer);
+    template<typename Index_, typename OutputValue_>
+    void dense(bool, Index_, const std::vector<Index_>& indices, const InputValue_* input, OutputValue_* output) const {
+        delayed_compare_run_simple<op_>(input, static_cast<Index_>(indices.size()), my_scalar, output);
     }
 
-    template<bool, typename Index_>
-    Value_ zero(Index_) const {
-        Value_ output = 0;
-        delayed_compare_run<op_>(output, scalar);
-        return output;
+    template<typename Index_, typename OutputValue_>
+    void sparse(bool, Index_, Index_ number, const InputValue_* input_value, const Index_*, OutputValue_* output_value) const {
+        delayed_compare_run_simple<op_>(input_value, number, my_scalar, output_value);
+    }
+
+    template<typename OutputValue_, typename, typename Index_>
+    OutputValue_ fill(bool, Index_) const {
+        return delayed_compare<op_, InputValue_>(0, my_scalar);
     }
     /**
      * @endcond
@@ -103,48 +108,63 @@ public:
 /**
  * @brief Delayed vector comparisons.
  *
- * This should be used as the `OP` in the `DelayedUnaryIsometricOp` class.
+ * This class compares each element of a `Matrix` to a row/column-specific value.
+ * It should be used as the `Operation_` in the `DelayedUnaryIsometricOperation` class.
+ * It may be used regardless of whether `InputValue_` and `OutputValue_` are equal (or not).
  *
  * @tparam op_ The comparison operation.
- * @tparam margin_ Matrix dimension along which the operation is to occur.
- * If 0, each element of the vector is assumed to correspond to a row, and that value is subtracted from all entries in the same row of the matrix.
- * If 1, each element of the vector is assumed to correspond to a column instead.
- * @tparam Value_ Type of the data value.
+ * @tparam InputValue_ Type of the matrix value to use in the comparison.
  * @tparam Vector_ Type of the vector.
  */
-template<DelayedCompareOp op_, int margin_, typename Value_ = double, typename Vector_ = std::vector<Value_> >
-struct DelayedCompareVectorHelper {
+template<CompareOperation op_, typename InputValue_, typename Vector_>
+class DelayedUnaryIsometricCompareVector {
+public:
     /**
-     * @param v Vector of values to use in the operation. 
-     * This should be of length equal to the number of rows if `MARGIN = 0`, otherwise it should be of length equal to the number of columns.
+     * @param vector Vector to use in the comparison with the matrix values.
+     * This should be of length equal to the number of rows if `by_row = true`, otherwise it should be of length equal to the number of columns.
+     * The matrix value from each row/column is assumed to be on the left hand side of the comparison, while the corresponding value of `vector` is on the right.
+     * @param by_row Whether `vector` corresponds to the rows.
+     * If true, each element of the vector is assumed to correspond to a row, and that element is used as an operand with all entries in the same row of the matrix.
+     * If false, each element of the vector is assumed to correspond to a column instead.
      */
-    DelayedCompareVectorHelper(Vector_ v) : vec(std::move(v)) {
-        for (auto x : vec) {
-             if (!delayed_compare_actual_sparse<op_, Value_>(x)) {
-                 still_sparse = false;
+    DelayedUnaryIsometricCompareVector(Vector_ vector, bool by_row) : my_vector(std::move(vector)), my_by_row(by_row) {
+        for (auto x : my_vector) {
+             if (!delayed_compare_actual_sparse<op_, InputValue_>(x)) {
+                 my_sparse = false;
                  break;
              }
         }
     }
 
 private:
-    const Vector_ vec;
-    bool still_sparse = true;
+    Vector_ my_vector;
+    bool my_by_row;
+    bool my_sparse = true;
 
 public:
     /**
      * @cond
      */
-    static constexpr bool needs_row = (margin_ == 0);
+    static constexpr bool is_basic = false;
 
-    static constexpr bool needs_column = (margin_ == 1);
+    bool zero_depends_on_row() const {
+        return my_by_row;
+    }
 
-    static constexpr bool always_dense = false;
+    bool zero_depends_on_column() const {
+        return !my_by_row;
+    }
 
-    static constexpr bool always_sparse = false;
+    bool non_zero_depends_on_row() const {
+        return my_by_row;
+    }
 
-    bool actual_sparse() const {
-        return still_sparse;
+    bool non_zero_depends_on_column() const {
+        return !my_by_row;
+    }
+
+    bool is_sparse() const {
+        return my_sparse;
     }
     /**
      * @endcond
@@ -154,40 +174,73 @@ public:
     /**
      * @cond
      */
-    template<bool accrow_, typename Index_, typename ExtractType_>
-    void dense(Index_ idx, ExtractType_ start, Index_ length, Value_* buffer) const {
-        if constexpr(accrow_ == (margin_ == 0)) {
-            delayed_compare_run_simple<op_>(vec[idx], length, buffer);
-
-        } else if constexpr(std::is_same<ExtractType_, Index_>::value) {
-            for (Index_ i = 0; i < length; ++i) {
-                delayed_compare_run<op_>(buffer[i], vec[i + start]);
-            }
-
+    template<typename Index_, typename OutputValue_>
+    void dense(bool row, Index_ idx, Index_ start, Index_ length, const InputValue_* input, OutputValue_* output) const {
+        if (row == my_by_row) {
+            delayed_compare_run_simple<op_, InputValue_>(input, length, my_vector[idx], output);
         } else {
+#ifdef _OPENMP
+            #pragma omp simd 
+#endif
             for (Index_ i = 0; i < length; ++i) {
-                delayed_compare_run<op_>(buffer[i], vec[start[i]]);
+                if constexpr(std::is_same<InputValue_, OutputValue_>::value) {
+                    auto& val = output[i];
+                    val = delayed_compare<op_, InputValue_>(val, my_vector[i + start]);
+                } else {
+                    output[i] = delayed_compare<op_, InputValue_>(input[i], my_vector[i + start]);
+                }
             }
         }
     }
 
-    template<bool accrow_, typename Index_>
-    void sparse(Index_ idx, Index_ number, Value_* buffer, const Index_* indices) const {
-        if constexpr(accrow_ == (margin_ == 0)) {
-            delayed_compare_run_simple<op_>(vec[idx], number, buffer);
-
+    template<typename Index_, typename OutputValue_>
+    void dense(bool row, Index_ idx, const std::vector<Index_>& indices, const InputValue_* input, OutputValue_* output) const {
+        if (row == my_by_row) {
+            delayed_compare_run_simple<op_, InputValue_>(input, static_cast<Index_>(indices.size()), my_vector[idx], output);
         } else {
+            Index_ length = indices.size();
+#ifdef _OPENMP
+            #pragma omp simd 
+#endif
+            for (Index_ i = 0; i < length; ++i) {
+                if constexpr(std::is_same<InputValue_, OutputValue_>::value) {
+                    auto& val = output[i];
+                    val = delayed_compare<op_, InputValue_>(val, my_vector[indices[i]]);
+                } else {
+                    output[i] = delayed_compare<op_, InputValue_>(input[i], my_vector[indices[i]]);
+                }
+            }
+        }
+    }
+
+    template<typename Index_, typename OutputValue_>
+    void sparse(bool row, Index_ idx, Index_ number, const InputValue_* input, const Index_* indices, OutputValue_* output) const {
+        if (row == my_by_row) {
+            delayed_compare_run_simple<op_, InputValue_>(input, number, my_vector[idx], output);
+        } else {
+#ifdef _OPENMP
+            #pragma omp simd 
+#endif
             for (Index_ i = 0; i < number; ++i) {
-                delayed_compare_run<op_>(buffer[i], vec[indices[i]]);
+                if constexpr(std::is_same<InputValue_, OutputValue_>::value) {
+                    auto& val = output[i];
+                    val = delayed_compare<op_, InputValue_>(val, my_vector[indices[i]]);
+                } else {
+                    output[i] = delayed_compare<op_, InputValue_>(input[i], my_vector[indices[i]]);
+                }
             }
         }
     }
 
-    template<bool, typename Index_>
-    Value_ zero(Index_ idx) const {
-        Value_ output = 0;
-        delayed_compare_run<op_>(output, vec[idx]);
-        return output;
+    template<typename OutputValue_, typename, typename Index_>
+    OutputValue_ fill(bool row, Index_ idx) const {
+        if (row == my_by_row) {
+            return delayed_compare<op_, InputValue_>(0, my_vector[idx]);
+        } else {
+            // We should only get to this point if it's sparse, otherwise no
+            // single fill value would work across the length of my_vector.
+            return 0;
+        }
     }
     /**
      * @endcond
@@ -195,141 +248,283 @@ public:
 };
 
 /**
- * @tparam Value_ Type of the data value.
- * @tparam Scalar_ Type of the scalar.
- * @param s Scalar value to be compared.
- * @return A helper class for a delayed equality comparison to a scalar.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @param scalar Value to be compared.
+ * @return A helper class for a delayed equality comparison to a scalar,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<typename Value_ = double, typename Scalar_ = Value_>
-DelayedCompareScalarHelper<DelayedCompareOp::EQUAL, Value_, Scalar_> make_DelayedEqualScalarHelper(Scalar_ s) {
-    return DelayedCompareScalarHelper<DelayedCompareOp::EQUAL, Value_, Scalar_>(std::move(s));
+template<typename InputValue_ = double>
+DelayedUnaryIsometricCompareScalar<CompareOperation::EQUAL, InputValue_> make_DelayedUnaryIsometricEqualScalar(InputValue_ scalar) {
+    return DelayedUnaryIsometricCompareScalar<CompareOperation::EQUAL, InputValue_>(std::move(scalar));
 }
 
 /**
- * @tparam Value_ Type of the data value.
- * @tparam Scalar_ Type of the scalar.
- * @param s Scalar value to be compared.
- * @return A helper class for a delayed greater-than comparison to a scalar.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @param scalar Scalar value to be compared.
+ * @return A helper class for a delayed greater-than comparison to a scalar,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<typename Value_ = double, typename Scalar_ = Value_>
-DelayedCompareScalarHelper<DelayedCompareOp::GREATER_THAN, Value_, Scalar_> make_DelayedGreaterThanScalarHelper(Scalar_ s) {
-    return DelayedCompareScalarHelper<DelayedCompareOp::GREATER_THAN, Value_, Scalar_>(std::move(s));
+template<typename InputValue_ = double>
+DelayedUnaryIsometricCompareScalar<CompareOperation::GREATER_THAN, InputValue_> make_DelayedUnaryIsometricGreaterThanScalar(InputValue_ scalar) {
+    return DelayedUnaryIsometricCompareScalar<CompareOperation::GREATER_THAN, InputValue_>(std::move(scalar));
 }
 
 /**
- * @tparam Value_ Type of the data value.
- * @tparam Scalar_ Type of the scalar.
- * @param s Scalar value to be compared.
- * @return A helper class for a delayed less-than comparison to a scalar.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @param scalar Scalar value to be compared.
+ * @return A helper class for a delayed less-than comparison to a scalar,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<typename Value_ = double, typename Scalar_ = Value_>
-DelayedCompareScalarHelper<DelayedCompareOp::LESS_THAN, Value_, Scalar_> make_DelayedLessThanScalarHelper(Scalar_ s) {
-    return DelayedCompareScalarHelper<DelayedCompareOp::LESS_THAN, Value_, Scalar_>(std::move(s));
+template<typename InputValue_ = double>
+DelayedUnaryIsometricCompareScalar<CompareOperation::LESS_THAN, InputValue_> make_DelayedUnaryIsometricLessThanScalar(InputValue_ scalar) {
+    return DelayedUnaryIsometricCompareScalar<CompareOperation::LESS_THAN, InputValue_>(std::move(scalar));
 }
 
 /**
- * @tparam Value_ Type of the data value.
- * @tparam Scalar_ Type of the scalar.
- * @param s Scalar value to be compared.
- * @return A helper class for a delayed greater-than-or-equal comparison to a scalar.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @param scalar Scalar value to be compared.
+ * @return A helper class for a delayed greater-than-or-equal comparison to a scalar,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<typename Value_ = double, typename Scalar_ = Value_>
-DelayedCompareScalarHelper<DelayedCompareOp::GREATER_THAN_OR_EQUAL, Value_, Scalar_> make_DelayedGreaterThanOrEqualScalarHelper(Scalar_ s) {
-    return DelayedCompareScalarHelper<DelayedCompareOp::GREATER_THAN_OR_EQUAL, Value_, Scalar_>(std::move(s));
+template<typename InputValue_ = double>
+DelayedUnaryIsometricCompareScalar<CompareOperation::GREATER_THAN_OR_EQUAL, InputValue_> make_DelayedUnaryIsometricGreaterThanOrEqualScalar(InputValue_ scalar) {
+    return DelayedUnaryIsometricCompareScalar<CompareOperation::GREATER_THAN_OR_EQUAL, InputValue_>(std::move(scalar));
 }
 
 /**
- * @tparam Value_ Type of the data value.
- * @tparam Scalar_ Type of the scalar.
- * @param s Scalar value to be compared.
- * @return A helper class for a delayed less-than-or-equal comparison to a scalar.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @param scalar Scalar value to be compared.
+ * @return A helper class for a delayed less-than-or-equal comparison to a scalar,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<typename Value_ = double, typename Scalar_ = Value_>
-DelayedCompareScalarHelper<DelayedCompareOp::LESS_THAN_OR_EQUAL, Value_, Scalar_> make_DelayedLessThanOrEqualScalarHelper(Scalar_ s) {
-    return DelayedCompareScalarHelper<DelayedCompareOp::LESS_THAN_OR_EQUAL, Value_, Scalar_>(std::move(s));
+template<typename InputValue_ = double>
+DelayedUnaryIsometricCompareScalar<CompareOperation::LESS_THAN_OR_EQUAL, InputValue_> make_DelayedUnaryIsometricLessThanOrEqualScalar(InputValue_ scalar) {
+    return DelayedUnaryIsometricCompareScalar<CompareOperation::LESS_THAN_OR_EQUAL, InputValue_>(std::move(scalar));
 }
 
 /**
- * @tparam Value_ Type of the data value.
- * @tparam Scalar_ Type of the scalar.
- * @param s Scalar value to be compared.
- * @return A helper class for a delayed non-equality comparison to a scalar.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @param scalar Scalar value to be compared.
+ * @return A helper class for a delayed non-equality comparison to a scalar,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<typename Value_ = double, typename Scalar_ = Value_>
-DelayedCompareScalarHelper<DelayedCompareOp::NOT_EQUAL, Value_, Scalar_> make_DelayedNotEqualScalarHelper(Scalar_ s) {
-    return DelayedCompareScalarHelper<DelayedCompareOp::NOT_EQUAL, Value_, Scalar_>(std::move(s));
+template<typename InputValue_ = double>
+DelayedUnaryIsometricCompareScalar<CompareOperation::NOT_EQUAL, InputValue_> make_DelayedUnaryIsometricNotEqualScalar(InputValue_ scalar) {
+    return DelayedUnaryIsometricCompareScalar<CompareOperation::NOT_EQUAL, InputValue_>(std::move(scalar));
 }
 
 /**
- * @tparam margin_ Matrix dimension along which the comparison is to occur, see `DelayedCompareVectorHelper`.
- * @tparam Value_ Type of the data value.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
  * @tparam Vector_ Type of the vector.
- * @param v Vector of values to be compared.
- * @return A helper class for a delayed equality comparison to a vector.
+ * @param vector Vector of values to be compared.
+ * @param by_row Whether each element of `vector` corresponds to a row, see `DelayedUnaryIsometricCompareVector`.
+ * @return A helper class for a delayed equality comparison to a vector,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<int margin_, typename Value_ = double, typename Vector_ = std::vector<Value_> >
-DelayedCompareVectorHelper<DelayedCompareOp::EQUAL, margin_, Value_, Vector_> make_DelayedEqualVectorHelper(Vector_ v) {
-    return DelayedCompareVectorHelper<DelayedCompareOp::EQUAL, margin_, Value_, Vector_>(std::move(v));
+template<typename InputValue_ = double, typename Vector_>
+DelayedUnaryIsometricCompareVector<CompareOperation::EQUAL, InputValue_, Vector_> make_DelayedUnaryIsometricEqualVector(Vector_ vector, bool by_row) {
+    return DelayedUnaryIsometricCompareVector<CompareOperation::EQUAL, InputValue_, Vector_>(std::move(vector), by_row);
 }
 
 /**
- * @tparam margin_ Matrix dimension along which the comparison is to occur, see `DelayedCompareVectorHelper`.
- * @tparam Value_ Type of the data value.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
  * @tparam Vector_ Type of the vector.
- * @param v Vector of values to be compared.
- * @return A helper class for a delayed greater-than comparison to a vector.
+ * @param vector Vector of values to be compared.
+ * @param by_row Whether each element of `vector` corresponds to a row, see `DelayedUnaryIsometricCompareVector`.
+ * @return A helper class for a delayed greater-than comparison to a vector,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<int margin_, typename Value_ = double, typename Vector_ = std::vector<Value_> >
-DelayedCompareVectorHelper<DelayedCompareOp::GREATER_THAN, margin_, Value_, Vector_> make_DelayedGreaterThanVectorHelper(Vector_ v) {
-    return DelayedCompareVectorHelper<DelayedCompareOp::GREATER_THAN, margin_, Value_, Vector_>(std::move(v));
+template<typename InputValue_ = double, typename Vector_>
+DelayedUnaryIsometricCompareVector<CompareOperation::GREATER_THAN, InputValue_, Vector_> make_DelayedUnaryIsometricGreaterThanVector(Vector_ vector, bool by_row) {
+    return DelayedUnaryIsometricCompareVector<CompareOperation::GREATER_THAN, InputValue_, Vector_>(std::move(vector), by_row);
 }
 
 /**
- * @tparam margin_ Matrix dimension along which the comparison is to occur, see `DelayedCompareVectorHelper`.
- * @tparam Value_ Type of the data value.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
  * @tparam Vector_ Type of the vector.
- * @param v Vector of values to be compared.
- * @return A helper class for a delayed less-than comparison to a vector.
+ * @param vector Vector of values to be compared.
+ * @param by_row Whether each element of `vector` corresponds to a row, see `DelayedUnaryIsometricCompareVector`.
+ * @return A helper class for a delayed less-than comparison to a vector,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<int margin_, typename Value_ = double, typename Vector_ = std::vector<Value_> >
-DelayedCompareVectorHelper<DelayedCompareOp::LESS_THAN, margin_, Value_, Vector_> make_DelayedLessThanVectorHelper(Vector_ v) {
-    return DelayedCompareVectorHelper<DelayedCompareOp::LESS_THAN, margin_, Value_, Vector_>(std::move(v));
+template<typename InputValue_ = double, typename Vector_>
+DelayedUnaryIsometricCompareVector<CompareOperation::LESS_THAN, InputValue_, Vector_> make_DelayedUnaryIsometricLessThanVector(Vector_ vector, bool by_row) {
+    return DelayedUnaryIsometricCompareVector<CompareOperation::LESS_THAN, InputValue_, Vector_>(std::move(vector), by_row);
 }
 
 /**
- * @tparam margin_ Matrix dimension along which the comparison is to occur, see `DelayedCompareVectorHelper`.
- * @tparam Value_ Type of the data value.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
  * @tparam Vector_ Type of the vector.
- * @param v Vector of values to be compared.
- * @return A helper class for a delayed greater-than-or-equal comparison to a vector.
+ * @param vector Vector of values to be compared.
+ * @param by_row Whether each element of `vector` corresponds to a row, see `DelayedUnaryIsometricCompareVector`.
+ * @return A helper class for a delayed greater-than-or-equal comparison to a vector,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<int margin_, typename Value_ = double, typename Vector_ = std::vector<Value_> >
-DelayedCompareVectorHelper<DelayedCompareOp::GREATER_THAN_OR_EQUAL, margin_, Value_, Vector_> make_DelayedGreaterThanOrEqualVectorHelper(Vector_ v) {
-    return DelayedCompareVectorHelper<DelayedCompareOp::GREATER_THAN_OR_EQUAL, margin_, Value_, Vector_>(std::move(v));
+template<typename InputValue_ = double, typename Vector_>
+DelayedUnaryIsometricCompareVector<CompareOperation::GREATER_THAN_OR_EQUAL, InputValue_, Vector_> make_DelayedUnaryIsometricGreaterThanOrEqualVector(Vector_ vector, bool by_row) {
+    return DelayedUnaryIsometricCompareVector<CompareOperation::GREATER_THAN_OR_EQUAL, InputValue_, Vector_>(std::move(vector), by_row);
 }
 
 /**
- * @tparam margin_ Matrix dimension along which the comparison is to occur, see `DelayedCompareVectorHelper`.
- * @tparam Value_ Type of the data value.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
  * @tparam Vector_ Type of the vector.
- * @param v Vector of values to be compared.
- * @return A helper class for a delayed less-than-or-equal comparison to a vector.
+ * @param vector Vector of values to be compared.
+ * @param by_row Whether each element of `vector` corresponds to a row, see `DelayedUnaryIsometricCompareVector`.
+ * @return A helper class for a delayed less-than-or-equal comparison to a vector,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<int margin_, typename Value_ = double, typename Vector_ = std::vector<Value_> >
-DelayedCompareVectorHelper<DelayedCompareOp::LESS_THAN_OR_EQUAL, margin_, Value_, Vector_> make_DelayedLessThanOrEqualVectorHelper(Vector_ v) {
-    return DelayedCompareVectorHelper<DelayedCompareOp::LESS_THAN_OR_EQUAL, margin_, Value_, Vector_>(std::move(v));
+template<typename InputValue_ = double, typename Vector_>
+DelayedUnaryIsometricCompareVector<CompareOperation::LESS_THAN_OR_EQUAL, InputValue_, Vector_> make_DelayedUnaryIsometricLessThanOrEqualVector(Vector_ vector, bool by_row) {
+    return DelayedUnaryIsometricCompareVector<CompareOperation::LESS_THAN_OR_EQUAL, InputValue_, Vector_>(std::move(vector), by_row);
 }
 
 /**
- * @tparam margin_ Matrix dimension along which the comparison is to occur, see `DelayedCompareVectorHelper`.
- * @tparam Value_ Type of the data value.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
  * @tparam Vector_ Type of the vector.
- * @param v Vector of values to be compared.
- * @return A helper class for a delayed non-equality comparison to a vector.
+ * @param vector Vector of values to be compared.
+ * @param by_row Whether each element of `vector` corresponds to a row, see `DelayedUnaryIsometricCompareVector`.
+ * @return A helper class for a delayed non-equality comparison to a vector,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
  */
-template<int margin_, typename Value_ = double, typename Vector_ = std::vector<Value_> >
-DelayedCompareVectorHelper<DelayedCompareOp::NOT_EQUAL, margin_, Value_, Vector_> make_DelayedNotEqualVectorHelper(Vector_ v) {
-    return DelayedCompareVectorHelper<DelayedCompareOp::NOT_EQUAL, margin_, Value_, Vector_>(std::move(v));
+template<typename InputValue_ = double, typename Vector_>
+DelayedUnaryIsometricCompareVector<CompareOperation::NOT_EQUAL, InputValue_, Vector_> make_DelayedUnaryIsometricNotEqualVector(Vector_ vector, bool by_row) {
+    return DelayedUnaryIsometricCompareVector<CompareOperation::NOT_EQUAL, InputValue_, Vector_>(std::move(vector), by_row);
+}
+
+/**
+ * @cond
+ */
+template<SpecialCompareOperation op_, bool pass_, typename InputValue_, typename Index_>
+void delayed_special_compare_run_simple(InputValue_* buffer, Index_ length) {
+    for (Index_ i = 0; i < length; ++i) {
+        auto& val = buffer[i];
+        val = delayed_special_compare<op_, pass_, InputValue_>(val);
+    }
+}
+
+template<SpecialCompareOperation op_, bool pass_, typename InputValue_, typename Index_, typename OutputValue_>
+void delayed_special_compare_run_simple(const InputValue_* input, Index_ length, OutputValue_* output) {
+    for (Index_ i = 0; i < length; ++i) {
+        output[i] = delayed_special_compare<op_, pass_, InputValue_>(input[i]);
+    }
+}
+
+template<SpecialCompareOperation op_, bool pass_, typename InputValue_>
+bool delayed_special_compare_actual_sparse() {
+    return !delayed_special_compare<op_, pass_, InputValue_>(0);
+}
+/**
+ * @endcond
+ */
+
+/**
+ * @brief Delayed special value comparison.
+ *
+ * This class checks whether each element of a `Matrix` is one of the IEEE special values, e.g., NaN, Inf.
+ * It should be used as the `Operation_` in the `DelayedUnaryIsometricOperation` class.
+ * It may be used regardless of whether `InputValue_` and `OutputValue_` are equal (or not).
+ *
+ * @tparam op_ The special comparison operation.
+ * @tparam pass_ Whether to return true if the special comparison is true.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ */
+template<SpecialCompareOperation op_, bool pass_, typename InputValue_>
+class DelayedUnaryIsometricSpecialCompare {
+public:
+    DelayedUnaryIsometricSpecialCompare() {
+        my_sparse = !delayed_special_compare<op_, pass_, InputValue_>(0);
+    }
+
+private:
+    bool my_sparse;
+
+public:
+    /**
+     * @cond
+     */
+    static constexpr bool is_basic = false;
+
+    bool is_sparse() const {
+        return my_sparse;
+    }
+    /**
+     * @endcond
+     */
+
+public:
+    /**
+     * @cond
+     */
+    template<typename Index_>
+    void dense(bool, Index_, Index_, Index_ length, InputValue_* buffer) const {
+        delayed_special_compare_run_simple<op_, pass_>(buffer, length);
+    }
+
+    template<typename Index_, typename OutputValue_>
+    void dense(bool, Index_, Index_, Index_ length, const InputValue_* input, OutputValue_* output) const {
+        delayed_special_compare_run_simple<op_, pass_>(input, length, output);
+    }
+
+    template<typename Index_>
+    void dense(bool, Index_, const std::vector<Index_>& indices, InputValue_* buffer) const {
+        delayed_special_compare_run_simple<op_, pass_>(buffer, static_cast<Index_>(indices.size()));
+    }
+
+    template<typename Index_, typename OutputValue_>
+    void dense(bool, Index_, const std::vector<Index_>& indices, const InputValue_* input, OutputValue_* output) const {
+        delayed_special_compare_run_simple<op_, pass_>(input, static_cast<Index_>(indices.size()), output);
+    }
+
+    template<typename Index_>
+    void sparse(bool, Index_, Index_ number, InputValue_* buffer, const Index_*) const {
+        delayed_special_compare_run_simple<op_, pass_>(buffer, number);
+    }
+
+    template<typename Index_, typename OutputValue_>
+    void sparse(bool, Index_, Index_ number, const InputValue_* input, const Index_*, OutputValue_* output) const {
+        delayed_special_compare_run_simple<op_, pass_>(input, number, output);
+    }
+
+    template<typename OutputValue_, typename, typename Index_>
+    OutputValue_ fill(bool, Index_) const {
+        return !my_sparse;
+    }
+    /**
+     * @endcond
+     */
+};
+
+/**
+ * @tparam pass_ Whether to return truthy if the matrix value is NaN.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @return A helper class for a delayed NaN check,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
+ */
+template<bool pass_ = true, typename InputValue_ = double>
+DelayedUnaryIsometricSpecialCompare<SpecialCompareOperation::ISNAN, pass_, InputValue_> make_DelayedUnaryIsometricIsnan() {
+    return DelayedUnaryIsometricSpecialCompare<SpecialCompareOperation::ISNAN, pass_, InputValue_>();
+}
+
+/**
+ * @tparam pass_ Whether to return truthy if the matrix value is infinite.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @return A helper class for a delayed check for infinity (positive or negative),
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
+ */
+template<bool pass_ = true, typename InputValue_ = double>
+DelayedUnaryIsometricSpecialCompare<SpecialCompareOperation::ISINF, pass_, InputValue_> make_DelayedUnaryIsometricIsinf() {
+    return DelayedUnaryIsometricSpecialCompare<SpecialCompareOperation::ISINF, pass_, InputValue_>();
+}
+
+/**
+ * @tparam pass_ Whether to return truthy if the matrix value is finite.
+ * @tparam InputValue_ Type of the matrix value to use in the operation.
+ * @return A helper class for a delayed check for finite values,
+ * to be used as the `operation` in a `DelayedUnaryIsometricOperation`.
+ */
+template<bool pass_ = true, typename InputValue_ = double>
+DelayedUnaryIsometricSpecialCompare<SpecialCompareOperation::ISFINITE, pass_, InputValue_> make_DelayedUnaryIsometricIsfinite() {
+    return DelayedUnaryIsometricSpecialCompare<SpecialCompareOperation::ISFINITE, pass_, InputValue_>();
 }
 
 }

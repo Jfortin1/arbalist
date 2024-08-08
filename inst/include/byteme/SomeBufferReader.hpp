@@ -25,33 +25,41 @@ namespace byteme {
 class SomeBufferReader : public Reader {
 public:
     /**
-     * @param buffer Pointer to an array containing the possibly compressed data.
-     * The lack of `const`-ness is only a consequence of the C interface - the contents of the buffer do not seem to be modified.
-     * @param len Length of the `buffer` array.
+     * @param[in] buffer Pointer to an array containing the possibly compressed data.
+     * @param length Length of the `buffer` array.
      * @param buffer_size Size of the buffer to use for decompression.
      */
-    SomeBufferReader(const unsigned char* buffer, size_t len, size_t buffer_size = 65536) {
-        if (is_zlib(buffer, len) || is_gzip(buffer, len)) {
-            source.reset(new ZlibBufferReader(buffer, len, 3, buffer_size));
+    SomeBufferReader(const unsigned char* buffer, size_t length, size_t buffer_size = 65536) {
+        if (is_zlib(buffer, length) || is_gzip(buffer, length)) {
+            my_source.reset(new ZlibBufferReader(buffer, length, 3, buffer_size));
         } else {
-            source.reset(new RawBufferReader(buffer, len));
+            my_source.reset(new RawBufferReader(buffer, length));
         }
     }
 
-    bool operator()() {
-        return source->operator()();
+    /**
+     * @param[in] buffer Pointer to an array containing the possibly compressed data.
+     * @param length Length of the `buffer` array.
+     * @param buffer_size Size of the buffer to use for decompression.
+     */
+    SomeBufferReader(const char* buffer, size_t length, size_t buffer_size = 65536) :
+        SomeBufferReader(reinterpret_cast<const unsigned char*>(buffer), length, buffer_size) {}
+
+public:
+    bool load() {
+        return my_source->load();
     }
 
     const unsigned char* buffer() const {
-        return source->buffer();
+        return my_source->buffer();
     }
 
     size_t available() const {
-        return source->available();
+        return my_source->available();
     }
 
 private:
-    std::unique_ptr<Reader> source;
+    std::unique_ptr<Reader> my_source;
 };
 
 }

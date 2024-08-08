@@ -43,11 +43,11 @@ private:
             } else if (mode == 1) { // Zlib
                 ret = inflateInit2(&strm, MAX_WBITS); 
             } else if (mode == 2) { // Gzip
-                ret = inflateInit2(&strm, 16+MAX_WBITS); 
+                ret = inflateInit2(&strm, 16 + MAX_WBITS); 
             } else if (mode == 3) { // Gzip/Zlib auto-detected
-                ret = inflateInit2(&strm, 32+MAX_WBITS); 
+                ret = inflateInit2(&strm, 32 + MAX_WBITS); 
             } else {
-                throw std::runtime_error("mode must be 0 (DEFLATE), 1 (Zlib), 2 (Gzip) or 3 (automatic");
+                throw std::runtime_error("mode must be 0 (DEFLATE), 1 (Zlib), 2 (Gzip) or 3 (automatic)");
             }
 
             if (ret != Z_OK) {
@@ -56,16 +56,18 @@ private:
         }
 
         ~ZStream() {
-            (void)inflateEnd(&strm);
+            inflateEnd(&strm);
             return;
         }
 
+    public:
         // Delete the remaining constructors.
         ZStream(const ZStream&) = delete;
         ZStream(ZStream&&) = delete;
         ZStream& operator=(const ZStream&) = delete;
         ZStream& operator=(ZStream&&) = delete;
 
+    public:
         z_stream strm;
     };
     /**
@@ -75,32 +77,37 @@ private:
 public:
     /**
      * @param buffer Pointer to an array containing the compressed data.
-     * @param len Length of the `buffer` array.
+     * @param length Length of the `buffer` array.
      * @param mode Compression of the stream - DEFLATE (0), Zlib (1) or Gzip (2).
      * Default of 3 will auto-detect between Zlib and Gzip based on the headers.
      * @param buffer_size Size of the buffer to use for reading.
      */
-    ZlibBufferReader(const unsigned char* buffer, size_t len, int mode = 3, size_t buffer_size = 65536) : zstr(mode), buffer_(buffer_size) {
-        zstr.strm.avail_in = len;
-        zstr.strm.next_in = const_cast<unsigned char*>(buffer); // cast is purely for C compatibility.
+    ZlibBufferReader(const unsigned char* buffer, size_t length, int mode = 3, size_t buffer_size = 65536) : my_zstr(mode), my_buffer(buffer_size) {
+        my_zstr.strm.avail_in = length;
+        my_zstr.strm.next_in = const_cast<unsigned char*>(buffer); // cast is purely for C compatibility.
     }
 
-    bool operator()() {
+public:
+    bool load() {
         /* This function is stolen from the loop in 'inf()' at
          * http://www.zlib.net/zpipe.c, with some shuffling of code to make it
          * a bit more C++-like.
          */
 
-        // Not entirely sure why we need to check for this, but
-        // https://zlib.net/zpipe.c does it, and so will we; because not doing
-        // so seems to occasionally result in infinite loops.
-        if (zstr.strm.avail_in == 0) {
+        if (!my_okay) {
             return false;
         }
 
-        zstr.strm.avail_out = buffer_.size();
-        zstr.strm.next_out = buffer_.data();
-        int ret = inflate(&(zstr.strm), Z_NO_FLUSH);
+        // Not entirely sure why we need to check for this, but
+        // https://zlib.net/zpipe.c does it, and so will we; because not doing
+        // so seems to occasionally result in infinite loops.
+        if (my_zstr.strm.avail_in == 0) {
+            return false;
+        }
+
+        my_zstr.strm.avail_out = my_buffer.size();
+        my_zstr.strm.next_out = my_buffer.data();
+        int ret = inflate(&(my_zstr.strm), Z_NO_FLUSH);
 
         switch (ret) {
             case Z_STREAM_ERROR:
@@ -108,25 +115,28 @@ public:
             case Z_DATA_ERROR:
             case Z_MEM_ERROR:
                 throw std::runtime_error("zlib error");
+            case Z_STREAM_END:
+                my_okay = false;
+                break;
         }
 
-        read = buffer_.size() - zstr.strm.avail_out;
-
-        return (ret != Z_STREAM_END);
+        my_read = my_buffer.size() - my_zstr.strm.avail_out;
+        return true;
     }
 
     const unsigned char* buffer() const {
-        return buffer_.data();
+        return my_buffer.data();
     }
 
     size_t available() const {
-        return read;
+        return my_read;
     }
 
 private:
-    ZStream zstr;
-    std::vector<unsigned char> buffer_;
-    size_t read = 0;
+    ZStream my_zstr;
+    std::vector<unsigned char> my_buffer;
+    size_t my_read = 0;
+    bool my_okay = true;
 };
 
 }

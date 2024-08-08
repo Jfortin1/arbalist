@@ -1,5 +1,5 @@
-#ifndef BYTEME_ZLIB_BUFFER_READER_HPP
-#define BYTEME_ZLIB_BUFFER_READER_HPP
+#ifndef BYTEME_ZLIB_BUFFER_WRITER_HPP
+#define BYTEME_ZLIB_BUFFER_WRITER_HPP
 
 #include "zlib.h"
 #include <stdexcept>
@@ -51,16 +51,18 @@ private:
         }
 
         ~ZStream() {
-            (void)deflateEnd(&strm);
+            deflateEnd(&strm);
             return;
         }
 
+    public:
         // Delete the remaining constructors.
         ZStream(const ZStream&) = delete;
         ZStream(ZStream&&) = delete;
         ZStream& operator=(const ZStream&) = delete;
         ZStream& operator=(ZStream&&) = delete;
 
+    public:
         z_stream strm;
     };
     /**
@@ -75,40 +77,54 @@ public:
      * @param buffer_size Size of the compression buffer in bytes.
      * Larger values improve speed at the cost of memory.
      */
-    ZlibBufferWriter(int mode = 2, int compression_level = 6, size_t buffer_size = 65536) : zstr(mode, compression_level), holding(buffer_size) {}
+    ZlibBufferWriter(int mode = 2, int compression_level = 6, size_t buffer_size = 65536) : my_zstr(mode, compression_level), my_holding(buffer_size) {}
+
+public:
+    using Writer::write;
 
     void write(const unsigned char* buffer, size_t n) {
-        zstr.strm.next_in = const_cast<unsigned char*>(buffer); // for C compatibility.
-        zstr.strm.avail_in = n;
+        my_zstr.strm.next_in = const_cast<unsigned char*>(buffer); // for C compatibility.
+        my_zstr.strm.avail_in = n;
         dump(Z_NO_FLUSH);
     }
 
     void finish() {
-        zstr.strm.next_in = nullptr;
-        zstr.strm.avail_in = 0;
+        my_zstr.strm.next_in = nullptr;
+        my_zstr.strm.avail_in = 0;
         dump(Z_FINISH);
     }
 
 private:
-    ZStream zstr;
-    std::vector<unsigned char> holding;
+    ZStream my_zstr;
+    std::vector<unsigned char> my_holding;
 
     void dump(int flag) {
         do {
-            zstr.strm.avail_out = holding.size();
-            zstr.strm.next_out = holding.data();
-            deflate(&(zstr.strm), flag); // no need to check, see https://zlib.net/zlib_how.html.
-            size_t compressed = holding.size() - zstr.strm.avail_out;
-            output.insert(output.end(), holding.begin(), holding.begin() + compressed);
-        } while (zstr.strm.avail_out == 0);
+            my_zstr.strm.avail_out = my_holding.size();
+            my_zstr.strm.next_out = my_holding.data();
+            deflate(&(my_zstr.strm), flag); // no need to check, see https://zlib.net/zlib_how.html.
+            size_t compressed = my_holding.size() - my_zstr.strm.avail_out;
+            output.insert(output.end(), my_holding.begin(), my_holding.begin() + compressed);
+        } while (my_zstr.strm.avail_out == 0);
     }
 
 public:
     /**
-     * Contents of the output buffer.
-     * This should only be accessed after `finish()` is called.
+     * @cond
      */
+    // Exposed for back-compatibility only.
     std::vector<unsigned char> output;
+    /**
+     * @endcond
+     */
+
+    /**
+     * @return Contents of the output buffer.
+     * This should only be used after `finish()` is called.
+     */
+    std::vector<unsigned char>& get_output() {
+        return output;
+    }
 };
 
 }

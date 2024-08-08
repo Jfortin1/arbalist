@@ -174,16 +174,16 @@ addGroupCoverages <- function(
   if(!skip.se.creation) {
     beachmat::flushMemoryCache()
     if(is(x,"DelayedArray")) {
-      ptr <- beachmat.hdf5::initializeCpp(x, memorize=FALSE)
+      ptr <- beachmat.hdf5::initializeCpp(x, memorize=TRUE)
     } else {
-      ptr <- beachmat::initializeCpp(x, memorize=FALSE)
+      ptr <- beachmat::initializeCpp(x, memorize=TRUE)
     }
     # Create matrix for pseudobulk experiment
     for(i in 1:nrow(replicates.matrix.coldata)) {
       output.file <- replicates.matrix.coldata$coverage.file[i]
       pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[i]]][[replicates.matrix.coldata$rep[i]]])
       ptr.subset <- apply_subset(ptr, which(colnames(sce) %in% pseudobulk.cells), FALSE)
-      replicates.matrix[,i] <- aggregate_counts(ptr.subset, rep(1,length(pseudobulk.cells))-1L, nthreads = 1, binarize = FALSE)
+      replicates.matrix[,i] <- aggregate_counts(ptr.subset, as.integer(rep(1,length(pseudobulk.cells)))-1L, nthreads = 1, binarize = FALSE)
       replicates.matrix.coldata$num.cells <- length(pseudobulk.cells)
     }
     replicates.matrix <- as(replicates.matrix, 'sparseMatrix')
