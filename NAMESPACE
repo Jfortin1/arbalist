@@ -2,13 +2,11 @@
 
 export(addClusters)
 export(addDoubletScores)
-export(addGeneScoreMatrix)
 export(addGroupCoverages)
 export(addIterativeLSI)
 export(addMarkerFeatures)
 export(addPeakMatrix)
 export(addTSSEnrichmentScores)
-export(calculateGeneScoreMatrix)
 export(createArbalistMAE)
 export(createArbalistMAEFromCellrangerDirs)
 export(findSCE)
