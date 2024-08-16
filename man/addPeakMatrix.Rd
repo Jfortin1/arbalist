@@ -32,7 +32,9 @@ addPeakMatrix(
 
 \item{sc.experiment.name}{String containing experiment name for \linkS4class{SingleCellExperiment} with cell barcodes as the rownames.}
 
-\item{gene.grs}{A \linkS4class{GRanges}. If the The start coordinate will be used as the transcription start site.}
+\item{gene.grs}{A \linkS4class{GRanges} specifying gene coordinates to use for peak to gene annotation. If the The start coordinate will be used as the transcription start site.}
+
+\item{exon.grs}{A \linkS4class{GRanges} specifying exon coordinates to use for peak to gene annotation.}
 
 \item{reproducibility}{String that indicates how peak reproducibility should be handled. This string is dynamic and can be a function of n where n is the number of samples being assessed. For example, reproducibility = "2" means at least 2 samples must have a peak call at this locus and reproducibility = "(n+1)/2" means that the majority of samples must have a peak call at this locus.}
 

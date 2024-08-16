@@ -6,7 +6,8 @@
 #' @param genome.size Integer scalar specifying the effective genome size or the size of the genome that is mappable to use in MACSr peak calling. See [MACSr::callpeak] for more details.
 #' @param pseudobulk.experiment.name String containing Experiment name for the pseudobulk \linkS4class{SummarizedExperiment} containing colData pointing to coverage files. This experiment can be created from arbalist::addGroupCoverages.
 #' @param sc.experiment.name String containing experiment name for \linkS4class{SingleCellExperiment} with cell barcodes as the rownames.
-#' @param gene.grs A \linkS4class{GRanges}. If the The start coordinate will be used as the transcription start site.
+#' @param gene.grs A \linkS4class{GRanges} specifying gene coordinates to use for peak to gene annotation. If the The start coordinate will be used as the transcription start site.
+#' @param exon.grs A \linkS4class{GRanges} specifying exon coordinates to use for peak to gene annotation.
 #' @param reproducibility String that indicates how peak reproducibility should be handled. This string is dynamic and can be a function of n where n is the number of samples being assessed. For example, reproducibility = "2" means at least 2 samples must have a peak call at this locus and reproducibility = "(n+1)/2" means that the majority of samples must have a peak call at this locus.
 #' @param shift Integer scalar specifying how many base pairs to shift each Tn5 insertion. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
 #' @param extsize Integer scalar specifying how many base pairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
@@ -156,7 +157,7 @@ addPeakMatrix <- function(
   new.mae <- c(mae, 'PeakMatrix'=peak.sce)
   
   # Add gene info relative to the peaks
-#  new.mae <- .peakGeneAnno(new.mae, gene.grs = gene.grs)
+  new.mae <- .peakGeneAnno(new.mae, gene.grs = gene.grs, exon.grs = exon.grs)
   
   return(new.mae)
 }

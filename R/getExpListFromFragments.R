@@ -19,7 +19,7 @@
 #' @importFrom SummarizedExperiment SummarizedExperiment colData
 #' @importFrom BiocParallel bptry bplapply bpparam
 #' @importFrom BiocGenerics type type<-
-.getExpListFromFragments <- function(
+getExpListFromFragments <- function(
   fragment.files,
   output.dir = tempdir(),
   tile.size = 500,

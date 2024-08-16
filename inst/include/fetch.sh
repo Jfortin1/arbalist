@@ -42,7 +42,6 @@ cp -r include/tatami/ ../tatami
 git checkout master
 cd -
 
-
 ##########################################################
 
 if [ ! -e source-irlba ]
@@ -79,3 +78,20 @@ cp -r include/aarand/ ../aarand
 git checkout master
 cd -
 
+##########################################################
+#
+#if [ ! -e source-tatami_mult ]
+#then 
+#    git clone https://github.com/tatami-inc/tatami_mult source-tatami_mult
+#else 
+#    cd source-tatami_mult
+#    git pull
+#    cd -
+#fi
+#
+#cd source-tatami_mult
+#git checkout d924315
+#rm -rf ../tatami_mult
+#cp -r include/tatami_mult/ ../tatami_mult
+#git checkout master
+#cd -
