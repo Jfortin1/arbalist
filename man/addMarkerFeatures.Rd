@@ -9,7 +9,7 @@ addMarkerFeatures(
   experiment.name = "PeakMatrix",
   group.colname = "Clusters",
   group.experiment.name = "TileMatrix500",
-  num.threads = 1,
+  num.threads = 4,
   sampleLabels = "Sample"
 )
 }

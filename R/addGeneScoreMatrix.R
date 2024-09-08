@@ -148,7 +148,7 @@ calculateGeneScoreMatrix <- function(
     ptr.tiles <- beachmat::initializeCpp(tile.matrix, memorize = TRUE)
   }
   ptr.weights <- beachmat::initializeCpp(weights.matrix, memorize = TRUE)
-  gs.matrix <- beachmat::tatami.multiply(ptr.weights, ptr.tiles, right=TRUE, num.threads=1)
+  gs.matrix <- beachmat::tatami.multiply(ptr.weights, ptr.tiles, right=TRUE, num.threads=num.threads)
 
   colnames(gs.matrix) <- colnames(tile.matrix)
 

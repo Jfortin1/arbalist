@@ -20,7 +20,7 @@ addMarkerFeatures <- function(
     experiment.name = 'PeakMatrix',
     group.colname = 'Clusters',
     group.experiment.name = 'TileMatrix500',
-    num.threads = 1,
+    num.threads = 4,
     sampleLabels = "Sample"
 ) {
   # Pull the necessary data from the MAE
@@ -69,7 +69,7 @@ addMarkerFeatures <- function(
 
 #' @importFrom presto wilcoxauc
 #' @importFrom nabor knn
-markerDiff <- function(mat, group.classification, num.threads = 1) {
+markerDiff <- function(mat, group.classification, num.threads = 4) {
   
   # set up a pointer to the data for profiling the columns for matching cells between groups
   beachmat::flushMemoryCache()

@@ -9,7 +9,7 @@ addDoubletScores(
   experiment.name = "TileMatrix500",
   seed = 5,
   num.trials = 5,
-  num.threads = 1,
+  num.threads = 4,
   num.dimensions = 30,
   num.doublets.per.iteration = 200,
   max.num.synthetic.doublets = 2000,

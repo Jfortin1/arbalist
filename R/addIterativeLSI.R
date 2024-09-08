@@ -17,14 +17,16 @@ addIterativeLSI <- function(
   mae,
   experiment.name = 'TileMatrix500',
   embedding.name = 'iterativeLSI',
+  col.subset = NULL,
   rank = 30,
   iterations = 2,
+  first.selection = "Top", # or "Var"
   num.features = 25000,
   lsi.method = 1,
   cluster.method = "Seurat",
   correlation.cutoff = 0.75,
   scale.to = 10000,
-  num.threads = 1,
+  num.threads = 4,
   seed = 5,
   total.features = 500000,
   filter.quantile = 0.995,
@@ -45,19 +47,45 @@ addIterativeLSI <- function(
     stop(paste0('There is already a reduced dimension called ',embedding.name))
   }
   
-  res <- iterativeLSI(
-    x = assay(se),
-    iterations = iterations,
-    num.features = num.features,
-    cluster.method = cluster.method,
-    correlation.cutoff = correlation.cutoff,
-    scale.to = scale.to,
-    num.threads = num.threads,
-    seed = seed,
-    total.features = total.features,
-    filter.quantile = filter.quantile,
-    outlier.quantiles = outlier.quantiles
-  )
+  x <- assay(se)
+  if(is(x,"DelayedArray")) {
+    res <- iterativeLSI(
+      x = x,
+      col.subset = col.subset,
+      rank = rank,
+      iterations = iterations,
+      first.selection = first.selection,
+      num.features = num.features,
+      lsi.method = lsi.method,
+      cluster.method = cluster.method,
+      correlation.cutoff = correlation.cutoff,
+      scale.to = scale.to,
+      num.threads = num.threads,
+      seed = seed,
+      total.features = total.features,
+      filter.quantile =  filter.quantile,
+      outlier.quantiles = outlier.quantiles,
+      binarize = binarize
+    )
+  } else {
+    res <- iterativeLSI.sparse.in.mem(
+      x = x,
+      rank = rank,
+      iterations = iterations,
+      first.selection = first.selection,
+      num.features = num.features,
+      lsi.method = lsi.method,
+      cluster.method = cluster.method,
+      correlation.cutoff = correlation.cutoff,
+      scale.to = scale.to,
+      num.threads = num.threads,
+      seed = seed,
+      total.features = total.features,
+      filter.quantile =  filter.quantile,
+      outlier.quantiles = outlier.quantiles,
+      binarize = binarize
+    )
+  }
   
   if(is.null(alt.exp.name)) {
     if(any(!colnames(mae[[experiment.name]]) %in% rownames(res$embedding))) {

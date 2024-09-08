@@ -36,9 +36,10 @@ addClusters <- function(
 ) {
   
   # retrieve the reduced dimension (probably iterative LSI) matrix from the MAE
+
   reduced.dim.list <- list()
-  for(i in name.reduced.dim) {
-    reduced.dim.list[[i]] <- findReducedDimRes(mae,i)
+  for(i in 1:length(name.reduced.dim)) {
+    reduced.dim.list[[i]] <- findReducedDimRes(mae,name.reduced.dim[i])
   }
 
   # if dims.to.use is set, filter to the specified dimensions for the first reduced dimension specified

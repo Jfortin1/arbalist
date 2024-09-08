@@ -14,6 +14,7 @@
 #' @param coverage.file.path String containing the output directory for generated coverage files.
 #' @param skip.se.creation Logical specifying whether to skip generating the pseudobulk summarized experiment.
 #' @param skip.coverage.file.creation Logical specifying whether to skip generating coverage files.
+#' @param num.threads Integer scalar specifying the number of threads.
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.
 #'
 #' @return \linkS4class{MultiAssayExperiment} with a new pseudobulk \linkS4class{SummarizedExperiment} and
@@ -26,7 +27,7 @@
 #' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap experiments
 #' @importFrom S4Vectors DataFrame metadata metadata<-
 #' @importFrom SingleCellExperiment altExp altExpNames
-#' @importFrom beachmat initializeCpp flushMemoryCache
+#' @importFrom beachmat initializeCpp flushMemoryCache tatami.subset tatami.row.sums
 #' @export
 addGroupCoverages <- function(
     mae,
@@ -41,6 +42,7 @@ addGroupCoverages <- function(
     coverage.file.path = getwd(),
     skip.se.creation = FALSE,
     skip.coverage.file.creation = FALSE,
+    num.threads = 1,
     BPPARAM = bpparam()
 ){
 
@@ -182,8 +184,8 @@ addGroupCoverages <- function(
     for(i in 1:nrow(replicates.matrix.coldata)) {
       output.file <- replicates.matrix.coldata$coverage.file[i]
       pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[i]]][[replicates.matrix.coldata$rep[i]]])
-      ptr.subset <- apply_subset(ptr, which(colnames(sce) %in% pseudobulk.cells), FALSE)
-      replicates.matrix[,i] <- aggregate_counts(ptr.subset, as.integer(rep(1,length(pseudobulk.cells)))-1L, nthreads = 1, binarize = FALSE)
+      ptr.subset <- tatami.subset(ptr, subset = which(colnames(sce) %in% pseudobulk.cells), by.row = FALSE)
+      replicates.matrix[,i] <- tatami.row.sums(ptr.subset, num.threads = 1)
       replicates.matrix.coldata$num.cells <- length(pseudobulk.cells)
     }
     replicates.matrix <- as(replicates.matrix, 'sparseMatrix')

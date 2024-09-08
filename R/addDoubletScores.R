@@ -30,7 +30,7 @@ addDoubletScores <- function(
     experiment.name = 'TileMatrix500',
     seed = 5,
     num.trials = 5,
-    num.threads = 1,
+    num.threads = 4,
     num.dimensions = 30,
     num.doublets.per.iteration = 200,
     max.num.synthetic.doublets = 2000,
@@ -47,10 +47,10 @@ addDoubletScores <- function(
 
   # Add DoubletScore and DoubletEnrichment columns to the colData, if not already there
   if(! 'DoubletScore' %in% colnames(colData(mae[[sce.list$sce.idx]]))) {
-    colData(mae[[sce.list$sce.idx]])$DoubletScore <- rep(NA,nrow(colData(mae[[sce.list$sce.idx]])))
+    colData(mae[[sce.list$sce.idx]])$DoubletScore <- as.numeric(rep(NA,nrow(colData(mae[[sce.list$sce.idx]]))))
   }
   if(! 'DoubletEnrichment' %in% colnames(colData(mae[[sce.list$sce.idx]]))) {
-    colData(mae[[sce.list$sce.idx]])$DoubletEnrichment <- rep(NA,nrow(colData(mae[[sce.list$sce.idx]])))
+    colData(mae[[sce.list$sce.idx]])$DoubletEnrichment <- as.numeric(rep(NA,nrow(colData(mae[[sce.list$sce.idx]]))))
   }
   
   # Get sample names and check them have enough cells to calculate doublets
@@ -101,12 +101,15 @@ addDoubletScores <- function(
       BPPARAM = BPPARAM
     ))
     mat.lsi.doublet.combined <- Reduce(rbind, parallelized.res)
+    if(!is(mat.lsi.doublet.combined, "matrix")) {
+      stop('something went wrong with the parallelized doublet simulation')
+    }
     rownames(mat.lsi.doublet.combined) <- paste0('doublet',seq(nrow(mat.lsi.doublet.combined)))
 
     # Calculate the UMAP embedding
     umap.res <- scater::calculateUMAP(t(rbind(lsi.res$embedding, mat.lsi.doublet.combined)))
     umap.res <- as.data.frame(umap.res)
-    umap.res$doublet <- c(rep(FALSE,nrow(lsi.res$embedding)), rep(TRUE,num.synthetic.doublets))
+    umap.res$doublet <- c(rep(FALSE,nrow(lsi.res$embedding)), rep(TRUE,nrow(mat.lsi.doublet.combined)))
     umap.res <- umap.res[rev(seq(nrow(umap.res))),]
     
     if(!is.null(plot.out.dir)) {
@@ -118,7 +121,7 @@ addDoubletScores <- function(
     # Find nearest neighbours to the doublets for calculating a score
     knnDoub <- nabor::knn(lsi.res$embedding, mat.lsi.doublet.combined, k = 10)$nn.idx
     countKnn <- rep(0, nrow(lsi.res$details$matSVD))
-    names(countKnn) <- rownames(lsi.res$details$matSVD)
+    names(countKnn) <- rownames(lsi.res$embedding)
     tabDoub <- table(as.vector(knnDoub))
     countKnn[as.integer(names(tabDoub))] <-  countKnn[as.integer(names(tabDoub))] + tabDoub
     
@@ -165,6 +168,7 @@ addDoubletScores <- function(
   return(mae)
 }
 
+#' @importFrom beachmat tatami.subset
 .doublet.simulation <- function(
   i,
   mat,
@@ -190,14 +194,21 @@ addDoubletScores <- function(
   } else {
     ptr <- beachmat::initializeCpp(mat, memorize=TRUE)
   }
-  random.cells <- sort(sample(seq(1,ncol(mat)), 2*num.doublets.per.iteration, replace = FALSE), decreasing = TRUE)
-  ptr.subset <- apply_subset(ptr, random.cells, row = FALSE)
-  mat.doublet <- as(aggregate_counts(ptr.subset, sample(rep(seq(1,length(random.cells)/2),2))-1L, nthreads = num.threads, binarize = FALSE), "sparseMatrix")/2
+  random.cells <- sample(seq(1,ncol(mat)), 2, replace = FALSE)
+  ptr.subset <- tatami.subset(ptr, subset = random.cells, by.row = FALSE)
+  row.sums <- tatami.row.sums(ptr.subset, num.threads = num.threads)
+  mat.doublet <- as(matrix(row.sums,ncol=1),'dgCMatrix')/2
+  for(j in 2:num.doublets.per.iteration) {
+    random.cells <- sample(seq(1,ncol(mat)), 2, replace = FALSE)
+    ptr.subset <- tatami.subset(ptr, subset = random.cells, by.row = FALSE)
+    row.sums <- tatami.row.sums(ptr.subset, num.threads = num.threads)
+    mat.doublet <- cbind(mat.doublet,as(matrix(row.sums,ncol=1),'dgCMatrix')/2)
+  }
   gc()
   
   # Project the doublets into the UMAP embedding
   require(Matrix)
-  mat.doublet.normalized <- .apply.tf.idf.normalization(mat.doublet, lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
+  mat.doublet.normalized <- .apply.tf.idf.normalization.in.mem(mat.doublet, lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
   idxNA <- Matrix::which(is.na(mat.doublet.normalized), arr.ind = TRUE)
   if(length(idxNA) > 0){
     mat.doublet.normalized[idxNA] <- 0

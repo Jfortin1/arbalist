@@ -17,6 +17,7 @@ addGroupCoverages(
   coverage.file.path = getwd(),
   skip.se.creation = FALSE,
   skip.coverage.file.creation = FALSE,
+  num.threads = 1,
   BPPARAM = bpparam()
 )
 }
@@ -44,6 +45,8 @@ addGroupCoverages(
 \item{skip.se.creation}{Logical specifying whether to skip generating the pseudobulk summarized experiment.}
 
 \item{skip.coverage.file.creation}{Logical specifying whether to skip generating coverage files.}
+
+\item{num.threads}{Integer scalar specifying the number of threads.}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
 }

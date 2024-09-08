@@ -26,15 +26,14 @@
 #' @author Natalie Fox
 #' @export
 #' @importFrom matrixStats rowVars
-#' @importFrom beachmat initializeCpp flushMemoryCache tatami.compare tatami.subset tatami.arith  tatami.row.sums tatami.column.sums tatami.dim
 #' @importFrom stats kmeans cor
 #' @importFrom utils head
-iterativeLSI <- function(
+#' @importFrom SparseArray rowSums rowVars colSums
+iterativeLSI.sparse.in.mem <- function(
     x,
-    col.subset = NULL,
     rank = 30,
     iterations = 2,
-    first.selection = "Top", # or "Var"
+    first.selection = "Var", # or "Top"
     num.features = 25000,
     lsi.method = 1,
     cluster.method = "Seurat",
@@ -45,62 +44,37 @@ iterativeLSI <- function(
     total.features = 500000,
     filter.quantile = 0.995,
     outlier.quantiles = c(0.02, 0.98),
-    binarize = TRUE
+    binarize = FALSE
 ) {
   col.names <- colnames(x)
   
   # select the top features based on accessibility of the binarized features (ex for ATAC data) or variance (ex for RNA data)
-  beachmat::flushMemoryCache()
-  if(is(x,"DelayedArray")) {
-    ptr <- beachmat.hdf5::initializeCpp(x, memorize=TRUE)
-  } else {
-    ptr <- beachmat::initializeCpp(x, memorize = TRUE)
-  }
   if(binarize) {
-    ptr <- tatami.compare(ptr, op = '!=', val = 0, by.row = TRUE, right = TRUE)
-  }
-  if(!is.null(col.subset)) {
-    col.subset <- sort(unique(col.subset),decreasing = TRUE)
-    if(length(col.subset) <= ncol(x)) {
-     ptr <- tatami.subset(ptr, subset = col.subset, by.row = FALSE)
-     col.names <- col.names[col.subset]
-    } else {
-      stop('There are more entries in the column subset to select than the number of columns.')
-    }
+    x@x[x@x > 0] <- 1
   }
   if(first.selection == "Top") {
-    if(!binarize) {
-      ptr.binarized <- tatami.compare(ptr, op = '!=', val = 0, by.row = TRUE, right = TRUE)
-      row.order.stat <- tatami.row.sums(ptr.binarized, num.threads = num.threads) # row sums of binarized matrix
-    } else {
-      row.order.stat <- tatami.row.sums(ptr, num.threads = num.threads) # row sums of binarized matrix
-    }
+    x2 <- x
+    x2@x[x2@x > 0] <- 1
+    row.order.stat <- SparseArray::rowSums(x2)
   } else if (first.selection == "Var") {
-    if(binarize) {
-      stop("binarize must be FALSE if first.selection is Var")
-    }
-    row.means <- tatami.row.sums(ptr, num.threads = num.threads)/ncol(x)
-    ptr2 <- tatami.arith(ptr, op = '-', val = row.means, by.row = TRUE, right = TRUE)
-    ptr2 <- tatami.arith(ptr, op = '^', val = 2, by.row = TRUE, right = TRUE)
-    row.order.stat <- tatami.row.sums(ptr, num.threads = num.threads)/(ncol(x)-1) # row variance
+    #row.order.stat <- apply(x,1,var)
+    row.order.stat <- SparseArray::rowVars(x)
   } else {
     stop('first.selection not "Top" or "Var".')
   }
   
-  col.sums <- tatami.column.sums(ptr, num.threads = num.threads)
+  col.sums <- SparseArray::colSums(x)
   
   rm.top <- floor((1-filter.quantile) * total.features)
   row.subset <- head(order(row.order.stat, decreasing = TRUE), num.features + rm.top )[-seq_len(rm.top)]
-  ptr.subset <- tatami.subset(ptr, subset = row.subset, by.row = TRUE)
-  
+
   # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-  lsi.res <- .computeLSI(ptr.subset, lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, num.threads = num.threads)
+  lsi.res <- .computeLSI.in.mem(x[row.subset,], lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, num.threads = num.threads)
   embedding <- lsi.res$matSVD
-  rownames(embedding) <- col.names
     
   for (i in seq_len(iterations-1)) {
     # drop embeddings that are correlated with the library size
-    embedding <- embedding[,which(cor(embedding, col.sums) <= correlation.cutoff),drop=FALSE]
+    embedding <- embedding[,which(cor(embedding, col.sums[rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
     
     # find cell clusters
     cluster.output <- cluster.matrix(embedding, method = cluster.method)
@@ -109,8 +83,12 @@ iterativeLSI <- function(
       return(NULL)
     }
     # aggregate counts for each cluster and find the most variable features
-    #aggregated <- aggregate_counts(ptr, as.integer(factor(cluster.output)) - 1L, nthreads = num.threads, binarize = binarize)
-    aggregated <- aggregate_counts2(ptr, cluster.output, num.threads = num.threads)
+    #aggregated <- bplapply(sort(unique(cluster.output)), function(x, mat, col.groups){
+    #  return(rowSums(x[,col.groups = x]))
+    #}, x, cluster.output, BPPARAM = bpparam())
+    aggregated <- sapply(sort(unique(cluster.output)), function(clust.name, mat, col.groups){
+      return(SparseArray::rowSums(mat[,col.groups == clust.name]))
+    }, x, cluster.output)
     
     sums <- colSums(aggregated)
     center_sf <- function(y) {
@@ -124,13 +102,10 @@ iterativeLSI <- function(
     row.vars <- rowVars(normalized)
     keep <- head(order(row.vars, decreasing=TRUE), num.features)
     row.subset <- sort(keep)
-    ptr.subset <- tatami.subset(ptr, subset = row.subset, by.row = TRUE)
 
     # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-    lsi.res <- .computeLSI(ptr.subset, lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, num.threads = num.threads)
-
+    lsi.res <- .computeLSI.in.mem(x[row.subset,], lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, num.threads = num.threads)
     embedding <- lsi.res$matSVD
-    rownames(embedding) <- col.names
   }
   beachmat::flushMemoryCache()
   
@@ -140,8 +115,8 @@ iterativeLSI <- function(
 #' @importFrom S4Vectors SimpleList
 #' @importFrom stats quantile
 #' @importFrom beachmat tatami.column.sums tatami.subset tatami.row.sums tatami.realize tatami.dim
-.computeLSI <- function(
-    ptr,
+.computeLSI.in.mem <- function(
+    x,
     lsi.method = 1,
     scale.to = 10^4,
     num.dimensions = 50,
@@ -152,11 +127,11 @@ iterativeLSI <- function(
 ){
   set.seed(seed)
   # compute column sums and remove columns with only zero values
-  col.sums <- tatami.column.sums(ptr, num.threads = num.threads)
+  col.sums <- SparseArray::colSums(x)
   if(any(col.sums == 0)){
     warning(paste0('removing ',length(which(col.sums == 0)),' columns that do not have non-zero values for the features being used.'))
-    idx <- which(col.sums != 0)
-    ptr <- tatami.subset(ptr, subset = idx, by.row = FALSE)
+    x <- x[,which(col.sums != 0)]
+    col.sums <- col.sums[which(col.sums != 0)]
   }
 
   # filter outliers
@@ -166,24 +141,24 @@ iterativeLSI <- function(
     idx.outlier <- which(col.sums <= qCS[1] | col.sums >= qCS[2])
     idx.keep <- setdiff(seq_along(col.sums), idx.outlier)
     if(length(idx.outlier) > 0){
-      ptr.outliers <- tatami.subset(ptr, subset = idx.outlier, by.row = FALSE)
-      ptr <- tatami.subset(ptr, subset = idx.keep, by.row = FALSE)
+      x.outliers <- x[,idx.outlier]
+      x <- x[, idx.keep]
       idx.keep.subset <- head(seq_len(length(idx.keep)),100)
-      ptr.keep.subset <- tatami.subset(ptr, subset = idx.keep.subset, by.row = FALSE)
+      x.keep.subset <- x[,idx.keep.subset]
       col.sums <- col.sums[idx.keep]
       filter.outliers <- TRUE
     }
   }
   # clean up zero rows
-  row.sums <- tatami.row.sums(ptr, num.threads = num.threads)
+  row.sums <- SparseArray::rowSums(x)
   row.subset <- which(row.sums > 0)
   if(any(row.subset)) {
-    ptr <- tatami.subset(ptr, subset = row.subset, by.row = TRUE)
+    x<- x[row.subset,]
     row.sums <- row.sums[row.subset]
   }
   
   # apply normalization
-  mat <- .apply.tf.idf.normalization(ptr, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to, num.threads = num.threads)
+  mat <- .apply.tf.idf.normalization.in.mem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
   
   # calculate SVD then LSI
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)
@@ -210,9 +185,8 @@ iterativeLSI <- function(
   if(filter.outliers){
     
     # Quick Check LSI-Projection Works
-    ptr.keep.subset <- tatami.subset(ptr.keep.subset, subset = row.subset, by.row = TRUE)
-    pCheck <- .projectLSI(ptr.keep.subset, lsi.res = out, verbose = verbose)
-    #pCheck2 <- out$matSVD[rownames(pCheck), ]
+    x.keep.subset <- x.keep.subset[row.subset,]
+    pCheck <- .projectLSI.in.mem(x.keep.subset, lsi.res = out, verbose = verbose)
     pCheck2 <- out$matSVD[idx.keep.subset, ]
     pCheck3 <- unlist(lapply(seq_len(ncol(pCheck)), function(x){
       cor(pCheck[,x], pCheck2[,x])
@@ -222,8 +196,8 @@ iterativeLSI <- function(
     }
     # Project LSI Outliers
     out$outliers <- idx.outlier
-    ptr.outliers <- tatami.subset(ptr.outliers, subset = row.subset, by.row = TRUE)
-    outlierLSI <- .projectLSI(ptr.outliers, lsi.res = out, verbose = verbose)
+    x.outliers <- x.outliers[row.subset,]
+    outlierLSI <- .projectLSI.in.mem(x.outliers, lsi.res = out, verbose = verbose)
     allLSI <- rbind(out$matSVD, outlierLSI)
     out$matSVD <- allLSI
   }
@@ -233,13 +207,13 @@ iterativeLSI <- function(
 }
 
 #' @importFrom Matrix diag
-.projectLSI <- function(ptr, lsi.res, return.model = FALSE, verbose = FALSE, num.threads = 4){   
+.projectLSI.in.mem <- function(x, lsi.res, return.model = FALSE, verbose = FALSE, num.threads = 4){   
   
   require(Matrix)
   set.seed(lsi.res$seed)
   
   # sparse matrix in memory is returned from .apply.tf.idf.normalization
-  mat <- .apply.tf.idf.normalization(ptr, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method, num.threads = num.threads) 
+  mat <- .apply.tf.idf.normalization.in.mem(x, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method) 
   
   # Clean Up Matrix
   idxNA <- Matrix::which(is.na(mat), arr.ind = TRUE)
@@ -268,20 +242,25 @@ iterativeLSI <- function(
 }
 
 #' @importFrom Matrix Diagonal
-#' @importFrom beachmat tatami.column.sums tatami.subset tatami.arith tatami.realize
 # num.col and row.sums might not match mat. For example, when normalizing for the projection, num.col and run.sums will match the LSI result instead of mat.
-.apply.tf.idf.normalization <- function(ptr, num.col, row.sums, scale.to = 10^4, lsi.method = 1, num.threads = 4) {
+.apply.tf.idf.normalization.in.mem <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
   
+  if(!is(mat,'sparseMatrix')) {
+    mat <- as(mat, 'sparseMatrix')
+  }
+#  if(binarize) {
+#    mat@x[mat@x > 0] <- 1
+#  }
   # compute Term Frequency
-  col.sums <- tatami.column.sums(ptr, num.threads = num.threads)
+  col.sums <- Matrix::colSums(mat)
   if(any(col.sums == 0)){
-    non.zero.columns <- which(col.sums != 0)
-    ptr <- tatami.subset(ptr, subset = non.zero.columns, by.row = FALSE)
-    col.sums <- col.sums[non.zero.columns]
+    exclude.zero.columns <- which(col.sums == 0)
+    mat <- mat[,-exclude.zero.columns]
+    col.sums <- col.sums[-exclude.zero.columns]
   }
   # divide each value by its column sum
-  ptr <- tatami.arith(ptr, op = '/', col.sums, by.row = FALSE, right = TRUE)
-
+  mat@x <- mat@x / rep.int(col.sums, Matrix::diff(mat@p)) 
+  
   if(lsi.method == 1 | tolower(lsi.method) == "tf-logidf"){
     # Adapted from Casanovich et al.
     # compute Inverse Document Frequency
@@ -304,7 +283,6 @@ iterativeLSI <- function(
   
   # compute TF-IDF Matrix
   # TF-IDF
-  mat <- beachmat::tatami.realize(ptr, num.threads = num.threads)
   mat <- as(Matrix::Diagonal(x = as.vector(idf)), "sparseMatrix") %*% mat
   
   if(lsi.method == 2 | tolower(lsi.method) == "log(tf-idf)"){
@@ -316,27 +294,3 @@ iterativeLSI <- function(
   
   return(mat)
 }
-
-aggregate_counts2 <- function(ptr, col.groups, num.threads = 1) {
-  group.labels <- sort(unique(col.groups))
-  ptr.subset <- tatami.subset(ptr, subset = which(col.groups == group.labels[1]), by.row = FALSE)
-  row.sums <- tatami.row.sums(ptr.subset, num.threads = num.threads)
-  mat.res <- matrix(NA,ncol=length(group.labels), nrow=length(row.sums))
-  mat.res[,1] <- row.sums
-  for(i in (1:length(group.labels))[-1]) {
-    ptr.subset <- tatami.subset(ptr, subset = which(col.groups == group.labels[i]), by.row = FALSE)
-    mat.res[,i] <- tatami.row.sums(ptr.subset, num.threads = num.threads)
-  }
-  return(mat.res)
-}
-
-aggregate_counts2p <- function(ptr, col.groups, num.threads = 1) {
-  per.col.res <- bplapply(sort(unique(col.groups)), function(x, ptr, col.groups, num.threads){
-    ptr.subset <- tatami.subset(ptr, subset = which(col.groups == x), by.row = FALSE)
-    return(tatami.row.sums(ptr.subset, num.threads = num.threads))
-    }, ptr, col.groups, num.threads, BPPARAM = bpparam())
-  return(Reduce('cbind', per.col.res))
-}
-
-
-

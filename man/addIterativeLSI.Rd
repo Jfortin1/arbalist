@@ -8,14 +8,16 @@ addIterativeLSI(
   mae,
   experiment.name = "TileMatrix500",
   embedding.name = "iterativeLSI",
+  col.subset = NULL,
   rank = 30,
   iterations = 2,
+  first.selection = "Top",
   num.features = 25000,
   lsi.method = 1,
   cluster.method = "Seurat",
   correlation.cutoff = 0.75,
   scale.to = 10000,
-  num.threads = 1,
+  num.threads = 4,
   seed = 5,
   total.features = 5e+05,
   filter.quantile = 0.995,
@@ -30,9 +32,13 @@ addIterativeLSI(
 
 \item{embedding.name}{String containing the name of the new iterativeLSI embedding.}
 
+\item{col.subset}{Integer vector specifying the subset of the columns to include in the iterative LSI calculations.}
+
 \item{rank}{Integer scalar specifying the rank for irlba_realized.}
 
 \item{iterations}{Integer scalar specifying number of LSI iterations to perform.}
+
+\item{first.selection}{String specifying either "Top" for the most accessible features or "Var" for the most variable features.}
 
 \item{num.features}{Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.}
 
