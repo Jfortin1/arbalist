@@ -38,6 +38,7 @@ Imports:
     scater,
     Seurat,
     SingleCellExperiment,
+    SparseArray,
     SummarizedExperiment,
     stats,
     ggplot2,
