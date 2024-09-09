@@ -56,9 +56,11 @@ addClusters <- function(
   
   # if more than one reduced dimension specified then combine them into one matrix (account for dims.to.use)
   if(length(reduced.dim.list) > 1) {
+    colnames(reduced.dim.matrix) <- paste(names(name.reduced.dim[1]),name.reduced.dim[1],colnames(reduced.dim.matrix), sep="_")
     for(i in 2:length(reduced.dim.list)) {
+      colnames(reduced.dim.list[[i]]$matrix) <- paste(names(name.reduced.dim[i]),name.reduced.dim[i],colnames(reduced.dim.list[[i]]$matrix), sep="_")
       if(nrow(reduced.dim.matrix) != nrow(reduced.dim.list[[i]]$matrix)) {
-        stop('The reduced dimension matrices need to have the same number of rows.')
+        stop('The reduced dimension matrices need to have the same number of rows. Try filtering your experiments to have the same number of cells.')
       }
       if(is.null(dims.to.use)) {
         reduced.dim.matrix <- cbind(reduced.dim.matrix,reduced.dim.list[[i]]$matrix)
@@ -90,8 +92,11 @@ addClusters <- function(
     colnames(mat.fake) <- rownames(reduced.dim.matrix)
     rownames(mat.fake) <- paste0("t",seq_len(nrow(mat.fake)))
     
+    # Seurat does not like the reduced dimension names when combining matrices so renaming to all be the same.
+    colnames(reduced.dim.matrix) <- paste0('RD_',seq(1:ncol(reduced.dim.matrix)))
+    
     seurat.obj <- Seurat::CreateSeuratObject(mat.fake, project='scATAC', min.cells=0, min.features=0)
-    seurat.obj[['pca']] <- Seurat::CreateDimReducObject(embeddings=reduced.dim.matrix, key='PC_', assay='RNA')
+    seurat.obj[['pca']] <- Seurat::CreateDimReducObject(embeddings=reduced.dim.matrix, key='RD_', assay='RNA')
     
     seurat.obj <- Seurat::FindNeighbors(seurat.obj, reduction = 'pca', dims = seq_len(ncol(reduced.dim.matrix)))
     seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(reduced.dim.matrix)))
