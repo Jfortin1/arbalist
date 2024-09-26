@@ -1,9 +1,0 @@
-# Avoiding the vendoring of Eigen itself, which would be a bit much.
-# This file can be removed once RcppEigen updates to 3.4.0.
-if [ ! -e inst/source-eigen ]
-then
-    curl https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz -o inst/eigen.tar.gz
-    mkdir inst/source-eigen && tar -xvf inst/eigen.tar.gz -C inst/source-eigen
-    rm inst/include/Eigen
-    (cd inst/include && ln -s ../source-eigen/eigen-3.4.0/Eigen .)
-fi

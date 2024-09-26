@@ -26,6 +26,40 @@ cd -
 
 ##########################################################
 
+if [ ! -e source-manticore ]
+then 
+    git clone https://github.com/tatami-inc/manticore source-manticore
+else 
+    cd source-manticore
+    git pull
+    cd -
+fi
+
+cd source-manticore
+rm -rf ../manticore
+cp -r include/manticore/ ../manticore
+git checkout master
+cd -
+
+##########################################################
+
+if [ ! -e source-tatami_chunked ]
+then 
+    git clone https://github.com/tatami-inc/tatami_chunked source-tatami_chunked
+else 
+    cd source-tatami_chunked
+    git pull
+    cd -
+fi
+
+cd source-tatami_chunked
+rm -rf ../tatami_chunked
+cp -r include/tatami_chunked/ ../tatami_chunked
+git checkout master
+cd -
+
+##########################################################
+
 if [ ! -e source-tatami ]
 then 
     git clone https://github.com/LTLA/tatami source-tatami
@@ -42,23 +76,42 @@ cp -r include/tatami/ ../tatami
 git checkout master
 cd -
 
+
 ##########################################################
 
-if [ ! -e source-irlba ]
+if [ ! -e source-tatami_r ]
 then 
-    git clone https://github.com/LTLA/CppIrlba source-irlba
+    git clone https://github.com/tatami-inc/tatami_r source-tatami_r
 else 
-    cd source-irlba
+    cd source-tatami_r
     git pull
     cd -
 fi
 
-cd source-irlba
-git checkout 89e6c2f
-rm -rf ../irlba
-cp -r include/irlba/ ../irlba
+cd source-tatami_r
+rm -rf ../tatami_r
+cp -r include/tatami_r/ ../tatami_r
 git checkout master
 cd -
+
+
+##########################################################
+
+#if [ ! -e source-irlba ]
+#then 
+#    git clone https://github.com/LTLA/CppIrlba source-irlba
+#else 
+#    cd source-irlba
+#    git pull
+#    cd -
+#fi
+#
+#cd source-irlba
+#git checkout 89e6c2f
+#rm -rf ../irlba
+#cp -r include/irlba/ ../irlba
+#git checkout master
+#cd -
 
 ##########################################################
 

@@ -1,6 +1,6 @@
 Package: arbalist
-Version: 0.1.17
-Date: 2024-09-09
+Version: 0.1.18
+Date: 2024-09-26
 Title: Bringing ArchR to Bioconductor
 Description: 
     Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
@@ -60,4 +60,5 @@ VignetteBuilder:
 SystemRequirements: 
     GNU make, 
     C++17
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
+LazyData: true
