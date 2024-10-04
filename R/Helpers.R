@@ -1,7 +1,14 @@
+#' Return SingleCellExperiment with the experiment name
+#' 
+#' Checks through the MultiAssayExperiment both the main and alternative experiments and returns the experiment with the specified name. 
+#'
+#' @param mae \linkS4class{MultiAssayExperiment}
+#' @param experiment.name String specifying the the experiment name to return. Name can either be in names() of the MAE or the altExp name in one of the experiments.
+#'
 #' @importFrom SummarizedExperiment colData
 #' @importFrom SingleCellExperiment altExp
 #' @export
-findSCE <- function(mae,experiment.name) {
+findSCE <- function(mae, experiment.name) {
   # Find the experiment result
   sce <- NULL;
   sce.idx <- NULL;
@@ -36,7 +43,15 @@ findSCE <- function(mae,experiment.name) {
   return(list(sce=sce, sce.idx=sce.idx, alt.exp.name=alt.exp.name))
 }
 
+#' Return reduced dimensions matrix with the reduced dimension name
+#' 
+#' Checks through the MultiAssayExperiment both the main and alternative experiments and returns the reduced dimension with the specified name. 
+#'
+#' @param mae \linkS4class{MultiAssayExperiment}
+#' @param name.reduced.dim String specifying the the reduced dimensions name to return. String can be a named vector where the name in the experiment in case there are reduced dimensions within multiple experiments with the same names.
+#'
 #' @importFrom SingleCellExperiment altExp altExpNames reducedDim reducedDimNames
+#' @export
 findReducedDimRes <- function(mae, name.reduced.dim) {
   if(length(name.reduced.dim) > 1) {
     stop('Please only specify one name.reduced.dim')

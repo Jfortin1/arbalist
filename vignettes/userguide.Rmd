@@ -17,7 +17,15 @@ knitr::opts_chunk$set(
 )
 ```
 
+# What is arbalist?
+
 Arbalist is designed to perform scATAC-seq analysis using similar methods to [ArchR](https://www.archrproject.com/) but utilizing `MultiAssayExperiment` and the bioconductor framework instead of the ArchR framework. The backend of arbalist is based on the C++ representation in the [tatami library](https://github.com/tatami-inc).
+
+## Arbalist vs ArchR
+
+Most arbalist functions have the same name as the ArchR functions for ease of switching between the two frameworks. However, the results might be slightly different due to differences and choices in implementation.
+
+One key example of the differences between arbalist and ArchR is how the tile matrix is created. Arbalist counts the overlap with the start/end positions of each fragment, not the overlap with the fragment interval itself. This is because the fragment start/ends represent the transposase cleavage events, while the fragment interval has no real biological significance. If the start and end for the same fragment overlap different tiles, the counts for both tiles are incremented by 1. This reflects the fact that these positions represent distinct transposase cleavage events for different features. However, if the start and end for the same fragment overlap the same tile, the tile's count is only incremented by 1. This ensures that the count for each entry still follows Poisson noise and avoids an artificial enrichment of even counts. Overall this approach to creating that tile matrix means that the values in the tile matrix are often lower in arbalist results compared to ArchR results and these differences affect results downstream of the tile matrix (basically everything).
 
 # Setting up
 
@@ -27,6 +35,8 @@ library(MultiAssayExperiment)
 library(SummarizedExperiment)
 library(SingleCellExperiment)
 ```
+
+## Files
 
 Arbalist works with the results of the 10x cellranger workflows: [Cell Ranger ARC](https://www.10xgenomics.com/support/software/cell-ranger-arc/latest) or [Single Cell ATAC](https://support.10xgenomics.com/single-cell-atac/software/overview/welcome). For this tutorial, we will be analyzing a single-cell ATAC-seq dataset of human peripheral blood mononuclear cells (PBMCs) provided by 10x Genomics. You'll need to download the following files:
 
@@ -42,6 +52,8 @@ filtered.feature.matrix.file <- "10k_pbmc_ATACv2_nextgem_Chromium_Controller_fil
 barcode.annotation.file <- "10k_pbmc_ATACv2_nextgem_Chromium_Controller_singlecell.csv"
 sample.annotation.file <- "10k_pbmc_ATACv2_nextgem_Chromium_Controller_summary.csv"
 ```
+
+## Reference sequence lengths
 
 We also need to know the length of the sequences for each chromosome/scaffold in the fragment file. Sometimes arbalist can pull the sequence lengths from the reference files specified in the fragment file's header. However, since we downloaded the files for this tutorial, the link is broken to these file path. We will specify the `seq.lengths` for this tutorial in the package data.
 
@@ -76,7 +88,9 @@ if(file.exists(fai)) {
 }
 ```
 
-To start our analysis, we need to create a `MultiAssayExperiment` (MAE). This MAE will contain a tile matrix for 500 bp tiles across the genome. Although we only use a single sample here, each of the sample name and file arguments can be a vector and their lengths should all be the same.
+## Creating MultiAssasyExperiment
+
+To start our analysis, we need to create a `MultiAssayExperiment` (MAE). This MAE will contain a tile matrix for 500 bp tiles across the genome. Although we only use a single sample here, each of the arguments for sample name and the files can be a vector and their lengths should all be the same.
 
 ```{r, eval=FALSE}
 mae <- arbalist::createArbalistMAE(
@@ -93,7 +107,7 @@ mae <- arbalist::createArbalistMAE(
 Quality control of scATAC-seq removes low-quality cells based on:
 
 1. Number of unique nuclear fragments
-2. Fragment size distribution. The nucleosome periodicity leads reduced fragments around 147 bp in length or the length of DNA wrapped around a nucleosome.
+2. Fragment size distribution. The nucleosome periodicity leads to reduced fragments around 147 bp in length or the length of DNA wrapped around a nucleosome.
 3. Signal-to-background represented by the TSS enrichment score. Low signal-to-background is general assumed to indicate dead or dying cells because the DNA is de-chromatinzed which allows for random transposition genome-wide.
 4. Doublet prediction
 
@@ -107,7 +121,7 @@ plotFragmentSizeDistribution(mae, sample.name = 'PBMC')
 
 ## TSS enrichment
 
-The TSS enrichment score evaluates accessibility at the transcription start site (TSS) compared to flanking regions in the genome. The start coordinate from each gene is used as the TSS. For multiome (scATAC+RNA) datasets, a gene expression matrix from 10x cellranger results can also be added to the `MultiAssayExperiment`. `arbalist::addTSSEnrichmentScores` will default to extracting gene ranges from any experiment named "GeneExpressionMatrix". For datasets without a "GeneExpressionMatrix", gene genomic ranges need to be specified. In this tutorial, we do not have a gene expression matrix so we are specifying a gene GenomicRanges object.
+The TSS enrichment score evaluates accessibility at the transcription start site (TSS) compared to flanking regions in the genome. The start coordinate from each gene is used as the TSS. For multiome (scATAC+scRNA) datasets, a gene expression matrix from 10x cellranger results can also be added to the MAE. `arbalist::addTSSEnrichmentScores` will default to extracting gene ranges from any experiment named "GeneExpressionMatrix". For datasets without a "GeneExpressionMatrix", gene genomic ranges need to be specified. In this tutorial, we do not have a gene expression matrix so we are specifying a gene `GenomicRanges` object.
 
 ```{r tss, eval=FALSE}
 mae <- addTSSEnrichmentScores(mae, gene.grs = GRCh38.gene.grs)
@@ -115,7 +129,7 @@ colData(mae[[1]])
 ```
 A TSSEnrichment column was added to the tile matrix colData.
 
-The TSS Enrichment score and the number of fragments per cell can be used for quality control to filter out cells.
+The TSS enrichment score and the number of fragments per cell can be used for quality control to filter out cells.
 
 ```{r tss_plot, eval=FALSE}
 min.tss.threshold <- 12
@@ -202,11 +216,13 @@ scater::plotReducedDim(
 
 # Pseudobulk replicates
 
+Pseudobulk replicates are required for creating a single set of scATAC-seq peaks using `arbalist::addPeakMatrix`. Peak calling is performed per psuedobulk and then the peak cells are merged into one set. Therefore we want the pseudobulk replicates to consider the samples and cell groups (default Clusters column added above).
+
 ```{r pseudobulk, eval=FALSE}
 mae <- addGroupCoverages(mae)
 ```
 
-`arbalist::addGroupCoverages` performs 3 tasks. First, a pseudobulk `SummarizedExperment` is added to the `MultiAssayExperiment`. The `skip.se.creation` argument to `addGroupCoverages` allows you to skip creating the `SummarizedExperiment`.
+`arbalist::addGroupCoverages` performs 3 tasks. First, a pseudobulk `SummarizedExperment` is added to the MAE. The `skip.se.creation` argument to `addGroupCoverages` allows you to skip creating the experiment if you do not want it added to the MAE.
 
 ```{r, eval=FALSE}
 mae

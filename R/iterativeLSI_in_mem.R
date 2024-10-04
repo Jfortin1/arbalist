@@ -1,7 +1,6 @@
 #' Calculate iterative LSI dimensionality reduction
 #'
 #' @param x input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features.
-#' @param col.subset Integer vector specifying the subset of the columns to include in the iterative LSI calculations.
 #' @param rank Integer scalar specifying the rank for irlba_realized.
 #' @param iterations Integer scalar specifying number of LSI iterations to perform.
 #' @param first.selection String specifying either "Top" for the most accessible features or "Var" for the most variable features.

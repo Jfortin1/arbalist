@@ -52,8 +52,6 @@ iterativeLSI.sparse.in.mem(
 \item{outlier.quantiles}{Numeric vector specifying the lower and upper quantiles for filtering cells based on the number of accessible regions.}
 
 \item{binarize}{Logical specifying whether to binarize the matrix while creating iterative LSI reduced dimensions.}
-
-\item{col.subset}{Integer vector specifying the subset of the columns to include in the iterative LSI calculations.}
 }
 \value{
 A list is returned containing:
