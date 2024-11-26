@@ -118,6 +118,7 @@ For each sample, we check the fragment size distribution.
 ```{r fragplots, eval=FALSE}
 plotFragmentSizeDistribution(mae, sample.name = 'PBMC')
 ```
+![](PBMC_fragment_distribution.png)
 
 ## TSS enrichment
 
@@ -143,6 +144,7 @@ selected.cells <- colData(mae[['TileMatrix500']])$fragments >= min.frags.thresho
   colData(mae[['TileMatrix500']])$TSSEnrichment >= min.tss.threshold
 mae[['TileMatrix500']] <- mae[['TileMatrix500']][,selected.cells]
 ```
+![](PBMC_TSSEnrichmentVsNumFragments.png)
 
 ## Estimating doublets
 
@@ -184,7 +186,7 @@ mae <- addClusters(mae, clusters.colname = 'Clusters')
 
 We calculate UMAP and tSNE embeddings of the reduced dimension features. Embeddings are useful for visualization.
 
-```{r embeddings, eval=FALSE}
+```{r umap, eval=FALSE}
 library(scater)
 
 # Add UMAP to SingleCellExperiment
@@ -200,7 +202,9 @@ scater::plotReducedDim(
   dimred = 'iterativeLSI_UMAP', 
   colour_by = 'Clusters'
   )
-
+```
+![](PBMC_UMAP.png){width='95%'}
+```{r tsne, eval=FALSE}
 # Add TSNE to SingleCellExperiment
 mae[['TileMatrix500']] <- runTSNE(
   mae[['TileMatrix500']], 
@@ -211,8 +215,10 @@ mae[['TileMatrix500']] <- runTSNE(
 # TSNE colored by Clusters
 scater::plotReducedDim(
   mae[['TileMatrix500']], 
-  dimred = 'iterativeLSI_TSNE', colour_by = 'Clusters')
+  dimred = 'iterativeLSI_TSNE', 
+  colour_by = 'Clusters')
 ```
+![](PBMC_tsne.png){width='95%'}
 
 # Pseudobulk replicates
 

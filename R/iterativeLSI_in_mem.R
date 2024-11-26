@@ -1,6 +1,9 @@
 #' Calculate iterative LSI dimensionality reduction
 #'
 #' @param x input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features.
+#' @param cell.names String vector specifying cell names. Length should match the number of columns in x.
+#' @param sample.names String vector specifying sample names. Length should match the number of columns in x.
+#' @param cell.depths String vector specifying cell depths. Length should match the number of columns in x.
 #' @param rank Integer scalar specifying the rank for irlba_realized.
 #' @param iterations Integer scalar specifying number of LSI iterations to perform.
 #' @param first.selection String specifying either "Top" for the most accessible features or "Var" for the most variable features.
@@ -15,6 +18,7 @@
 #' @param filter.quantile Numeric scalar between 0 and 1 inclusive that indicates the quantile above which features should be removed based on insertion counts prior.
 #' @param outlier.quantiles Numeric vector specifying the lower and upper quantiles for filtering cells based on the number of accessible regions.
 #' @param binarize Logical specifying whether to binarize the matrix while creating iterative LSI reduced dimensions.
+#' @param num.cells.to.sample Scalar integer specifying the number of cells to sample iterations prior to the last in order to perform sub-sampled LSI and sub-sampled clustering.
 #' @return A list is returned containing:
 #' \itemize{
 #' \item \code{embedding}, a matrix containing the iterativeLSI embedding
@@ -30,45 +34,68 @@
 #' @importFrom SparseArray rowSums rowVars colSums
 iterativeLSI.sparse.in.mem <- function(
     x,
+    cell.names,
+    sample.names,
+    cell.depths,
     rank = 30,
     iterations = 2,
     first.selection = "Var", # or "Top"
     num.features = 25000,
-    lsi.method = 1,
+    lsi.method = 2,
     cluster.method = "Seurat",
     correlation.cutoff = 0.75,
     scale.to = 10000,
     num.threads = 4,
-    seed = 5,
+    seed = 1,
     total.features = 500000,
     filter.quantile = 0.995,
     outlier.quantiles = c(0.02, 0.98),
-    binarize = FALSE
+    binarize = FALSE,
+    num.cells.to.sample = 10000
 ) {
+  if(num.features < 1000) {
+    stop('Please specify a number of features equal to or more than 1000 to num.features.')
+  }
+  
   col.names <- colnames(x)
   
   # select the top features based on accessibility of the binarized features (ex for ATAC data) or variance (ex for RNA data)
-  if(binarize) {
-    x@x[x@x > 0] <- 1
-  }
   if(first.selection == "Top") {
-    x2 <- x
-    x2@x[x2@x > 0] <- 1
-    row.order.stat <- SparseArray::rowSums(x2)
+    row.order.stat <- SparseArray::rowSums(x)
   } else if (first.selection == "Var") {
-    #row.order.stat <- apply(x,1,var)
+    if(binarize) {
+      stop("binarize must be FALSE if first.selection is Var")
+    }
     row.order.stat <- SparseArray::rowVars(x)
   } else {
     stop('first.selection not "Top" or "Var".')
   }
   
+  x.orig.not.binarized <- x
+  if(binarize) {
+    x@x[x@x > 0] <- 1
+  }
+  
   col.sums <- SparseArray::colSums(x)
   
   rm.top <- floor((1-filter.quantile) * total.features)
-  row.subset <- head(order(row.order.stat, decreasing = TRUE), num.features + rm.top )[-seq_len(rm.top)]
+  row.subset <- sort(head(order(row.order.stat, decreasing = TRUE), num.features + rm.top )[-seq_len(rm.top)])
 
   # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-  lsi.res <- .computeLSI.in.mem(x[row.subset,], lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, num.threads = num.threads)
+  lsi.res <- .computeLSI.in.mem(
+    x[row.subset,],
+    cell.names = cell.names, 
+    sample.names = sample.names, 
+    cell.depths = cell.depths, 
+    lsi.method = lsi.method,
+    scale.to = scale.to,
+    num.dimensions = rank,
+    outlier.quantiles = outlier.quantiles,
+    seed = seed,
+    num.threads = num.threads,
+    num.cells.to.sample = num.cells.to.sample, 
+    project.all.cells = FALSE
+    )
   embedding <- lsi.res$matSVD
     
   for (i in seq_len(iterations-1)) {
@@ -76,34 +103,40 @@ iterativeLSI.sparse.in.mem <- function(
     embedding <- embedding[,which(cor(embedding, col.sums[rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
     
     # find cell clusters
-    cluster.output <- cluster.matrix(embedding, method = cluster.method)
+    bias.vals <- log10(cell.depths + 1)
+    names(bias.vals) <- cell.names
+    cluster.output <- cluster.matrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
       return(NULL)
     }
+
     # aggregate counts for each cluster and find the most variable features
-    #aggregated <- bplapply(sort(unique(cluster.output)), function(x, mat, col.groups){
-    #  return(rowSums(x[,col.groups = x]))
-    #}, x, cluster.output, BPPARAM = bpparam())
+    group.features.idx <- sort(head(order(row.order.stat, decreasing = TRUE), total.features))
     aggregated <- sapply(sort(unique(cluster.output)), function(clust.name, mat, col.groups){
       return(SparseArray::rowSums(mat[,col.groups == clust.name]))
-    }, x, cluster.output)
+    }, x.orig.not.binarized[group.features.idx,rownames(embedding)], cluster.output)
     
-    sums <- colSums(aggregated)
-    center_sf <- function(y) {
-      center <- if (is.null(scale.to)) mean(y) else scale.to
-      out <- y / center
-      out[out == 0] <- 1 # avoid risk of divide-by-zero for libraries with column sums of zero
-      out
-    }
-    sf2 <- center_sf(sums)
-    normalized <- log1p(t(t(aggregated) / sf2))
+    normalized <- log2(t(t(aggregated) / colSums(aggregated)) * scale.to + 1)
     row.vars <- rowVars(normalized)
-    keep <- head(order(row.vars, decreasing=TRUE), num.features)
+    keep <- group.features.idx[head(order(row.vars, decreasing=TRUE), num.features)]
     row.subset <- sort(keep)
 
     # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-    lsi.res <- .computeLSI.in.mem(x[row.subset,], lsi.method = lsi.method, scale.to = scale.to, num.dimensions = rank, outlier.quantiles = outlier.quantiles, seed = seed, num.threads = num.threads)
+    lsi.res <- .computeLSI.in.mem(
+      x[row.subset,],
+      cell.names = cell.names, 
+      sample.names = sample.names, 
+      cell.depths = cell.depths,
+      lsi.method = lsi.method,
+      scale.to = scale.to,
+      num.dimensions = rank,
+      outlier.quantiles = outlier.quantiles,
+      seed = seed,
+      num.threads = num.threads, 
+      num.cells.to.sample = if(i != iterations) num.cells.to.sample else NULL, 
+      project.all.cells = TRUE
+      )
     embedding <- lsi.res$matSVD
   }
   beachmat::flushMemoryCache()
@@ -116,15 +149,47 @@ iterativeLSI.sparse.in.mem <- function(
 #' @importFrom beachmat tatami.column.sums tatami.subset tatami.row.sums tatami.realize tatami.dim
 .computeLSI.in.mem <- function(
     x,
+    cell.names,
+    sample.names,
+    cell.depths,
     lsi.method = 1,
     scale.to = 10^4,
     num.dimensions = 50,
     outlier.quantiles = c(0.02, 0.98),
     seed = 1,
     verbose = FALSE,
-    num.threads = 4
+    num.threads = 4,
+    num.cells.to.sample = 10000,
+    project.all.cells = TRUE
 ){
   set.seed(seed)
+  
+  cell.depths <- log10(cell.depths + 1)
+  if(!is.null(num.cells.to.sample)) {
+    sampleN <- ceiling(num.cells.to.sample * table(sample.names) / length(sample.names))
+    split.cells <- split(cell.names, sample.names)
+    split.depth <- split(cell.depths, sample.names)
+    
+    sampled.cells <- sort(unlist(sapply(1:length(split.cells), function(i) {
+      x <- split.cells[[i]]
+      n <- sampleN[names(split.cells)[i]]
+      
+      if(!is.null(outlier.quantiles)){
+        quant <- quantile(split.depth[[i]], probs = c(min(outlier.quantiles) / 2, 1 - ((1-max(outlier.quantiles)) / 2)))
+        idx <- which(split.depth[[i]] >= quant[1] & split.depth[[i]] <= quant[2])
+      }else{
+        idx <- seq_along(x)
+      }
+      if(length(idx) >= n){
+        sample(x = x[idx], size = n)
+      }else{
+        sample(x = x, size = n)
+      }
+    })))
+  } else {
+    sampled.cells <- cell.names
+  }
+  
   # compute column sums and remove columns with only zero values
   col.sums <- SparseArray::colSums(x)
   if(any(col.sums == 0)){
@@ -134,19 +199,29 @@ iterativeLSI.sparse.in.mem <- function(
   }
 
   # filter outliers
-  filter.outliers <- FALSE
+  idx.outlier <- NULL
+  idx.keep <- seq_along(col.sums)
+  idx.not.in.sampled <- NULL
+  if(any(!cell.names %in% sampled.cells)) {
+    idx.not.in.sampled <- which(!cell.names %in% sampled.cells)
+    idx.keep <- setdiff(idx.keep, idx.not.in.sampled)
+  }
   if(!is.null(outlier.quantiles)){
-    qCS <- quantile(col.sums, probs = c(min(outlier.quantiles), max(outlier.quantiles)))
-    idx.outlier <- which(col.sums <= qCS[1] | col.sums >= qCS[2])
-    idx.keep <- setdiff(seq_along(col.sums), idx.outlier)
-    if(length(idx.outlier) > 0){
-      x.outliers <- x[,idx.outlier]
-      x <- x[, idx.keep]
-      idx.keep.subset <- head(seq_len(length(idx.keep)),100)
-      x.keep.subset <- x[,idx.keep.subset]
-      col.sums <- col.sums[idx.keep]
-      filter.outliers <- TRUE
-    }
+    qCS <- quantile(col.sums[idx.keep], probs = c(min(outlier.quantiles), max(outlier.quantiles)))
+    idx.outlier <- idx.keep[which(col.sums[idx.keep] <= qCS[1] | col.sums[idx.keep] >= qCS[2])]
+  }
+  if(project.all.cells) {
+    idx.outlier <- sort(union(idx.outlier, idx.not.in.sampled))
+  }
+  if(length(idx.outlier) > 0) {
+    idx.keep <- setdiff(idx.keep, idx.outlier)
+    x.outliers <- x[,idx.outlier]
+    x <- x[, idx.keep]
+    idx.keep.subset <- head(seq_len(length(idx.keep)),50)
+    x.keep.subset <- x[,idx.keep.subset]
+    col.sums <- col.sums[idx.keep]
+  }  else if(length(idx.keep) < length(col.sums)){
+    x <- x[,idx.keep]
   }
   # clean up zero rows
   row.sums <- SparseArray::rowSums(x)
@@ -158,6 +233,8 @@ iterativeLSI.sparse.in.mem <- function(
   
   # apply normalization
   mat <- .apply.tf.idf.normalization.in.mem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
+  
+  #mat <- mat[,sort(colnames(mat))]
   
   # calculate SVD then LSI
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)
@@ -181,7 +258,7 @@ iterativeLSI.sparse.in.mem <- function(
     row.subset = row.subset
   )
   
-  if(filter.outliers){
+  if(length(idx.outlier) > 0){
     
     # Quick Check LSI-Projection Works
     x.keep.subset <- x.keep.subset[row.subset,]
@@ -198,6 +275,11 @@ iterativeLSI.sparse.in.mem <- function(
     x.outliers <- x.outliers[row.subset,]
     outlierLSI <- .projectLSI.in.mem(x.outliers, lsi.res = out, verbose = verbose)
     allLSI <- rbind(out$matSVD, outlierLSI)
+    if(length(allLSI) == length(sampled.cells)) {
+      allLSI <- allLSI[sampled.cells,]
+    } else if(length(allLSI) == length(cell.names)) {
+      allLSI <- allLSI[cell.names,]
+    }
     out$matSVD <- allLSI
   }
   gc()
@@ -247,9 +329,6 @@ iterativeLSI.sparse.in.mem <- function(
   if(!is(mat,'sparseMatrix')) {
     mat <- as(mat, 'sparseMatrix')
   }
-#  if(binarize) {
-#    mat@x[mat@x > 0] <- 1
-#  }
   # compute Term Frequency
   col.sums <- Matrix::colSums(mat)
   if(any(col.sums == 0)){

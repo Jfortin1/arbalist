@@ -8,17 +8,18 @@ addIterativeLSI(
   mae,
   experiment.name = "TileMatrix500",
   embedding.name = "iterativeLSI",
+  cell.depth.column = "fragments",
   col.subset = NULL,
   rank = 30,
   iterations = 2,
   first.selection = "Top",
   num.features = 25000,
-  lsi.method = 1,
+  lsi.method = 2,
   cluster.method = "Seurat",
   correlation.cutoff = 0.75,
   scale.to = 10000,
   num.threads = 4,
-  seed = 5,
+  seed = 1,
   total.features = 5e+05,
   filter.quantile = 0.995,
   outlier.quantiles = c(0.02, 0.98),
@@ -31,6 +32,8 @@ addIterativeLSI(
 \item{experiment.name}{String containing the name of the experiment to create the embedding from and add reduced dimensions to.}
 
 \item{embedding.name}{String containing the name of the new iterativeLSI embedding.}
+
+\item{cell.depth.column}{String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created MAEs this might be "nFrags".}
 
 \item{col.subset}{Integer vector specifying the subset of the columns to include in the iterative LSI calculations.}
 

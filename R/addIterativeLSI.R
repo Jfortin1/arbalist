@@ -5,6 +5,8 @@
 #' @param mae \linkS4class{MultiAssayExperiment} 
 #' @param experiment.name String containing the name of the experiment to create the embedding from and add reduced dimensions to.
 #' @param embedding.name String containing the name of the new iterativeLSI embedding.
+#' @param cell.depth.column String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created MAEs this might be "nFrags".
+
 #' @inheritParams iterativeLSI
 #'
 #' @return \linkS4class{MultiAssayExperiment} with iterative LSI results added to the \linkS4class{SingleCellExperiment} reduced dimensions.
@@ -17,17 +19,18 @@ addIterativeLSI <- function(
   mae,
   experiment.name = 'TileMatrix500',
   embedding.name = 'iterativeLSI',
+  cell.depth.column = 'fragments',
   col.subset = NULL,
   rank = 30,
   iterations = 2,
   first.selection = "Top", # or "Var"
   num.features = 25000,
-  lsi.method = 1,
+  lsi.method = 2,
   cluster.method = "Seurat",
   correlation.cutoff = 0.75,
   scale.to = 10000,
   num.threads = 4,
-  seed = 5,
+  seed = 1,
   total.features = 500000,
   filter.quantile = 0.995,
   outlier.quantiles = c(0.02, 0.98),
@@ -48,9 +51,15 @@ addIterativeLSI <- function(
   }
   
   x <- assay(se)
+  cell.depths <- colData(se)[,cell.depth.column]
+  cell.names <- colnames(se)
+  sample.names <- colData(se)[,'Sample']
   if(is(x,"DelayedArray")) {
     res <- iterativeLSI(
       x = x,
+      cell.names = cell.names,
+      sample.names = sample.names,
+      cell.depths = cell.depths,
       col.subset = col.subset,
       rank = rank,
       iterations = iterations,
@@ -68,8 +77,12 @@ addIterativeLSI <- function(
       binarize = binarize
     )
   } else {
+    message('in mem')
     res <- iterativeLSI.sparse.in.mem(
       x = x,
+      cell.names = cell.names,
+      sample.names = sample.names,
+      cell.depths = cell.depths,
       rank = rank,
       iterations = iterations,
       first.selection = first.selection,

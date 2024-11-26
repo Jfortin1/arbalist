@@ -6,25 +6,35 @@
 \usage{
 iterativeLSI(
   x,
+  cell.names,
+  sample.names,
+  cell.depths,
   col.subset = NULL,
   rank = 30,
   iterations = 2,
   first.selection = "Top",
   num.features = 25000,
-  lsi.method = 1,
+  lsi.method = 2,
   cluster.method = "Seurat",
   correlation.cutoff = 0.75,
   scale.to = 10000,
   num.threads = 4,
-  seed = 5,
+  seed = 1,
   total.features = 5e+05,
   filter.quantile = 0.995,
   outlier.quantiles = c(0.02, 0.98),
-  binarize = TRUE
+  binarize = TRUE,
+  num.cells.to.sample = 10000
 )
 }
 \arguments{
 \item{x}{input matrix for creating iterative LSI embeddings, assumes ATAC-seq so chooses top accessible features.}
+
+\item{cell.names}{String vector specifying cell names. Length should match the number of columns in x.}
+
+\item{sample.names}{String vector specifying sample names. Length should match the number of columns in x.}
+
+\item{cell.depths}{String vector specifying cell depths. Length should match the number of columns in x.}
 
 \item{col.subset}{Integer vector specifying the subset of the columns to include in the iterative LSI calculations.}
 
@@ -55,6 +65,8 @@ iterativeLSI(
 \item{outlier.quantiles}{Numeric vector specifying the lower and upper quantiles for filtering cells based on the number of accessible regions.}
 
 \item{binarize}{Logical specifying whether to binarize the matrix while creating iterative LSI reduced dimensions.}
+
+\item{num.cells.to.sample}{Scalar integer specifying the number of cells to sample iterations prior to the last in order to perform sub-sampled LSI and sub-sampled clustering.}
 }
 \value{
 A list is returned containing:

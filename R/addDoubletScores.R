@@ -12,6 +12,7 @@
 #' @param max.num.synthetic.doublets Integer scalar specifying the maximum number of doublets to run per sample. This is used if num.trials * number of cells in the sample is more than this number.
 #' @param plot.out.dir String specifying the output path for doublet score quality control plots.
 #' @param selected.samples Vector of strings specifying which samples to calculate doublet scores for. By default (NULL), all that have enough cells will be run.
+#' @param cell.depth.column String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created MAEs this might be "nFrags".
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how doublet scoring should be parallelized per iteration of doublets.
 #'
 #' @return \linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
@@ -36,6 +37,7 @@ addDoubletScores <- function(
     max.num.synthetic.doublets = 2000,
     plot.out.dir = '.',
     selected.samples = NULL,
+    cell.depth.column = 'fragments',
     BPPARAM = bpparam()
 ) {
   
@@ -82,7 +84,17 @@ addDoubletScores <- function(
     num.iterations <- ceiling(num.synthetic.doublets/num.doublets.per.iteration)
   
     # Calculate the iterativeLSI embedding for the sample's cells
-    lsi.res <- iterativeLSI(assay(sce.list$sce)[,sample.columns], rank = num.dimensions)
+    cell.depths <- colData(sce.list$sce)[,cell.depth.column]
+    cell.names <- colnames(sce.list$sce)
+    sample.names <- colData(sce.list$sce)[,'Sample']
+    lsi.res <- iterativeLSI(
+      assay(sce.list$sce)[,sample.columns],
+      cell.names = cell.names[sample.columns],
+      sample.names = sample.names[sample.columns],
+      cell.depths = cell.depths[sample.columns],
+      rank = num.dimensions
+      )
+    
     gc()
     if(is.null(lsi.res)) {
       next

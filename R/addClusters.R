@@ -153,13 +153,32 @@ addClusters <- function(
 
 }
 
+#' @importFrom stats cutree dist hclust median
 cluster.matrix <- function(
     mat,
     method = 'seurat',
     cluster.prefix = "C",
-    resolution = 0.8
+    resolution = 2,
+    max.clusters = 6,
+    scale.dims = TRUE,
+    bias.vals = NULL,
+    bias.quantiles = c(0.05, 0.95),
+    num.permutations = 500,
+    bias.clusters = 0.01,
+    bias.enrich = 10,
+    bias.proportion = 0.5,
+    bias.p.val = 0.05,
+    num.outlier = 5,
+    filterBias = FALSE
 ) {
-
+  mat.orig.rownames <- rownames(mat)
+  
+  if(scale.dims){
+    mat <- sweep(mat - rowMeans(mat), 1, matrixStats::rowSds(mat),`/`)
+  }
+  
+  mat <- mat[sort(rownames(mat)),]
+  
   if(any(grep('seurat',tolower(method)))) {
     
     # create a fake matrix to fill the input data slot to represent the cell dimension
@@ -171,7 +190,7 @@ cluster.matrix <- function(
     seurat.obj[['pca']] <- Seurat::CreateDimReducObject(embeddings=mat, key='PC_', assay='RNA')
     
     seurat.obj <- Seurat::FindNeighbors(seurat.obj, reduction = 'pca', dims = seq_len(ncol(mat)))
-    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(mat)), resolution = resolution)
+    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(mat)), resolution = resolution, n.start=10)
     
     # get clusters form Seurat Object
     clust <- seurat.obj@meta.data[,ncol(seurat.obj@meta.data)]
@@ -188,5 +207,117 @@ cluster.matrix <- function(
     stop(paste0(method,' is not one of the current clustering method options. Try "Seurat" or "scran".'))
   }
   
-  return(clust)
+  biasDF <- DataFrame(row.names = sort(rownames(mat)), bias = bias.vals[sort(rownames(mat))])
+  v <- biasDF[,1]
+  len <- length(v)
+  if(length(v) < len){
+    v2 <- rep(0, len)
+    v2[seq_along(v)] <- v
+  }else{
+    v2 <- v
+  }
+  p <- trunc(rank(v2))/length(v2)
+  if(length(v) < len){
+    p <- p[seq_along(v)]
+  }
+  
+  biasDF$Q <- p
+  tabClust <- table(clust)
+  tabClustP <- tabClust / sum(tabClust)
+  idxTest <- which(tabClustP < bias.clusters)
+  names(clust) <- rownames(mat)
+  
+  if(length(idxTest) > 0){
+    testDF <- Reduce("rbind",lapply(seq_along(idxTest), function(i){
+      clustTesti <- names(tabClustP)[idxTest[i]]
+      biasQ <- biasDF[names(clust)[which(clust == clustTesti)], 2]
+      biasBgd <- matrix(
+        sample(
+          x = biasDF[names(clust)[which(clust != clustTesti)], 2],
+          size = num.permutations * length(biasQ),
+          replace = if(num.permutations * length(biasQ) > nrow(biasDF[names(clust)[which(clust != clustTesti)], ])) TRUE else FALSE
+        ), 
+        nrow = length(biasQ), 
+        ncol = num.permutations
+      )
+      n1 <- colSums(biasBgd >= max(bias.quantiles))
+      n2 <- colSums(biasBgd <= min(bias.quantiles))
+      pval1 <- max(sum(sum(biasQ >= max(bias.quantiles)) < n1) * 2, 1) / length(n1)
+      pval2 <- max(sum(sum(biasQ <= min(bias.quantiles)) < n2) * 2, 1) / length(n2)
+      enrich1 <- sum(biasQ >= max(bias.quantiles)) / max(median(n1), 1)
+      enrich2 <- sum(biasQ <= min(bias.quantiles)) / max(median(n2), 1)
+      per1 <- sum(biasQ >= max(bias.quantiles)) / length(biasQ)
+      per2 <- sum(biasQ <= min(bias.quantiles)) / length(biasQ)
+      if(enrich1 > enrich2){
+        enrichClust <- enrich1
+        enrichPval <- min(pval1, 1)
+        enrichPer <- per1
+      }else{
+        enrichClust <- enrich2
+        enrichPval <- min(pval2, 1)
+        enrichPer <- per2
+      }
+      DataFrame(Cluster = clustTesti, enrichClust = enrichClust, enrichPval = enrichPval, enrichProportion = enrichPer)
+    }))
+    
+    clustAssign <- testDF[which(testDF$enrichClust > bias.enrich & testDF$enrichProportion > bias.proportion & testDF$enrichPval <= bias.p.val),1]
+    if(length(clustAssign) > 0){
+      if(filterBias){
+        for(i in seq_along(clustAssign)){
+          clusti <- clustAssign[i]
+          idxi <- which(clust==clusti)
+          k <- 10
+          knnIdx <- nabor::knn(data = mat[-idxi,,drop=FALSE], query = mat[idxi,,drop=FALSE], k = k + 1)$nn.idx
+          knni <- knnIdx[,-1,drop=FALSE]
+          clustf <- unlist(lapply(seq_len(nrow(knni)), function(x) names(sort(table(clust[-idxi][knni[x,]]),decreasing=TRUE)[1])))
+          clust[idxi] <- clustf
+        }
+      }else{
+        message("Biased Clusters : ", appendLF = FALSE)
+        for(i in seq_along(clustAssign)){
+          message(clustAssign[i], " ", appendLF = FALSE)
+        }
+      }
+    }
+    
+    tabClust <- table(clust)
+    clustAssign <- which(tabClust < num.outlier)
+    if(length(clustAssign) > 0){
+      for(i in seq_along(clustAssign)){
+        clusti <- names(clustAssign[i])
+        idxi <- which(clust==clusti)
+        k <- 10
+        knnIdx <- nabor::knn(data = mat[-idxi,], query = mat[idxi,], k = k + 1)$nn.idx
+        knni <- knnIdx[,-1,drop=FALSE]
+        clustf <- unlist(lapply(seq_len(nrow(knni)), function(x) names(sort(table(clust[-idxi][knni[x,]]),decreasing=TRUE)[1])))
+        clust[idxi] <- clustf
+      }
+    }
+  }
+  
+  if(!is.null(max.clusters) && length(unique(clust)) > max.clusters) {
+      
+    clust.means <- matrix(NA,nrow=length(unique(clust)),ncol=ncol(mat))
+    rownames(clust.means) <- unique(clust)
+    colnames(clust.means) <- colnames(mat)
+    for(i in unique(clust)) {
+      for(j in colnames(mat)) {
+        clust.means[i,j] <- mean(mat[which(clust==i),j])
+      }
+    }
+    
+    hc <- hclust(dist(as.matrix(clust.means)))
+    ct <- cutree(hc, max.clusters)
+    labels <- paste0(clust)
+    oldLabels <- paste0(names(ct))
+    newLabels <- paste0(paste0(cluster.prefix, ct))
+    labelsNew <- labels
+    for(i in seq_along(oldLabels)){
+      labelsNew[labels == oldLabels[i]] <- newLabels[i]
+    }
+    clust <- paste0(labelsNew)
+    names(clust) <- rownames(mat)
+  }
+  
+  return(clust[mat.orig.rownames])
 }

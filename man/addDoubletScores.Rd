@@ -15,6 +15,7 @@ addDoubletScores(
   max.num.synthetic.doublets = 2000,
   plot.out.dir = ".",
   selected.samples = NULL,
+  cell.depth.column = "fragments",
   BPPARAM = bpparam()
 )
 }
@@ -38,6 +39,8 @@ addDoubletScores(
 \item{plot.out.dir}{String specifying the output path for doublet score quality control plots.}
 
 \item{selected.samples}{Vector of strings specifying which samples to calculate doublet scores for. By default (NULL), all that have enough cells will be run.}
+
+\item{cell.depth.column}{String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created MAEs this might be "nFrags".}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how doublet scoring should be parallelized per iteration of doublets.}
 }
