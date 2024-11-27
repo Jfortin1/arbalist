@@ -1,6 +1,6 @@
 Package: arbalist
-Version: 0.1.21
-Date: 2024-11-26
+Version: 0.1.22
+Date: 2024-11-27
 Title: Bringing ArchR to Bioconductor
 Description: 
     Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
