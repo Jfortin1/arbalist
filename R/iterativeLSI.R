@@ -39,12 +39,12 @@ iterativeLSI <- function(
     sample.names,
     cell.depths,
     col.subset = NULL,
-    rank = 30, #
+    rank = 30, 
     iterations = 2,
     first.selection = "Top", # or "Var"
     num.features = 25000,
     lsi.method = 2,
-    cluster.method = "Seurat", # 
+    cluster.method = "Seurat", 
     correlation.cutoff = 0.75,
     scale.to = 10000,
     num.threads = 4,
@@ -99,7 +99,7 @@ iterativeLSI <- function(
   col.sums <- tatami.column.sums(ptr, num.threads = num.threads)
   
   rm.top <- floor((1-filter.quantile) * total.features)
-  row.subset <- order(head(order(row.order.stat, decreasing = TRUE), num.features + rm.top )[-seq_len(rm.top)])
+  row.subset <- sort(head(order(row.order.stat, decreasing = TRUE), num.features + rm.top )[-seq_len(rm.top)])
   ptr.subset <- tatami.subset(ptr, subset = row.subset, by.row = TRUE)
   
   # TF-IDF normalization (log(TF-IDF) method) and compute LSI
@@ -134,8 +134,9 @@ iterativeLSI <- function(
 
     # aggregate counts for each cluster and find the most variable features
     group.features.idx <- sort(head(order(row.order.stat, decreasing = TRUE), total.features))
-    ptr.subset <- tatami.subset(ptr.orig.not.binarized, subset = row.subset, by.row = TRUE)
-    aggregated <- aggregate_group_counts(ptr.subset, cluster.output, num.threads = num.threads)
+    ptr.subset <- tatami.subset(ptr.orig.not.binarized, subset = group.features.idx, by.row = TRUE)
+    ptr.subset <- tatami.subset(ptr.subset, subset = which(cell.names %in% rownames(embedding)), by.row = FALSE)
+    aggregated <- aggregate_group_counts(ptr.subset, cluster.output[cell.names[which(cell.names %in% names(cluster.output))]], num.threads = num.threads)
     
     normalized <- log2(t(t(aggregated) / colSums(aggregated)) * scale.to + 1)
     row.vars <- rowVars(normalized)
@@ -155,12 +156,14 @@ iterativeLSI <- function(
       outlier.quantiles = outlier.quantiles, 
       seed = seed, 
       num.threads = num.threads, 
-      num.cells.to.sample = if(i != iterations) num.cells.to.sample else NULL, 
+      num.cells.to.sample = if(i != (iterations-1)) num.cells.to.sample else NULL, 
       project.all.cells = TRUE
       )
 
     embedding <- lsi.res$matSVD
-    rownames(embedding) <- col.names
+#    if(is.null(rownames(embedding))) {
+#      rownames(embedding) <- col.names
+#    }
   }
   beachmat::flushMemoryCache()
   
@@ -193,22 +196,22 @@ iterativeLSI <- function(
     split.cells <- split(cell.names, sample.names)
     split.depth <- split(cell.depths, sample.names)
     
-    sampled.cells <- sort(unlist(sapply(1:length(split.cells), function(i) {
-      x <- split.cells[[i]]
+    sampled.cells <- cell.names[cell.names %in% unlist(sapply(1:length(split.cells), function(i) {
+      cell.list <- split.cells[[i]]
       n <- sampleN[names(split.cells)[i]]
       
       if(!is.null(outlier.quantiles)){
         quant <- quantile(split.depth[[i]], probs = c(min(outlier.quantiles) / 2, 1 - ((1-max(outlier.quantiles)) / 2)))
         idx <- which(split.depth[[i]] >= quant[1] & split.depth[[i]] <= quant[2])
       }else{
-        idx <- seq_along(x)
+        idx <- seq_along(cell.list)
       }
       if(length(idx) >= n){
-        sample(x = x[idx], size = n)
+        sample(x = cell.list[idx], size = n)
       }else{
-        sample(x = x, size = n)
+        sample(x = cell.list, size = n)
       }
-    })))
+    }))]
   } else {
     sampled.cells <- cell.names
   }
@@ -258,8 +261,7 @@ iterativeLSI <- function(
   
   # apply normalization
   mat <- .apply.tf.idf.normalization(ptr, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to, num.threads = num.threads)
-  
-  #mat <- mat[,sort(colnames(mat))]
+  colnames(mat) <- cell.names[idx.keep]
   
   # calculate SVD then LSI
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)
@@ -301,6 +303,7 @@ iterativeLSI <- function(
     ptr.outliers <- tatami.subset(ptr.outliers, subset = row.subset, by.row = TRUE)
     outlierLSI <- .projectLSI(ptr.outliers, lsi.res = out, verbose = verbose)
     allLSI <- rbind(out$matSVD, outlierLSI)
+    rownames(allLSI) <- cell.names[c(idx.keep,idx.outlier)]
     if(length(allLSI) == length(sampled.cells)) {
       allLSI <- allLSI[sampled.cells,]
     } else if(length(allLSI) == length(cell.names)) {
@@ -309,8 +312,6 @@ iterativeLSI <- function(
     out$matSVD <- allLSI
   }
   gc()
-  
-  rownames(out$matSVD) <- cell.names[sort(union(idx.keep,idx.outlier))]
   
   out
 }
@@ -405,8 +406,9 @@ aggregate_group_counts <- function(ptr, col.groups, num.threads = 1) {
   ptr.subset <- tatami.subset(ptr, subset = which(col.groups == group.labels[1]), by.row = FALSE)
   row.sums <- tatami.row.sums(ptr.subset, num.threads = num.threads)
   mat.res <- matrix(NA,ncol=length(group.labels), nrow=length(row.sums))
+  colnames(group.labels)
   mat.res[,1] <- row.sums
-  for(i in (1:length(group.labels))[-1]) {
+  for(i in (seq_along(group.labels))[-1]) {
     ptr.subset <- tatami.subset(ptr, subset = which(col.groups == group.labels[i]), by.row = FALSE)
     mat.res[,i] <- tatami.row.sums(ptr.subset, num.threads = num.threads)
   }

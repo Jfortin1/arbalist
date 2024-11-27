@@ -57,12 +57,12 @@ iterativeLSI.sparse.in.mem <- function(
     stop('Please specify a number of features equal to or more than 1000 to num.features.')
   }
   
-  col.names <- colnames(x)
+  colnames(x) <- cell.names
   
   # select the top features based on accessibility of the binarized features (ex for ATAC data) or variance (ex for RNA data)
-  if(first.selection == "Top") {
+  if(tolower(first.selection) == "top") {
     row.order.stat <- SparseArray::rowSums(x)
-  } else if (first.selection == "Var") {
+  } else if (tolower(first.selection) == "var") {
     if(binarize) {
       stop("binarize must be FALSE if first.selection is Var")
     }
@@ -114,7 +114,7 @@ iterativeLSI.sparse.in.mem <- function(
     # aggregate counts for each cluster and find the most variable features
     group.features.idx <- sort(head(order(row.order.stat, decreasing = TRUE), total.features))
     aggregated <- sapply(sort(unique(cluster.output)), function(clust.name, mat, col.groups){
-      return(SparseArray::rowSums(mat[,col.groups == clust.name]))
+      return(SparseArray::rowSums(mat[,which(col.groups == clust.name)]))
     }, x.orig.not.binarized[group.features.idx,rownames(embedding)], cluster.output)
     
     normalized <- log2(t(t(aggregated) / colSums(aggregated)) * scale.to + 1)
@@ -134,7 +134,7 @@ iterativeLSI.sparse.in.mem <- function(
       outlier.quantiles = outlier.quantiles,
       seed = seed,
       num.threads = num.threads, 
-      num.cells.to.sample = if(i != iterations) num.cells.to.sample else NULL, 
+      num.cells.to.sample = if(i != (iterations-1)) num.cells.to.sample else NULL, 
       project.all.cells = TRUE
       )
     embedding <- lsi.res$matSVD
@@ -170,22 +170,22 @@ iterativeLSI.sparse.in.mem <- function(
     split.cells <- split(cell.names, sample.names)
     split.depth <- split(cell.depths, sample.names)
     
-    sampled.cells <- sort(unlist(sapply(1:length(split.cells), function(i) {
-      x <- split.cells[[i]]
+    sampled.cells <- cell.names[cell.names %in% unlist(sapply(1:length(split.cells), function(i) {
+      cell.list <- split.cells[[i]]
       n <- sampleN[names(split.cells)[i]]
       
       if(!is.null(outlier.quantiles)){
         quant <- quantile(split.depth[[i]], probs = c(min(outlier.quantiles) / 2, 1 - ((1-max(outlier.quantiles)) / 2)))
         idx <- which(split.depth[[i]] >= quant[1] & split.depth[[i]] <= quant[2])
       }else{
-        idx <- seq_along(x)
+        idx <- seq_along(cell.list)
       }
       if(length(idx) >= n){
-        sample(x = x[idx], size = n)
+        sample(x = cell.list[idx], size = n)
       }else{
-        sample(x = x, size = n)
+        sample(x = cell.list, size = n)
       }
-    })))
+    }))]
   } else {
     sampled.cells <- cell.names
   }
@@ -233,8 +233,6 @@ iterativeLSI.sparse.in.mem <- function(
   
   # apply normalization
   mat <- .apply.tf.idf.normalization.in.mem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
-  
-  #mat <- mat[,sort(colnames(mat))]
   
   # calculate SVD then LSI
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)

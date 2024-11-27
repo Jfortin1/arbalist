@@ -104,12 +104,12 @@ addIterativeLSI <- function(
     if(any(!colnames(mae[[experiment.name]]) %in% rownames(res$embedding))) {
       mae[[experiment.name]] <- mae[[experiment.name]][,rownames(res$embedding)]
     }
-    reducedDim(mae[[experiment.name]], embedding.name) <- res$embedding
+    reducedDim(mae[[experiment.name]], embedding.name) <- res$embedding[colnames(mae[[experiment.name]]),]
   } else {
     if(any(!colnames(altExp(mae[[main.exp.name]],alt.exp.name)) %in% rownames(res$embedding))) {
       mae[[main.exp.name]] <- mae[[main.exp.name]][,rownames(res$embedding)]
     }
-    reducedDim(altExp(mae[[main.exp.name]],alt.exp.name), embedding.name) <- res$embedding
+    reducedDim(altExp(mae[[main.exp.name]],alt.exp.name), embedding.name) <- res$embedding[colnames(mae[[experiment.name]]),]
   }
   
   return(mae)
