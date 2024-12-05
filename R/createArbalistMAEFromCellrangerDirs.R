@@ -1,8 +1,8 @@
 #' Import a single cell ATAC-seq MultiAssayExperiment
 #' 
-#' Import results from scATAC-seq or multiome cellranger directories into a MultiAssayExperiment.
+#' Import results from scATAC-seq or multiome Cell Ranger results directories into a MultiAssayExperiment.
 #' 
-#' @param cellranger.res.dirs Vector of strings specifying a sunrise scATAC-seq or multiome cellranger results directory. Vector names need to be sample names.
+#' @param cellranger.res.dirs Vector of strings specifying a Cell Ranger scATAC-seq or multiome results directory. Vector names need to be sample names.
 #' @inheritParams createArbalistMAE
 #'
 #' @return A \linkS4class{MultiAssayExperiment}
@@ -23,7 +23,7 @@ createArbalistMAEFromCellrangerDirs <- function(
 ) {
   
   # Update the cellranger paths in case they don't point directly at the results
-  cellranger.res.dirs <- .updateCellrangerPath(cellranger.res.dirs)
+  cellranger.res.dirs <- .updateCellRangerPath(cellranger.res.dirs)
 
   # Create the MultiAssayExperiment from the list of Experiments
   mae <- createArbalistMAE(
@@ -68,7 +68,7 @@ createArbalistMAEFromCellrangerDirs <- function(
   return(selected.files)
 }
 
-.updateCellrangerPath <- function(res.dirs) {
+.updateCellRangerPath <- function(res.dirs) {
   # find the directory which directly contains the fragment file
   cleaned.res.dir <- as.character(sapply(
     res.dirs,
@@ -87,24 +87,4 @@ createArbalistMAEFromCellrangerDirs <- function(
   ))
   names(cleaned.res.dir) <- names(res.dirs)
   return(cleaned.res.dir)
-}
-
-.process_fragment_header <- function(file) {
-  handle <- gzfile(file, open="rb")
-  on.exit(close(handle))
-  all.headers <- character(0)
-  
-  chunk <- 100
-  repeat {
-    lines <- readLines(handle, n = chunk)
-    header <- startsWith(lines, "#")
-    all.headers <- c(all.headers, sub("^# ", "", lines[header]))
-    if (length(lines) < chunk || !all(header)) {
-      break
-    }
-  }
-  
-  field <- sub("=.*", "", all.headers)
-  value <- sub("[^=]+=", "", all.headers)
-  split(value, field)
 }

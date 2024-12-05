@@ -10,8 +10,7 @@
 #' @return \linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
 #'
 #' @author Natalie Fox
-#' @importFrom SummarizedExperiment SummarizedExperiment colData colData<- rowRanges<- assay
-#' @importFrom SingleCellExperiment mainExpName<-
+#' @importFrom SummarizedExperiment rowRanges assay
 #' @export
 addGeneScoreMatrix <- function(
     mae,
@@ -49,7 +48,6 @@ addGeneScoreMatrix <- function(
   return(new.mae)
 }
 
-
 #' Create gene score matrix
 #'
 #' Calculate gene score matrix to estimate gene expression.
@@ -71,11 +69,13 @@ addGeneScoreMatrix <- function(
 #' @return \linkS4class{SingleCellExperiment}
 #'
 #' @author Natalie Fox
+#' @importFrom SummarizedExperiment SummarizedExperiment colData<- rowRanges<-
+#' @importFrom SingleCellExperiment mainExpName<-
 #' @importFrom GenomicRanges strand start end findOverlaps resize shift width distance
 #' @importFrom GenomeInfoDb seqlevels keepSeqlevels
 #' @importFrom S4Vectors queryHits subjectHits mcols
 #' @importFrom BiocGenerics which
-#' @importFrom BiocParallel bplapply bpparam bptry
+#' @importFrom BiocParallel bpparam
 #' @importFrom beachmat tatami.multiply
 #' @export
 calculateGeneScoreMatrix <- function(

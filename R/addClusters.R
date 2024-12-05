@@ -18,7 +18,7 @@
 #' @author Natalie Fox
 #' @export
 #' @importFrom Seurat CreateSeuratObject CreateDimReducObject FindNeighbors FindClusters
-#' @importFrom SingleCellExperiment altExp reducedDim<- reducedDim altExpNames altExp<- reducedDimNames
+#' @importFrom SingleCellExperiment altExp altExp<-
 #' @importFrom SummarizedExperiment colData colData<-
 #' @importFrom stats rnorm
 #' @importFrom nabor knn
@@ -154,7 +154,7 @@ addClusters <- function(
 }
 
 #' @importFrom stats cutree dist hclust median
-cluster.matrix <- function(
+.clusterMatrix <- function(
     mat,
     method = 'seurat',
     cluster.prefix = "C",

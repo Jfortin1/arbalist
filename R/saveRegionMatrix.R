@@ -57,7 +57,7 @@ saveRegionMatrix <- function(fragment.file, output.file, output.name, regions, b
     }
     h5createGroup(output.file, output.name)
 
-    sanitized <- sanitize_regions(regions)
+    sanitized <- .sanitizeRegions(regions)
 
     output <- fragments_to_regions(
         fragment_file = fragment.file,
@@ -87,7 +87,7 @@ saveRegionMatrix <- function(fragment.file, output.file, output.name, regions, b
 #' @importFrom BiocGenerics setdiff start end
 #' @importFrom IRanges reduce coverage slice findOverlaps
 #' @importClassesFrom GenomicRanges GRanges 
-sanitize_regions <- function(regions, decompose = TRUE) { 
+.sanitizeRegions <- function(regions, decompose = TRUE) { 
     if (is(regions, "GRangesList")) {
         regions <- reduce(regions, ignore.strand=TRUE) # eliminating overlaps within each GRanges
     }

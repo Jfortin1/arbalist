@@ -12,13 +12,8 @@
 #' @return A list of experiments
 #' 
 #' @author Natalie Fox
-#' @importFrom arbalist saveRegionMatrix saveTileMatrix
-#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap
-#' @importFrom S4Vectors DataFrame
 #' @importFrom SingleCellExperiment mainExpName<-
-#' @importFrom SummarizedExperiment SummarizedExperiment colData
 #' @importFrom BiocParallel bptry bplapply bpparam
-#' @importFrom BiocGenerics type type<-
 getExpListFromFragments <- function(
   fragment.files,
   output.dir = tempdir(),
@@ -49,7 +44,7 @@ getExpListFromFragments <- function(
   
   # check that fragment headers contained required information
   if(is.null(seq.lengths)) {
-    info <- .process_fragment_header(fragment.files[1])
+    info <- .processFragmentHeader(fragment.files[1])
     if(! 'reference_path' %in% names(info)) {
       stop('the fragment file header does not have reference_path information so please specify the seq.lengths argument')
     }
@@ -103,7 +98,7 @@ getExpListFromFragments <- function(
 
 #' @importFrom alabaster.matrix AmalgamatedArray
 #' @importFrom SingleCellExperiment SingleCellExperiment
-#' @importFrom SummarizedExperiment SummarizedExperiment rowRanges<-
+#' @importFrom SummarizedExperiment SummarizedExperiment rowRanges<- colData<-
 #' @importFrom methods as
 .getSCEFromH5List <- function(h5.res.list, grs) {
   

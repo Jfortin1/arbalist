@@ -18,7 +18,7 @@ createArbalistMAEFromCellrangerDirs(
 )
 }
 \arguments{
-\item{cellranger.res.dirs}{Vector of strings specifying a sunrise scATAC-seq or multiome cellranger results directory. Vector names need to be sample names.}
+\item{cellranger.res.dirs}{Vector of strings specifying a Cell Ranger scATAC-seq or multiome results directory. Vector names need to be sample names.}
 
 \item{output.dir}{String containing the directory where files should be output while creating the \linkS4class{MultiAssayExperiment}.}
 
@@ -44,7 +44,7 @@ If \code{NULL}, this is obtained from the reference genome used by Cellranger (i
 A \linkS4class{MultiAssayExperiment}
 }
 \description{
-Import results from scATAC-seq or multiome cellranger directories into a MultiAssayExperiment.
+Import results from scATAC-seq or multiome Cell Ranger results directories into a MultiAssayExperiment.
 }
 \author{
 Natalie Fox

@@ -18,9 +18,9 @@
 #' @return \linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
 #'
 #' @author Natalie Fox
-#' @importFrom SummarizedExperiment SummarizedExperiment colData colData<- rowRanges<- assay
+#' @importFrom SummarizedExperiment SummarizedExperiment colData colData<- rowRanges rowRanges<- assay rowData<-
 #' @importFrom SingleCellExperiment mainExpName<-
-#' @importFrom Seurat DefaultAssay CreateSeuratObject
+#' @importFrom Seurat DefaultAssay CreateSeuratObject NormalizeData
 #' @export
 addGeneIntegrationMatrix <- function(
     mae,

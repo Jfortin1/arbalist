@@ -19,23 +19,24 @@ createArbalistMAE(
   gene.grs = NULL,
   use.alt.exp = FALSE,
   main.exp.name = "TileMatrix500",
+  filter.features.without.intervals = FALSE,
   BPPARAM = bpparam()
 )
 }
 \arguments{
 \item{sample.names}{String vector containing the sample names. Must be the same length as fragment.files & filtered.feature.matrix.files.}
 
-\item{fragment.files}{String vector containing the fragment file names and paths. ex. 10x cellranger result output atac_fragments.tsv.gz or fragments.tsv.gz}
+\item{fragment.files}{String vector containing the fragment file names and paths. ex. 10x Cell Ranger result output atac_fragments.tsv.gz or fragments.tsv.gz}
 
-\item{filtered.feature.matrix.files}{String vector containing the filtered feature matrix file names and paths. ex. 10x cellranger result output filtered_feature_bc_matrix.h5 or filtered_tf_bc_matrix.h5}
+\item{filtered.feature.matrix.files}{String vector containing the filtered feature matrix file names and paths. ex. 10x Cell Ranger result output filtered_feature_bc_matrix.h5 or filtered_tf_bc_matrix.h5}
 
-\item{barcode.annotation.files}{String vector containing barcode annotation to put in the SingleCellExperiment colData. ex. 10x cellranger result output per_barcode_metrics.csv or singlecell.csv}
+\item{barcode.annotation.files}{String vector containing barcode annotation to put in the SingleCellExperiment colData. ex. 10x Cell Ranger result output per_barcode_metrics.csv or singlecell.csv}
 
-\item{sample.annotation.files}{String vector containing sample annotation to put in the MultiAssayExperiment colData. ex. 10x cellranger result output summary.csv}
+\item{sample.annotation.files}{String vector containing sample annotation to put in the MultiAssayExperiment colData. ex. 10x Cell Ranger result output summary.csv}
 
 \item{output.dir}{String containing the directory where files should be output while creating the \linkS4class{MultiAssayExperiment}.}
 
-\item{multiome}{Logical whether to use createMultiomeRNASCE on the filtered.feature.matrix.files to extrct the RNA features and create a SingleCellExperiment. If NULL, then will become TRUE if filtered.feature.matrix.files contain "filtered_feature_bc_matrix.h5" otherwise FALSE.}
+\item{multiome}{Logical whether to use createMultiomeRNASCE on the filtered.feature.matrix.files to extract the RNA features and create a SingleCellExperiment. If NULL, then will become TRUE if filtered.feature.matrix.files contain "filtered_feature_bc_matrix.h5" otherwise FALSE.}
 
 \item{min.frags}{Number specifying the minimum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing greater than or equal to min.frags total fragments will be retained.}
 
@@ -52,6 +53,8 @@ If \code{NULL}, this is obtained from the reference genome used by Cellranger (i
 \item{use.alt.exp}{Logical for selecting the MultiAssayExperiment structure. TRUE means that there will only be one experiment in the MultiAssayExperiment and all other experiments will be in alternative experiments. This option is only available if the columns are the same for all Matrices. FALSE means that each Matrix will be a separate experiment in the MAE.}
 
 \item{main.exp.name}{String containing the name of the experiment that will be the main experiment when use.alt.exp is TRUE.}
+
+\item{filter.features.without.intervals}{Logical whether to remove features from the h5.files that do not have interval specified. Often these are mitochondria genes.}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
 }

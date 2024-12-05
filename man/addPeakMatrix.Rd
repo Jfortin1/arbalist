@@ -15,7 +15,7 @@ addPeakMatrix(
   shift = -75,
   extsize = 150,
   method = "q",
-  cutOff = 0.1,
+  cut.off = 0.1,
   nomodel = TRUE,
   nolambda = TRUE,
   extendSummits = 250,
@@ -42,9 +42,9 @@ addPeakMatrix(
 
 \item{extsize}{Integer scalar specifying how many base pairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.}
 
-\item{method}{String containing the method to use for significance testing in MACS2. Options are "p" for p-value and "q" for q-value. When combined with cutOff this gives the method and significance threshold for peak calling (see MACS2 documentation).}
+\item{method}{String containing the method to use for significance testing in MACS2. Options are "p" for p-value and "q" for q-value. When combined with cut.off this gives the method and significance threshold for peak calling (see MACS2 documentation).}
 
-\item{cutOff}{Numeric scalar specifying significance cutOff for the testing method indicated by method (see MACSr::callpeak documentation).}
+\item{cut.off}{Numeric scalar specifying significance cut off for the testing method indicated by method (see MACSr::callpeak documentation).}
 
 \item{nomodel}{Logical specifying whether or not to build the shifting model during MACSr::callpeak.}
 

@@ -23,10 +23,10 @@
 #' 
 #' @author Natalie Fox
 #' @importFrom BiocParallel bptry bplapply bpparam
-#' @importFrom SummarizedExperiment colData rowRanges
-#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap experiments
+#' @importFrom SummarizedExperiment SummarizedExperiment colData colData<- rowRanges rowRanges<-
+#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList listToMap experiments
 #' @importFrom S4Vectors DataFrame metadata metadata<-
-#' @importFrom SingleCellExperiment altExp altExpNames
+#' @importFrom SingleCellExperiment altExp altExp<-
 #' @importFrom beachmat initializeCpp flushMemoryCache tatami.subset tatami.row.sums
 #' @export
 addGroupCoverages <- function(
@@ -164,13 +164,13 @@ addGroupCoverages <- function(
   }
 
   # create coverage files
-  .create_pseudobulk_file_parallel_func <- function(j, replicates.matrix.coldata, mae) {
+  .create.pseudobulk.file.parallel.func <- function(j, replicates.matrix.coldata, mae) {
     output.file <- replicates.matrix.coldata$coverage.file[j]
     pseudobulk.cells <- unique(selected.cells[[replicates.matrix.coldata$group[j]]][[replicates.matrix.coldata$rep[j]]])
     create_pseudobulk_file(mae$fragment_file, output.file, sub('.*#','',pseudobulk.cells))
   }
   if(!skip.coverage.file.creation) {
-    res.list <- bptry(bplapply(seq(nrow(replicates.matrix.coldata)), .create_pseudobulk_file_parallel_func, replicates.matrix.coldata=replicates.matrix.coldata, mae=mae, BPPARAM = BPPARAM))
+    res.list <- bptry(bplapply(seq(nrow(replicates.matrix.coldata)), .create.pseudobulk.file.parallel.func, replicates.matrix.coldata=replicates.matrix.coldata, mae=mae, BPPARAM = BPPARAM))
   }
 
   if(!skip.se.creation) {
@@ -191,7 +191,7 @@ addGroupCoverages <- function(
     replicates.matrix <- as(replicates.matrix, 'sparseMatrix')
     
     # Add replicates matrix as SummarizedExperiment to MAE
-    pseudobulk.se <-  SummarizedExperiment(list(counts=replicates.matrix))
+    pseudobulk.se <-  SummarizedExperiment(list(counts = replicates.matrix))
     rowRanges(pseudobulk.se) <- rowRanges(sce)
     colData(pseudobulk.se) <- DataFrame(replicates.matrix.coldata)
     colnames(pseudobulk.se) <- replicates.matrix.coldata$ID
@@ -211,7 +211,7 @@ addGroupCoverages <- function(
     
     # Create and annotate the MultiAssayExperiment
     new.mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
-    pseudobulk.colData.filler <- matrix(NA,ncol=ncol(colData(mae)),nrow=ncol(pseudobulk.se))
+    pseudobulk.colData.filler <- matrix(NA, ncol = ncol(colData(mae)), nrow = ncol(pseudobulk.se))
     colnames(pseudobulk.colData.filler) <- colnames(colData(mae))
     rownames(pseudobulk.colData.filler) <- colnames(pseudobulk.se)
     

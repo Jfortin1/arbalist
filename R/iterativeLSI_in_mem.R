@@ -105,7 +105,7 @@ iterativeLSI.sparse.in.mem <- function(
     # find cell clusters
     bias.vals <- log10(cell.depths + 1)
     names(bias.vals) <- cell.names
-    cluster.output <- cluster.matrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
+    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
       return(NULL)
@@ -232,7 +232,7 @@ iterativeLSI.sparse.in.mem <- function(
   }
   
   # apply normalization
-  mat <- .apply.tf.idf.normalization.in.mem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
+  mat <- .applyTFIDFNormalization.in.mem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
   
   # calculate SVD then LSI
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)
@@ -292,7 +292,7 @@ iterativeLSI.sparse.in.mem <- function(
   set.seed(lsi.res$seed)
   
   # sparse matrix in memory is returned from .apply.tf.idf.normalization
-  mat <- .apply.tf.idf.normalization.in.mem(x, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method) 
+  mat <- .applyTFIDFNormalization.in.mem(x, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method) 
   
   # Clean Up Matrix
   idxNA <- Matrix::which(is.na(mat), arr.ind = TRUE)
@@ -322,7 +322,7 @@ iterativeLSI.sparse.in.mem <- function(
 
 #' @importFrom Matrix Diagonal
 # num.col and row.sums might not match mat. For example, when normalizing for the projection, num.col and run.sums will match the LSI result instead of mat.
-.apply.tf.idf.normalization.in.mem <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
+.applyTFIDFNormalization.in.mem <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
   
   if(!is(mat,'sparseMatrix')) {
     mat <- as(mat, 'sparseMatrix')

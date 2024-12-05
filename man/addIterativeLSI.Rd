@@ -33,7 +33,7 @@ addIterativeLSI(
 
 \item{embedding.name}{String containing the name of the new iterativeLSI embedding.}
 
-\item{cell.depth.column}{String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created MAEs this might be "nFrags".}
+\item{cell.depth.column}{String specifying the column name in the experiment colData that contains the values to use for cell depth. For arbalist created experiments, this is probably "fragments". For ArchR created experiments, this might be "nFrags".}
 
 \item{col.subset}{Integer vector specifying the subset of the columns to include in the iterative LSI calculations.}
 

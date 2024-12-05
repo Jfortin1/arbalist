@@ -3,25 +3,25 @@
 #' Import scATAC-seq or multiome results into a MultiAssayExperiment.
 #' 
 #' @param sample.names String vector containing the sample names. Must be the same length as fragment.files & filtered.feature.matrix.files.
-#' @param fragment.files String vector containing the fragment file names and paths. ex. 10x cellranger result output atac_fragments.tsv.gz or fragments.tsv.gz
-#' @param filtered.feature.matrix.files String vector containing the filtered feature matrix file names and paths. ex. 10x cellranger result output filtered_feature_bc_matrix.h5 or filtered_tf_bc_matrix.h5
-#' @param barcode.annotation.files String vector containing barcode annotation to put in the SingleCellExperiment colData. ex. 10x cellranger result output per_barcode_metrics.csv or singlecell.csv
-#' @param sample.annotation.files String vector containing sample annotation to put in the MultiAssayExperiment colData. ex. 10x cellranger result output summary.csv
-#' @param multiome Logical whether to use createMultiomeRNASCE on the filtered.feature.matrix.files to extrct the RNA features and create a SingleCellExperiment. If NULL, then will become TRUE if filtered.feature.matrix.files contain "filtered_feature_bc_matrix.h5" otherwise FALSE.
+#' @param fragment.files String vector containing the fragment file names and paths. ex. 10x Cell Ranger result output atac_fragments.tsv.gz or fragments.tsv.gz
+#' @param filtered.feature.matrix.files String vector containing the filtered feature matrix file names and paths. ex. 10x Cell Ranger result output filtered_feature_bc_matrix.h5 or filtered_tf_bc_matrix.h5
+#' @param barcode.annotation.files String vector containing barcode annotation to put in the SingleCellExperiment colData. ex. 10x Cell Ranger result output per_barcode_metrics.csv or singlecell.csv
+#' @param sample.annotation.files String vector containing sample annotation to put in the MultiAssayExperiment colData. ex. 10x Cell Ranger result output summary.csv
+#' @param multiome Logical whether to use createMultiomeRNASCE on the filtered.feature.matrix.files to extract the RNA features and create a SingleCellExperiment. If NULL, then will become TRUE if filtered.feature.matrix.files contain "filtered_feature_bc_matrix.h5" otherwise FALSE.
 #' @param min.frags Number specifying the minimum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing greater than or equal to min.frags total fragments will be retained.
 #' @param max.frags Number specifying the maximum number of mapped ATAC-seq fragments required per cell to pass filtering for use in downstream analyses. Cells containing less than or equal to max.frags total fragments will be retained.
 #' @param gene.grs Genomic Ranges specifying gene coordinates for creating the gene score matrix. If NULL, then the geneset will be selected based on the genome version.
 #' @param use.alt.exp Logical for selecting the MultiAssayExperiment structure. TRUE means that there will only be one experiment in the MultiAssayExperiment and all other experiments will be in alternative experiments. This option is only available if the columns are the same for all Matrices. FALSE means that each Matrix will be a separate experiment in the MAE.
 #' @param main.exp.name String containing the name of the experiment that will be the main experiment when use.alt.exp is TRUE.
+#' @inheritParams createMultiomeRNASCE
 #' @inheritParams getExpListFromFragments
 #'
 #' @return A \linkS4class{MultiAssayExperiment}
 #' 
 #' @author Natalie Fox
-#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap
-#' @importFrom S4Vectors DataFrame
+#' @importFrom MultiAssayExperiment colData colData<-
 #' @importFrom SingleCellExperiment altExp<-
-#' @importFrom SummarizedExperiment SummarizedExperiment colData colData<-
+#' @importFrom SummarizedExperiment colData colData<-
 #' @importFrom BiocParallel bpparam
 #' @export
 createArbalistMAE <- function(
@@ -39,6 +39,7 @@ createArbalistMAE <- function(
   gene.grs = NULL,
   use.alt.exp = FALSE,
   main.exp.name = 'TileMatrix500',
+  filter.features.without.intervals = FALSE,
   BPPARAM = bpparam()
 ) {
   
@@ -95,7 +96,8 @@ createArbalistMAE <- function(
   if(multiome) {
     all.exp[['GeneExpressionMatrix']] <- createMultiomeRNASCE(
       h5.files = filtered.feature.matrix.files,
-      sample.names = sample.names
+      sample.names = sample.names,
+      filter.features.without.intervals = filter.features.without.intervals
     )
   }
 
@@ -171,9 +173,8 @@ createArbalistMAE <- function(
   return(mae)
 }
 
-#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList colData colData<- listToMap
+#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList listToMap
 #' @importFrom S4Vectors DataFrame
-#' @importFrom SingleCellExperiment altExps
 .getMAEFromExpList <- function(exp.list) {
   # Create the sample map for the MultiAssayExperiment
   el <- ExperimentList(exp.list)

@@ -11,8 +11,8 @@
 #' @param reproducibility String that indicates how peak reproducibility should be handled. This string is dynamic and can be a function of n where n is the number of samples being assessed. For example, reproducibility = "2" means at least 2 samples must have a peak call at this locus and reproducibility = "(n+1)/2" means that the majority of samples must have a peak call at this locus.
 #' @param shift Integer scalar specifying how many base pairs to shift each Tn5 insertion. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
 #' @param extsize Integer scalar specifying how many base pairs to extend the fragment after shift has been applied. When combined with extsize this allows you to create proper fragments, centered at the Tn5 insertion site, for use with MACSr::callpeak.
-#' @param method String containing the method to use for significance testing in MACS2. Options are "p" for p-value and "q" for q-value. When combined with cutOff this gives the method and significance threshold for peak calling (see MACS2 documentation).
-#' @param cutOff Numeric scalar specifying significance cutOff for the testing method indicated by method (see MACSr::callpeak documentation).
+#' @param method String containing the method to use for significance testing in MACS2. Options are "p" for p-value and "q" for q-value. When combined with cut.off this gives the method and significance threshold for peak calling (see MACS2 documentation).
+#' @param cut.off Numeric scalar specifying significance cut off for the testing method indicated by method (see MACSr::callpeak documentation).
 #' @param nomodel Logical specifying whether or not to build the shifting model during MACSr::callpeak.
 #' @param nolambda If True, MACS will use fixed background lambda as local lambda for every peak region.
 #' @param extendSummits Integer scalar specifying how many base pairs to extend peak summits (in both directions) to obtain final fixed-width peaks. For example, extendSummits = 250 will create 501-bp fixed-width peaks from the 1-bp summits.
@@ -23,9 +23,7 @@
 #' 
 #' @author Natalie Fox
 #' @importFrom GenomeInfoDb sortSeqlevels
-#' @importFrom IRanges subsetByOverlaps
 #' @importFrom BiocParallel bptry bpparam bplapply
-#' @importFrom alabaster.matrix AmalgamatedArray
 #' @importFrom MACSr callpeak
 #' @importFrom data.table fread
 #' @export
@@ -40,7 +38,7 @@ addPeakMatrix <- function(
     shift = -75,
     extsize = 150,
     method = "q",
-    cutOff = 0.1,
+    cut.off = 0.1,
     nomodel = TRUE,
     nolambda = TRUE,
     extendSummits = 250,
@@ -61,9 +59,9 @@ addPeakMatrix <- function(
   qvalue <- NULL
   pvalue <- NULL
   if(tolower(method) == "p"){
-    pvalue <- cutOff
+    pvalue <- cut.off
   }else{
-    qvalue <- cutOff
+    qvalue <- cut.off
   }
   peak.files <- mae[[pseudobulk.experiment.name]]$coverage.file
   names(peak.files) <- mae[[pseudobulk.experiment.name]]$ID

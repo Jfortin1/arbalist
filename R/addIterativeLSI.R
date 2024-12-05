@@ -5,7 +5,7 @@
 #' @param mae \linkS4class{MultiAssayExperiment} 
 #' @param experiment.name String containing the name of the experiment to create the embedding from and add reduced dimensions to.
 #' @param embedding.name String containing the name of the new iterativeLSI embedding.
-#' @param cell.depth.column String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created MAEs this might be "nFrags".
+#' @param cell.depth.column String specifying the column name in the experiment colData that contains the values to use for cell depth. For arbalist created experiments, this is probably "fragments". For ArchR created experiments, this might be "nFrags".
 
 #' @inheritParams iterativeLSI
 #'
@@ -14,7 +14,7 @@
 #' @author Natalie Fox
 #' @export
 #' @importFrom MultiAssayExperiment assay
-#' @importFrom SingleCellExperiment reducedDim<- reducedDims reducedDimNames<- reducedDimNames reducedDims altExp altExpNames
+#' @importFrom SingleCellExperiment reducedDim<- reducedDimNames altExp
 addIterativeLSI <- function(
   mae,
   experiment.name = 'TileMatrix500',

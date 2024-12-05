@@ -55,7 +55,7 @@
 saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=NULL, barcodes=NULL, tile.size = 500, compress.level = 6, chunk.dim = 20000) {
     if (is.null(seq.lengths)) {
         # Obtaining the sequence lengths, if they weren't already available.
-        info <- .process_fragment_header(fragment.file)
+        info <- .processFragmentHeader(fragment.file)
         fai <- file.path(info$reference_path, "fasta", "genome.fa.fai")
         fai.info <- read.delim(fai, sep="\t", header=FALSE)[,1:2]
         seq.lengths <- fai.info[,2]
@@ -95,7 +95,7 @@ saveTileMatrix <- function(fragment.file, output.file, output.name, seq.lengths=
     list(tiles = tiles, counts = counts)
 }
 
-.process_fragment_header <- function(file) {
+.processFragmentHeader <- function(file) {
     handle <- gzfile(file, open="rb")
     on.exit(close(handle))
     all.headers <- character(0)

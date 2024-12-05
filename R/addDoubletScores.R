@@ -12,7 +12,7 @@
 #' @param max.num.synthetic.doublets Integer scalar specifying the maximum number of doublets to run per sample. This is used if num.trials * number of cells in the sample is more than this number.
 #' @param plot.out.dir String specifying the output path for doublet score quality control plots.
 #' @param selected.samples Vector of strings specifying which samples to calculate doublet scores for. By default (NULL), all that have enough cells will be run.
-#' @param cell.depth.column String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created MAEs this might be "nFrags".
+#' @param cell.depth.column String specifying the column name in the experiment colData that contains the values to use for cell depth. For example for arbalist created MAEs this is probably "fragments". For ArchR created experiments, this column might be "nFrags".
 #' @param BPPARAM A \linkS4class{BiocParallelParam} object indicating how doublet scoring should be parallelized per iteration of doublets.
 #'
 #' @return \linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
@@ -103,7 +103,7 @@ addDoubletScores <- function(
     set.seed(seed)
     parallelized.res <- bptry(bplapply(
       seq(num.iterations),
-      .doublet.simulation,
+      .doubletSimulation,
       mat = assay(sce.list$sce)[lsi.res$details$row.subset,sample.columns],
       lsi.res = lsi.res,
       num.iterations = num.iterations,
@@ -181,7 +181,7 @@ addDoubletScores <- function(
 }
 
 #' @importFrom beachmat tatami.subset
-.doublet.simulation <- function(
+.doubletSimulation <- function(
   i,
   mat,
   lsi.res,
@@ -220,7 +220,7 @@ addDoubletScores <- function(
   
   # Project the doublets into the UMAP embedding
   require(Matrix)
-  mat.doublet.normalized <- .apply.tf.idf.normalization.in.mem(mat.doublet, lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
+  mat.doublet.normalized <- .applyTFIDFNormalization.in.mem(mat.doublet, lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
   idxNA <- Matrix::which(is.na(mat.doublet.normalized), arr.ind = TRUE)
   if(length(idxNA) > 0){
     mat.doublet.normalized[idxNA] <- 0

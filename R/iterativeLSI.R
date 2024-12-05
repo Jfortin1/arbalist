@@ -126,7 +126,7 @@ iterativeLSI <- function(
     # find cell clusters
     bias.vals <- log10(cell.depths + 1)
     names(bias.vals) <- cell.names
-    cluster.output <- cluster.matrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
+    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
       return(NULL)
@@ -136,7 +136,7 @@ iterativeLSI <- function(
     group.features.idx <- sort(head(order(row.order.stat, decreasing = TRUE), total.features))
     ptr.subset <- tatami.subset(ptr.orig.not.binarized, subset = group.features.idx, by.row = TRUE)
     ptr.subset <- tatami.subset(ptr.subset, subset = which(cell.names %in% rownames(embedding)), by.row = FALSE)
-    aggregated <- aggregate_group_counts(ptr.subset, cluster.output[cell.names[which(cell.names %in% names(cluster.output))]], num.threads = num.threads)
+    aggregated <- .aggregateGroupCounts(ptr.subset, cluster.output[cell.names[which(cell.names %in% names(cluster.output))]], num.threads = num.threads)
     
     normalized <- log2(t(t(aggregated) / colSums(aggregated)) * scale.to + 1)
     row.vars <- rowVars(normalized)
@@ -161,9 +161,6 @@ iterativeLSI <- function(
       )
 
     embedding <- lsi.res$matSVD
-#    if(is.null(rownames(embedding))) {
-#      rownames(embedding) <- col.names
-#    }
   }
   beachmat::flushMemoryCache()
   
@@ -208,8 +205,10 @@ iterativeLSI <- function(
       }
       if(length(idx) >= n){
         sample(x = cell.list[idx], size = n)
-      }else{
+      } else if (length(cell.list) >= n){
         sample(x = cell.list, size = n)
+      } else {
+        cell.list
       }
     }))]
   } else {
@@ -260,7 +259,7 @@ iterativeLSI <- function(
   }
   
   # apply normalization
-  mat <- .apply.tf.idf.normalization(ptr, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to, num.threads = num.threads)
+  mat <- .applyTFIDFNormalization(ptr, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to, num.threads = num.threads)
   colnames(mat) <- cell.names[idx.keep]
   
   # calculate SVD then LSI
@@ -322,8 +321,8 @@ iterativeLSI <- function(
   require(Matrix)
   set.seed(lsi.res$seed)
   
-  # sparse matrix in memory is returned from .apply.tf.idf.normalization
-  mat <- .apply.tf.idf.normalization(ptr, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method, num.threads = num.threads) 
+  # sparse matrix in memory is returned from .applyTFIDFNormalization
+  mat <- .applyTFIDFNormalization(ptr, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method, num.threads = num.threads) 
   
   # Clean Up Matrix
   idxNA <- Matrix::which(is.na(mat), arr.ind = TRUE)
@@ -354,7 +353,7 @@ iterativeLSI <- function(
 #' @importFrom Matrix Diagonal
 #' @importFrom beachmat tatami.column.sums tatami.subset tatami.arith tatami.realize
 # num.col and row.sums might not match mat. For example, when normalizing for the projection, num.col and run.sums will match the LSI result instead of mat.
-.apply.tf.idf.normalization <- function(ptr, num.col, row.sums, scale.to = 10^4, lsi.method = 2, num.threads = 4) {
+.applyTFIDFNormalization <- function(ptr, num.col, row.sums, scale.to = 10^4, lsi.method = 2, num.threads = 4) {
   
   # compute Term Frequency
   col.sums <- tatami.column.sums(ptr, num.threads = num.threads)
@@ -401,7 +400,7 @@ iterativeLSI <- function(
   return(mat)
 }
 
-aggregate_group_counts <- function(ptr, col.groups, num.threads = 1) {
+.aggregateGroupCounts <- function(ptr, col.groups, num.threads = 1) {
   group.labels <- sort(unique(col.groups))
   ptr.subset <- tatami.subset(ptr, subset = which(col.groups == group.labels[1]), by.row = FALSE)
   row.sums <- tatami.row.sums(ptr.subset, num.threads = num.threads)

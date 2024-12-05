@@ -12,8 +12,7 @@
 #' @return \linkS4class{MultiAssayExperiment} with DoubletScore and DoubletEnrichment columns added to the experiment colData.
 #'
 #' @author Natalie Fox
-#' @importFrom presto wilcoxauc
-#' @importFrom nabor knn
+#' @importFrom MultiAssayExperiment MultiAssayExperiment ExperimentList listToMap experiments
 #' @export
 addMarkerFeatures <- function(
     mae,
@@ -43,8 +42,7 @@ addMarkerFeatures <- function(
   # Add the new SummarizedExperiment to a list of the existing experiments
   exp.list <- experiments(mae)
   new.exp.name <- paste0(experiment.name,'_marker_features')
-  new.se <- SummarizedExperiment(assays=diff.res,rowRanges=rowRanges(se))
-  exp.list[[new.exp.name]] <- SummarizedExperiment(assays=diff.res,rowRanges=rowRanges(se))
+  exp.list[[new.exp.name]] <- SummarizedExperiment(assays = diff.res, rowRanges = rowRanges(se))
   colData(exp.list[[new.exp.name]])$ID <- colnames(diff.res[[1]])
   el <- ExperimentList(exp.list)
   maplist <- lapply(exp.list, function(se) {
@@ -58,9 +56,9 @@ addMarkerFeatures <- function(
   
   # Create a new MultiAssayExperiment matching the old MAE but with the new experiment
   new.mae <- MultiAssayExperiment(el, sampleMap = sampMap, colData = DataFrame(row.names=unique(sampMap$primary)))
-  colData.filler <- matrix(NA,ncol=ncol(colData(mae)),nrow=ncol(new.se))
+  colData.filler <- matrix(NA, ncol = ncol(colData(mae)), nrow = ncol(exp.list[[new.exp.name]]))
   colnames(colData.filler) <- colnames(colData(mae))
-  rownames(colData.filler) <- colnames(new.se)
+  rownames(colData.filler) <- colnames(exp.list[[new.exp.name]])
   colData(new.mae) <- rbind(colData(mae),colData.filler)
   metadata(new.mae) <- metadata(mae)
   
@@ -73,12 +71,20 @@ markerDiff <- function(mat, group.classification, num.threads = 4) {
   
   # set up a pointer to the data for profiling the columns for matching cells between groups
   beachmat::flushMemoryCache()
-  ptr <- beachmat::initializeCpp(mat, memorize = TRUE)
-  # get the maximum of the data so that we can get the distribution of the data in one pass and minimizing memory usage.
-  stats <- lsi_matrix_stats(ptr, nthreads = num.threads) # sums = colSums, frequency = # non-zero per row
+  if(is(mat,"DelayedArray")) {
+    ptr <- beachmat.hdf5::initializeCpp(mat, memorize=TRUE)
+  } else {
+    ptr <- beachmat::initializeCpp(mat, memorize = TRUE)
+  }
+  # estimate a maximum of the data so that we can get the distribution of the data in one pass and minimizing memory usage.
+  row.sums <- tatami.row.sums(ptr, num.threads=num.threads)
+  estimated.max <- max(tatami.column.sums(tatami.subset(ptr, which(row.sums == max(row.sums)), by.row = TRUE), num.threads = num.threads))+5
+  
   # get the data distribution of each column
-  data.column.hist <- t(as.data.frame(data_distribtion(ptr, max = stats$max)$distribution))
-  rownames(data.column.hist) <- NULL
+  data.column.hist <- matrix(NA, nrow = tatami.dim(ptr)[2], ncol= estimated.max)
+  for(i in seq(estimated.max)) {
+    data.column.hist[,i] <- tatami.column.sums(tatami.compare(ptr, op = '>=', val = i, by.row = TRUE, right = TRUE), num.threads = num.threads)
+  }
 
   # For each group, compare the cells to matched cells from the other groups to assess feature differences
   diff.res.list <- list()
@@ -97,7 +103,7 @@ markerDiff <- function(mat, group.classification, num.threads = 4) {
     
     # perform wilcoxon test for the features
     diff.res <- wilcoxauc(cbind(mat1,mat2), c(rep(group.name, ncol(mat1)),rep(paste0(group.name,'_matched'), ncol(mat2))))
-    diff.res <- diff.res [which(diff.res$group==group.name),]
+    diff.res <- diff.res [which(diff.res$group == group.name),]
     
     # pull together differential results
     m1 <- Matrix::rowSums(mat1, na.rm=TRUE)
