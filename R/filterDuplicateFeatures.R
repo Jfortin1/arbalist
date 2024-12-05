@@ -9,7 +9,7 @@
 #'
 #' @importFrom SummarizedExperiment mcols
 #' @export
-filterDuplicateFeatures <- function(se, mcol.name = 'name', summary.stat = sum, selection.matrix = max) {
+filterDuplicateFeatures <- function(se, mcol.name = 'name', summary.stat = sum, selection.metric = max) {
 
   duplicate.values <- names(which(table(mcols(se)[,mcol.name]) > 1))
   non.duplicate.rows <- which(! mcols(se)[,mcol.name] %in% duplicate.values)
@@ -17,7 +17,7 @@ filterDuplicateFeatures <- function(se, mcol.name = 'name', summary.stat = sum, 
   selected.duplicate.rows <- sapply(duplicate.values,function(i) {
     duplicate.rows <- which(mcols(se)[,mcol.name] %in% i)
     row.summary.stats <- apply(assay(se)[duplicate.rows,],1,summary.stat)
-    return(duplicate.rows[which(row.summary.stats == selection.matrix(row.summary.stats))[1]])
+    return(duplicate.rows[which(row.summary.stats == selection.metric(row.summary.stats))[1]])
   })
   
   se <- se[sort(c(non.duplicate.rows,selected.duplicate.rows)),]
