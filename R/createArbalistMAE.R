@@ -13,6 +13,7 @@
 #' @param gene.grs Genomic Ranges specifying gene coordinates for creating the gene score matrix. If NULL, then the geneset will be selected based on the genome version.
 #' @param use.alt.exp Logical for selecting the MultiAssayExperiment structure. TRUE means that there will only be one experiment in the MultiAssayExperiment and all other experiments will be in alternative experiments. This option is only available if the columns are the same for all Matrices. FALSE means that each Matrix will be a separate experiment in the MAE.
 #' @param main.exp.name String containing the name of the experiment that will be the main experiment when use.alt.exp is TRUE.
+#' @param filter.rna.features.without.intervals Logical whether to remove GeneExpression Matrix features from the h5.files that do not have interval specified. Often these are mitochondria genes.
 #' @inheritParams createMultiomeRNASCE
 #' @inheritParams getExpListFromFragments
 #'
@@ -39,7 +40,7 @@ createArbalistMAE <- function(
   gene.grs = NULL,
   use.alt.exp = FALSE,
   main.exp.name = 'TileMatrix500',
-  filter.features.without.intervals = FALSE,
+  filter.rna.features.without.intervals = TRUE,
   BPPARAM = bpparam()
 ) {
   
@@ -97,7 +98,7 @@ createArbalistMAE <- function(
     all.exp[['GeneExpressionMatrix']] <- createMultiomeRNASCE(
       h5.files = filtered.feature.matrix.files,
       sample.names = sample.names,
-      filter.features.without.intervals = filter.features.without.intervals
+      filter.features.without.intervals = filter.rna.features.without.intervals
     )
   }
 

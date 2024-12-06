@@ -8,7 +8,7 @@ filterDuplicateFeatures(
   se,
   mcol.name = "name",
   summary.stat = sum,
-  selection.matrix = max
+  selection.metric = max
 )
 }
 \arguments{

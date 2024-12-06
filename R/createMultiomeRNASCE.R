@@ -23,7 +23,7 @@ createMultiomeRNASCE <- function(
   h5.files,
   sample.names = NULL,
   feature.type = 'Gene Expression',
-  filter.features.without.intervals = FALSE
+  filter.features.without.intervals = TRUE
 ){
 
   # collect potential RNA files for each
@@ -75,23 +75,28 @@ createMultiomeRNASCE <- function(
   }
 
   colData(se.all.samples)$Sample <- sub('#.*$', '', colnames(se.all.samples))
-  sce <- as(se.all.samples, 'SingleCellExperiment')
   
   # if intervals are specified in the feature information, then set the rowRanges for the experiment
-  if(is.null(rowRanges(se)) && "interval" %in% colnames(rowData(se))) {
-    na.features <- which(rowData(se)$interval == 'NA')
+  if("interval" %in% colnames(rowData(se.all.samples))) {
+    na.features <- which(rowData(se.all.samples)$interval == 'NA')
     if(!any(na.features)) {
-      rowRanges(se) <- GRanges(rowData(se)$interval)
+      row.data <- rowData(se.all.samples)
+      rowRanges(se.all.samples) <- GRanges(rowData(se.all.samples)$interval)
+      rowData(se.all.samples) <- row.data
     } else if(filter.features.without.intervals) {
       warning(paste0(
         'Removing the following rows so that we can specify the rowRanges for all features: ',
-        paste0(rowData(se)[na.features,"name"],collapse=', '), 
+        paste0(rowData(se.all.samples)[na.features,"name"],collapse=', '), 
         ". Set the filter.features.without.intervals argument to FALSE to skip adding rowRanges."
         ))
-      rowRanges(se) <- GRanges(rowData(se)$interval[rowData(se)$interval != 'NA'])
+      se.all.samples <- se.all.samples[rowData(se.all.samples)$interval != 'NA',]
+      row.data <- rowData(se.all.samples)
+      rowRanges(se.all.samples) <- GRanges(rowData(se.all.samples)$interval)
+      rowData(se.all.samples) <- row.data
     }
   }
   
+  sce <- as(se.all.samples, 'SingleCellExperiment')
   mainExpName(sce) <- 'GeneExpressionMatrix'
   
   return(sce)

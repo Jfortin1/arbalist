@@ -19,6 +19,7 @@ createArbalistMAEFromCellrangerDirs <- function(
     gene.grs = NULL,
     use.alt.exp = FALSE,
     main.exp.name = 'TileMatrix500',
+    filter.rna.features.without.intervals = TRUE,
     BPPARAM = bpparam()
 ) {
   
@@ -40,6 +41,7 @@ createArbalistMAEFromCellrangerDirs <- function(
     gene.grs = gene.grs,
     use.alt.exp = use.alt.exp,
     main.exp.name = main.exp.name,
+    filter.rna.features.without.intervals = filter.rna.features.without.intervals,
     BPPARAM = BPPARAM
   )
   
