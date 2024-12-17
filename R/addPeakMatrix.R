@@ -162,7 +162,7 @@ addPeakMatrix <- function(
 
 #' @importFrom S4Vectors queryHits subjectHits 
 #' @importFrom IRanges overlapsAny
-#' @importFrom GenomicRanges resize
+#' @importFrom GenomicRanges resize findOverlaps
 .identifyReproduciblePeaks <- function(
     peak.sets,
     reproducibility = 0.51,

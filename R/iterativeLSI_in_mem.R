@@ -53,6 +53,7 @@ iterativeLSI.sparse.in.mem <- function(
     binarize = FALSE,
     num.cells.to.sample = 10000
 ) {
+
   if(num.features < 1000) {
     stop('Please specify a number of features equal to or more than 1000 to num.features.')
   }
@@ -79,7 +80,12 @@ iterativeLSI.sparse.in.mem <- function(
   col.sums <- SparseArray::colSums(x)
   
   rm.top <- floor((1-filter.quantile) * total.features)
-  row.subset <- sort(head(order(row.order.stat, decreasing = TRUE), num.features + rm.top )[-seq_len(rm.top)])
+  if(sum(row.order.stat != 0) < rm.top) {
+    rm.top <- 0
+    row.subset <- sort(head(order(row.order.stat, decreasing = TRUE), num.features + rm.top))
+  } else {
+    row.subset <- sort(head(order(row.order.stat, decreasing = TRUE), num.features + rm.top)[-seq_len(rm.top)])
+  }
 
   # TF-IDF normalization (log(TF-IDF) method) and compute LSI
   lsi.res <- .computeLSI.in.mem(
@@ -182,8 +188,10 @@ iterativeLSI.sparse.in.mem <- function(
       }
       if(length(idx) >= n){
         sample(x = cell.list[idx], size = n)
-      }else{
+      } else if (length(cell.list) >= n){
         sample(x = cell.list, size = n)
+      } else {
+        cell.list
       }
     }))]
   } else {

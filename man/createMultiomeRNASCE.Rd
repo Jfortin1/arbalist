@@ -8,7 +8,7 @@ createMultiomeRNASCE(
   h5.files,
   sample.names = NULL,
   feature.type = "Gene Expression",
-  filter.features.without.intervals = FALSE
+  filter.features.without.intervals = TRUE
 )
 }
 \arguments{

@@ -12,6 +12,9 @@
 filterDuplicateFeatures <- function(se, mcol.name = 'name', summary.stat = sum, selection.metric = max) {
 
   duplicate.values <- names(which(table(mcols(se)[,mcol.name]) > 1))
+  if(length(duplicate.values) == 0) {
+    return(se)
+  }
   non.duplicate.rows <- which(! mcols(se)[,mcol.name] %in% duplicate.values)
   duplicate.rows <- which(mcols(se)[,mcol.name] %in% duplicate.values)
   selected.duplicate.rows <- sapply(duplicate.values,function(i) {

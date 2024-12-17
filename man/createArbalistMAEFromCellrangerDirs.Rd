@@ -14,6 +14,7 @@ createArbalistMAEFromCellrangerDirs(
   gene.grs = NULL,
   use.alt.exp = FALSE,
   main.exp.name = "TileMatrix500",
+  filter.rna.features.without.intervals = TRUE,
   BPPARAM = bpparam()
 )
 }
@@ -37,6 +38,8 @@ If \code{NULL}, this is obtained from the reference genome used by Cellranger (i
 \item{use.alt.exp}{Logical for selecting the MultiAssayExperiment structure. TRUE means that there will only be one experiment in the MultiAssayExperiment and all other experiments will be in alternative experiments. This option is only available if the columns are the same for all Matrices. FALSE means that each Matrix will be a separate experiment in the MAE.}
 
 \item{main.exp.name}{String containing the name of the experiment that will be the main experiment when use.alt.exp is TRUE.}
+
+\item{filter.rna.features.without.intervals}{Logical whether to remove GeneExpression Matrix features from the h5.files that do not have interval specified. Often these are mitochondria genes.}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
 }

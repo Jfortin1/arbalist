@@ -51,7 +51,14 @@ addIterativeLSI <- function(
   }
   
   x <- assay(se)
-  cell.depths <- colData(se)[,cell.depth.column]
+  if(!is.null(names(cell.depth.column)) && names(cell.depth.column) != experiment.name) {
+    cell.depths <- colData(findSCE(mae,names(cell.depth.column))$sce)[,cell.depth.column]
+    if(length(cell.depths) != ncol(se)) {
+      stop(paste0(experiment.name, ' and ', names(cell.depth.column), ' do not have the same number of cells. Please filter them to match.'))
+    }
+  } else {
+    cell.depths <- colData(se)[,cell.depth.column]
+  }
   cell.names <- colnames(se)
   sample.names <- colData(se)[,'Sample']
   if(is(x,"DelayedArray")) {

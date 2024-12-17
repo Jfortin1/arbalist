@@ -19,7 +19,7 @@ createArbalistMAE(
   gene.grs = NULL,
   use.alt.exp = FALSE,
   main.exp.name = "TileMatrix500",
-  filter.features.without.intervals = FALSE,
+  filter.rna.features.without.intervals = TRUE,
   BPPARAM = bpparam()
 )
 }
@@ -54,7 +54,7 @@ If \code{NULL}, this is obtained from the reference genome used by Cellranger (i
 
 \item{main.exp.name}{String containing the name of the experiment that will be the main experiment when use.alt.exp is TRUE.}
 
-\item{filter.features.without.intervals}{Logical whether to remove features from the h5.files that do not have interval specified. Often these are mitochondria genes.}
+\item{filter.rna.features.without.intervals}{Logical whether to remove GeneExpression Matrix features from the h5.files that do not have interval specified. Often these are mitochondria genes.}
 
 \item{BPPARAM}{A \linkS4class{BiocParallelParam} object indicating how matrix creation should be parallelized.}
 }
