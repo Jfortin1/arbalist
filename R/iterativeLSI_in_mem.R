@@ -58,6 +58,7 @@ iterativeLSI.sparse.in.mem <- function(
     stop('Please specify a number of features equal to or more than 1000 to num.features.')
   }
   
+  set.seed(seed)
   colnames(x) <- cell.names
   
   # select the top features based on accessibility of the binarized features (ex for ATAC data) or variance (ex for RNA data)
@@ -106,12 +107,12 @@ iterativeLSI.sparse.in.mem <- function(
     
   for (i in seq_len(iterations-1)) {
     # drop embeddings that are correlated with the library size
-    embedding <- embedding[,which(cor(embedding, col.sums[rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
+    #embedding <- embedding[,which(cor(embedding, col.sums[rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
     
     # find cell clusters
     bias.vals <- log10(cell.depths + 1)
     names(bias.vals) <- cell.names
-    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
+    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)], correlation.cutoff = correlation.cutoff, num.cells.to.sample = num.cells.to.sample, filterBias = TRUE)
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
       return(NULL)
@@ -147,6 +148,10 @@ iterativeLSI.sparse.in.mem <- function(
   }
   beachmat::flushMemoryCache()
   
+  if(!is.na(scale.to)) {
+    embedding <- sweep(embedding - rowMeans(embedding), 1, matrixStats::rowSds(embedding),`/`)
+  }
+  
   list(embedding = embedding, projection = lsi.res$svd$v, subset = row.subset, details = lsi.res)
 }
 
@@ -168,9 +173,9 @@ iterativeLSI.sparse.in.mem <- function(
     num.cells.to.sample = 10000,
     project.all.cells = TRUE
 ){
-  set.seed(seed)
   
   cell.depths <- log10(cell.depths + 1)
+  set.seed(seed)
   if(!is.null(num.cells.to.sample)) {
     sampleN <- ceiling(num.cells.to.sample * table(sample.names) / length(sample.names))
     split.cells <- split(cell.names, sample.names)
@@ -243,6 +248,7 @@ iterativeLSI.sparse.in.mem <- function(
   mat <- .applyTFIDFNormalization.in.mem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
   
   # calculate SVD then LSI
+  #mat <- mat[, order(colnames(mat))]
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)
   svdDiag <- matrix(0, nrow = num.dimensions, ncol = num.dimensions)
   diag(svdDiag) <- svd$d

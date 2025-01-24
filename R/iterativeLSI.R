@@ -59,6 +59,7 @@ iterativeLSI <- function(
     stop('Please specify a number of features equal to or more than 1000 to num.features.')
   }
   
+  set.seed(seed)
   col.names <- colnames(x)
   
   # select the top features based on accessibility of the binarized features (ex for ATAC data) or variance (ex for RNA data)
@@ -121,11 +122,12 @@ iterativeLSI <- function(
 
   for (i in seq_len(iterations-1)) {
     # drop embeddings that are correlated with the library size
-    embedding <- embedding[,which(cor(embedding, col.sums[cell.names %in% rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
+    #embedding <- embedding[,which(cor(embedding, col.sums[cell.names %in% rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
     
     # find cell clusters
     bias.vals <- log10(cell.depths + 1)
     names(bias.vals) <- cell.names
+    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)], correlation.cutoff = correlation.cutoff, num.cells.to.sample = num.cells.to.sample, filterBias = TRUE)
     cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
@@ -159,6 +161,10 @@ iterativeLSI <- function(
       num.cells.to.sample = if(i != (iterations-1)) num.cells.to.sample else NULL, 
       project.all.cells = TRUE
       )
+    
+    if(!is.na(scale.to)) {
+      embedding <- sweep(embedding - rowMeans(embedding), 1, matrixStats::rowSds(embedding),`/`)
+    }
 
     embedding <- lsi.res$matSVD
   }
@@ -185,9 +191,9 @@ iterativeLSI <- function(
     num.cells.to.sample = 10000,
     project.all.cells = TRUE
 ){
-  set.seed(seed)
 
   cell.depths <- log10(cell.depths + 1)
+  set.seed(seed)
   if(!is.null(num.cells.to.sample)) {
     sampleN <- ceiling(num.cells.to.sample * table(sample.names) / length(sample.names))
     split.cells <- split(cell.names, sample.names)
@@ -263,6 +269,7 @@ iterativeLSI <- function(
   colnames(mat) <- cell.names[idx.keep]
   
   # calculate SVD then LSI
+  #mat <- mat[, order(colnames(mat))]
   svd <- irlba::irlba(mat, num.dimensions, num.dimensions)
   svdDiag <- matrix(0, nrow = num.dimensions, ncol = num.dimensions)
   diag(svdDiag) <- svd$d
