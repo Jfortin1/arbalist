@@ -220,7 +220,7 @@ addDoubletScores <- function(
   
   # Project the doublets into the UMAP embedding
   require(Matrix)
-  mat.doublet.normalized <- .applyTFIDFNormalization.in.mem(mat.doublet, lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
+  mat.doublet.normalized <- .applyTFIDFNormalizationInMem(mat.doublet, lsi.res$details$ncol, lsi.res$details$row.sums, scale.to = lsi.res$details$scale.to, lsi.method = lsi.res$details$lsi.method) 
   idxNA <- Matrix::which(is.na(mat.doublet.normalized), arr.ind = TRUE)
   if(length(idxNA) > 0){
     mat.doublet.normalized[idxNA] <- 0

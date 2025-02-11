@@ -84,7 +84,7 @@ findReducedDimRes <- function(mae, name.reduced.dim) {
     }
   }
   if(is.null(dim.matrix)) {
-    stop(paste0(name.reduced.dim,' is not found in mae'))
+    stop(name.reduced.dim,' is not found in mae')
   }
   return(list(reduced.dim.name=name.reduced.dim, matrix=dim.matrix, exp.idx=dim.exp.idx, alt.exp.name=dim.alt.exp.name))
 }

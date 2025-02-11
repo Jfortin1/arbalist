@@ -10,7 +10,8 @@
 #' @param num.features Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.
 #' @param lsi.method Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".
 #' @param cluster.method String containing cluster method. Current options: "seurat", "scran".
-#' @param correlation.cutoff 	Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.
+#' @param cluster.resolution Numeric scalar specifying the resolution for Seurat::FindClusters. Use a value above (below) 1.0 if you want to obtain a larger (smaller) number of communities.
+#' @param correlation.cutoff Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.
 #' @param scale.to Numeric scalar specifying the center for TF-IDF normalization.
 #' @param num.threads Integer scalar specifying the number of threads to be used for parallel computing.
 #' @param seed Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
@@ -32,7 +33,7 @@
 #' @importFrom stats kmeans cor
 #' @importFrom utils head
 #' @importFrom SparseArray rowSums rowVars colSums
-iterativeLSI.sparse.in.mem <- function(
+iterativeLSISparseInMem <- function(
     x,
     cell.names,
     sample.names,
@@ -43,6 +44,7 @@ iterativeLSI.sparse.in.mem <- function(
     num.features = 25000,
     lsi.method = 2,
     cluster.method = "Seurat",
+    cluster.resolution = 2,
     correlation.cutoff = 0.75,
     scale.to = 10000,
     num.threads = 4,
@@ -53,15 +55,16 @@ iterativeLSI.sparse.in.mem <- function(
     binarize = FALSE,
     num.cells.to.sample = 10000
 ) {
-
+  
   if(num.features < 1000) {
-    stop('Please specify a number of features equal to or more than 1000 to num.features.')
+    stop('Please specify a number of features of at least 1000.')
   }
   
   set.seed(seed)
   colnames(x) <- cell.names
   
-  # select the top features based on accessibility of the binarized features (ex for ATAC data) or variance (ex for RNA data)
+  # select the top features based on accessibility of the binarized features 
+  # (ex for ATAC data) or variance (ex for RNA data)
   if(tolower(first.selection) == "top") {
     row.order.stat <- SparseArray::rowSums(x)
   } else if (tolower(first.selection) == "var") {
@@ -87,9 +90,9 @@ iterativeLSI.sparse.in.mem <- function(
   } else {
     row.subset <- sort(head(order(row.order.stat, decreasing = TRUE), num.features + rm.top)[-seq_len(rm.top)])
   }
-
+  
   # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-  lsi.res <- .computeLSI.in.mem(
+  lsi.res <- .computeLsiInMem(
     x[row.subset,],
     cell.names = cell.names, 
     sample.names = sample.names, 
@@ -102,35 +105,45 @@ iterativeLSI.sparse.in.mem <- function(
     num.threads = num.threads,
     num.cells.to.sample = num.cells.to.sample, 
     project.all.cells = FALSE
-    )
+  )
   embedding <- lsi.res$matSVD
-    
+  
   for (i in seq_len(iterations-1)) {
-    # drop embeddings that are correlated with the library size
-    #embedding <- embedding[,which(cor(embedding, col.sums[rownames(embedding)]) <= correlation.cutoff),drop=FALSE]
-    
     # find cell clusters
     bias.vals <- log10(cell.depths + 1)
     names(bias.vals) <- cell.names
-    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)], correlation.cutoff = correlation.cutoff, num.cells.to.sample = num.cells.to.sample, filterBias = TRUE)
+    cluster.output <- .clusterMatrix(
+      embedding,
+      method = cluster.method,
+      resolution = cluster.resolution,
+      bias.vals = bias.vals[rownames(embedding)],
+      correlation.cutoff = correlation.cutoff,
+      num.cells.to.sample = num.cells.to.sample,
+      filter.bias = TRUE
+      )
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
       return(NULL)
     }
-
+    
     # aggregate counts for each cluster and find the most variable features
     group.features.idx <- sort(head(order(row.order.stat, decreasing = TRUE), total.features))
-    aggregated <- sapply(sort(unique(cluster.output)), function(clust.name, mat, col.groups){
-      return(SparseArray::rowSums(mat[,which(col.groups == clust.name)]))
-    }, x.orig.not.binarized[group.features.idx,rownames(embedding)], cluster.output)
+    aggregated <- sapply(
+      sort(unique(cluster.output)), 
+      function(clust.name, mat, col.groups){
+        return(SparseArray::rowSums(mat[,which(col.groups == clust.name)]))
+      }, 
+      x.orig.not.binarized[group.features.idx,rownames(embedding)], 
+      cluster.output
+      )
     
     normalized <- log2(t(t(aggregated) / colSums(aggregated)) * scale.to + 1)
     row.vars <- rowVars(normalized)
     keep <- group.features.idx[head(order(row.vars, decreasing=TRUE), num.features)]
     row.subset <- sort(keep)
-
+    
     # TF-IDF normalization (log(TF-IDF) method) and compute LSI
-    lsi.res <- .computeLSI.in.mem(
+    lsi.res <- .computeLsiInMem(
       x[row.subset,],
       cell.names = cell.names, 
       sample.names = sample.names, 
@@ -143,7 +156,7 @@ iterativeLSI.sparse.in.mem <- function(
       num.threads = num.threads, 
       num.cells.to.sample = if(i != (iterations-1)) num.cells.to.sample else NULL, 
       project.all.cells = TRUE
-      )
+    )
     embedding <- lsi.res$matSVD
   }
   beachmat::flushMemoryCache()
@@ -158,7 +171,7 @@ iterativeLSI.sparse.in.mem <- function(
 #' @importFrom S4Vectors SimpleList
 #' @importFrom stats quantile
 #' @importFrom beachmat tatami.column.sums tatami.subset tatami.row.sums tatami.realize tatami.dim
-.computeLSI.in.mem <- function(
+.computeLsiInMem <- function(
     x,
     cell.names,
     sample.names,
@@ -206,11 +219,11 @@ iterativeLSI.sparse.in.mem <- function(
   # compute column sums and remove columns with only zero values
   col.sums <- SparseArray::colSums(x)
   if(any(col.sums == 0)){
-    warning(paste0('removing ',length(which(col.sums == 0)),' columns that do not have non-zero values for the features being used.'))
+    warning('removing ',length(which(col.sums == 0)),' columns that do not have non-zero values for the features being used.')
     x <- x[,which(col.sums != 0)]
     col.sums <- col.sums[which(col.sums != 0)]
   }
-
+  
   # filter outliers
   idx.outlier <- NULL
   idx.keep <- seq_along(col.sums)
@@ -245,7 +258,7 @@ iterativeLSI.sparse.in.mem <- function(
   }
   
   # apply normalization
-  mat <- .applyTFIDFNormalization.in.mem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
+  mat <- .applyTFIDFNormalizationInMem(x, length(col.sums), row.sums, lsi.method = lsi.method, scale.to = scale.to)
   
   # calculate SVD then LSI
   #mat <- mat[, order(colnames(mat))]
@@ -274,7 +287,7 @@ iterativeLSI.sparse.in.mem <- function(
     
     # Quick Check LSI-Projection Works
     x.keep.subset <- x.keep.subset[row.subset,]
-    pCheck <- .projectLSI.in.mem(x.keep.subset, lsi.res = out, verbose = verbose)
+    pCheck <- .projectLsiInMem(x.keep.subset, lsi.res = out, verbose = verbose)
     pCheck2 <- out$matSVD[idx.keep.subset, ]
     pCheck3 <- unlist(lapply(seq_len(ncol(pCheck)), function(x){
       cor(pCheck[,x], pCheck2[,x])
@@ -285,7 +298,7 @@ iterativeLSI.sparse.in.mem <- function(
     # Project LSI Outliers
     out$outliers <- idx.outlier
     x.outliers <- x.outliers[row.subset,]
-    outlierLSI <- .projectLSI.in.mem(x.outliers, lsi.res = out, verbose = verbose)
+    outlierLSI <- .projectLsiInMem(x.outliers, lsi.res = out, verbose = verbose)
     allLSI <- rbind(out$matSVD, outlierLSI)
     if(length(allLSI) == length(sampled.cells)) {
       allLSI <- allLSI[sampled.cells,]
@@ -300,13 +313,13 @@ iterativeLSI.sparse.in.mem <- function(
 }
 
 #' @importFrom Matrix diag
-.projectLSI.in.mem <- function(x, lsi.res, return.model = FALSE, verbose = FALSE, num.threads = 4){   
+.projectLsiInMem <- function(x, lsi.res, return.model = FALSE, verbose = FALSE, num.threads = 4){   
   
-  require(Matrix)
+#  require(Matrix)
   set.seed(lsi.res$seed)
   
   # sparse matrix in memory is returned from .apply.tf.idf.normalization
-  mat <- .applyTFIDFNormalization.in.mem(x, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method) 
+  mat <- .applyTFIDFNormalizationInMem(x, lsi.res$ncol, lsi.res$row.sums, scale.to = lsi.res$scale.to, lsi.method = lsi.res$lsi.method) 
   
   # Clean Up Matrix
   idxNA <- Matrix::which(is.na(mat), arr.ind = TRUE)
@@ -336,7 +349,7 @@ iterativeLSI.sparse.in.mem <- function(
 
 #' @importFrom Matrix Diagonal
 # num.col and row.sums might not match mat. For example, when normalizing for the projection, num.col and run.sums will match the LSI result instead of mat.
-.applyTFIDFNormalization.in.mem <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
+.applyTFIDFNormalizationInMem <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
   
   if(!is(mat,'sparseMatrix')) {
     mat <- as(mat, 'sparseMatrix')

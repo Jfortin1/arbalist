@@ -1,16 +1,22 @@
 Package: arbalist
-Version: 0.1.26
-Date: 2025-01-24
 Title: Bringing ArchR to Bioconductor
+Version: 0.1.27
+Date: 2025-02-10
 Description: 
-    Implements the core algorithms inside ArchR using C++ bindings to DelayedArrays,
-    in preparation for submission to Bioconductor.
+    Implements the core algorithms inside ArchR using C++ bindings to 
+    DelayedArrays, in preparation for submission to Bioconductor.
 Authors@R: c(
     person("Jean-Philippe", "Fortin", email = "fortin946@gmail.com", role = c("aut", "cre")),
     person("Aaron", "Lun", email = "infinite.monkeys.with.keyboards@gmail.com", role = c("aut")),
     person("Natalie", "Fox", email = "natalie.fox@roche.com", role = c("aut"))
     )
 License: MIT + file LICENSE
+LinkingTo:
+    Rcpp,
+    Rhdf5lib,
+    beachmat
+LazyData: TRUE
+RoxygenNote: 7.3.2
 Depends:
     Matrix
 Imports:
@@ -46,19 +52,14 @@ Imports:
     pheatmap,
     viridis,
     presto
-LinkingTo:
-    Rcpp,
-    Rhdf5lib,
-    beachmat
 Suggests:
     testthat,
     knitr,
     rmarkdown,
     BiocStyle
-VignetteBuilder: 
-    knitr
 SystemRequirements: 
     GNU make, 
     C++17
-RoxygenNote: 7.3.2
-LazyData: true
+biocViews: Workflow, SingleCellWorkflow, EpigeneticsWorkflow
+VignetteBuilder: 
+    knitr

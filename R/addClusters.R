@@ -170,7 +170,7 @@ addClusters <- function(
     bias.p.val = 0.05,
     num.outlier = 5,
     correlation.cutoff = 0.75,
-    filterBias = FALSE,
+    filter.bias = FALSE,
     num.cells.to.sample = NULL, 
     seed = 1,
     test.bias = TRUE,
@@ -182,6 +182,8 @@ addClusters <- function(
   if(scale.dims){
     mat <- sweep(mat - rowMeans(mat), 1, matrixStats::rowSds(mat),`/`)
   }
+  
+  # drop embeddings that are correlated with the library size
   mat <- mat[,which(abs(cor(mat, bias.vals[rownames(mat)])) <= correlation.cutoff),drop=FALSE]
   
   bias.vals <- bias.vals[order(rownames(mat))]
@@ -208,8 +210,8 @@ addClusters <- function(
     seurat.obj <- Seurat::CreateSeuratObject(mat.fake, project='scATAC', min.cells=0, min.features=0)
     seurat.obj[['pca']] <- Seurat::CreateDimReducObject(embeddings=mat, key='PC_', assay='RNA')
     
-    seurat.obj <- Seurat::FindNeighbors(seurat.obj, reduction = 'pca', dims = seq_len(ncol(mat)))
-    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq_len(ncol(mat)), resolution = resolution, n.start=10)
+    seurat.obj <- Seurat::FindNeighbors(seurat.obj, reduction = 'pca', dims = seq(ncol(mat)))
+    seurat.obj <- Seurat::FindClusters(seurat.obj, reduction = 'pca', dims = seq(ncol(mat)), resolution = resolution, n.start=10)
     
     # get clusters form Seurat Object
     clust <- seurat.obj@meta.data[,ncol(seurat.obj@meta.data)]
@@ -230,11 +232,12 @@ addClusters <- function(
   if(estimating.clusters) {
     missing.clusters <- setdiff(rownames(mat.all),rownames(mat))
     # calculate the k nearest neighbors
-    knn.idx <- nabor::knn(data = mat, query = mat.all[missing.clusters,], k = knn.k)$nn.idx
+    knn.idx <- nabor::knn(data = mat, query = mat.all[missing.clusters,,drop = FALSE], k = knn.k)$nn.idx
     # find the most common cluster classificaiton in the nearest neighbors
-    clust.estimated <- apply(knn.idx, 1, function(x) { names(rev(sort(table(clust[x]))))[1] })
+    clust.estimated <- apply(knn.idx, 1, function(x) { names(rev(sort(table(clust[x]))))[1]})
     names(clust.estimated) <- missing.clusters
     clust <- c(clust, clust.estimated)[rownames(mat.all)]
+    mat <- mat.all
   }
   
   if(!is.null(bias.vals)) {
@@ -296,7 +299,7 @@ addClusters <- function(
       
       clustAssign <- testDF[which(testDF$enrichClust > bias.enrich & testDF$enrichProportion > bias.proportion & testDF$enrichPval <= bias.p.val),1]
       if(length(clustAssign) > 0){
-        if(filterBias){
+        if(filter.bias){
           for(i in seq_along(clustAssign)){
             clusti <- clustAssign[i]
             idxi <- which(clust==clusti)
@@ -330,7 +333,6 @@ addClusters <- function(
   
   # merging if more clusters than max.clusters
   if(!is.null(max.clusters) && length(unique(clust)) > max.clusters) {
-
     clust.means <- matrix(NA,nrow=length(unique(clust)),ncol=ncol(mat))
     rownames(clust.means) <- unique(clust)
     colnames(clust.means) <- colnames(mat)
@@ -353,6 +355,7 @@ addClusters <- function(
     names(clust) <- rownames(mat)
   }
 
+  # renaming clusters based on size
   if(length(unique(clust)) > 1){
     clust.means <- matrix(NA,nrow=length(unique(clust)),ncol=ncol(mat))
     rownames(clust.means) <- unique(clust)

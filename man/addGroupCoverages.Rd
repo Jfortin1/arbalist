@@ -8,12 +8,13 @@ addGroupCoverages(
   mae,
   experiment.name = "TileMatrix500",
   group.by.colname = "Clusters",
-  sampleLabels = "Sample",
+  sample.colname = "Sample",
   min.cells = 40,
   max.cells = 500,
   max.frags = 25 * 10^6,
   min.reps = 2,
   max.reps = 5,
+  sampling.ratio = 0.8,
   coverage.file.path = getwd(),
   skip.se.creation = FALSE,
   skip.coverage.file.creation = FALSE,
@@ -28,7 +29,7 @@ addGroupCoverages(
 
 \item{group.by.colname}{String containing experiment colData colname for the cell groups for pseudobulks.}
 
-\item{sampleLabels}{String containing experiment colData colname for sample labels.}
+\item{sample.colname}{String containing experiment colData colname for sample labels.}
 
 \item{min.cells}{Integer scalar specifying minimum number of cells to select per group for pseudobulk creation.}
 
@@ -39,6 +40,8 @@ addGroupCoverages(
 \item{min.reps}{Integer scalar specifying minimum number of pseudobulk replicates to generate.}
 
 \item{max.reps}{Integer scalar specifying maximum number of pseudobulk replicates to generate.}
+
+\item{sampling.ratio}{Numeric scalar specifying the fraction of the total cells that can be sampled to generate any given pseudobulk replicate.}
 
 \item{coverage.file.path}{String containing the output directory for generated coverage files.}
 

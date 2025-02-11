@@ -11,7 +11,8 @@
 #' @param num.features Integer scalar specifying the number of accessible features to select when selecting the most accessible or most variable features.
 #' @param lsi.method Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".
 #' @param cluster.method String containing cluster method. Current options: "seurat", "scran".
-#' @param correlation.cutoff 	Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.
+#' @param cluster.resolution Numeric scalar specifying the resolution for Seurat::FindClusters. Use a value above (below) 1.0 if you want to obtain a larger (smaller) number of communities.
+#' @param correlation.cutoff Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.
 #' @param scale.to Numeric scalar specifying the center for TF-IDF normalization.
 #' @param num.threads Integer scalar specifying the number of threads to be used for parallel computing.
 #' @param seed Numeric scalar to be used as the seed for random number generation. It is recommended to keep track of the seed used so that you can reproduce results downstream.
@@ -44,7 +45,8 @@ iterativeLSI <- function(
     first.selection = "Top", # or "Var"
     num.features = 25000,
     lsi.method = 2,
-    cluster.method = "Seurat", 
+    cluster.method = "Seurat",
+    cluster.resolution = 2, 
     correlation.cutoff = 0.75,
     scale.to = 10000,
     num.threads = 4,
@@ -127,8 +129,15 @@ iterativeLSI <- function(
     # find cell clusters
     bias.vals <- log10(cell.depths + 1)
     names(bias.vals) <- cell.names
-    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)], correlation.cutoff = correlation.cutoff, num.cells.to.sample = num.cells.to.sample, filterBias = TRUE)
-    cluster.output <- .clusterMatrix(embedding, method = cluster.method, bias.vals = bias.vals[rownames(embedding)])
+    cluster.output <- .clusterMatrix(
+      embedding,
+      method = cluster.method,
+      resolution = cluster.resolution,
+      bias.vals = bias.vals[rownames(embedding)],
+      correlation.cutoff = correlation.cutoff,
+      num.cells.to.sample = num.cells.to.sample,
+      filter.bias = TRUE
+      )
     if(length(table(cluster.output)) == 1) {
       warning('Data is not splitting into clusters so we cannot calculate iterativeLSI')
       return(NULL)
@@ -325,7 +334,7 @@ iterativeLSI <- function(
 #' @importFrom Matrix diag
 .projectLSI <- function(ptr, lsi.res, return.model = FALSE, verbose = FALSE, num.threads = 4){   
   
-  require(Matrix)
+  # require(Matrix)
   set.seed(lsi.res$seed)
   
   # sparse matrix in memory is returned from .applyTFIDFNormalization

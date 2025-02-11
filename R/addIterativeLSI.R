@@ -16,27 +16,27 @@
 #' @importFrom MultiAssayExperiment assay
 #' @importFrom SingleCellExperiment reducedDim<- reducedDimNames altExp
 addIterativeLSI <- function(
-  mae,
-  experiment.name = 'TileMatrix500',
-  embedding.name = 'iterativeLSI',
-  cell.depth.column = 'fragments',
-  col.subset = NULL,
-  rank = 30,
-  iterations = 2,
-  first.selection = "Top", # or "Var"
-  num.features = 25000,
-  lsi.method = 2,
-  cluster.method = "Seurat",
-  correlation.cutoff = 0.75,
-  scale.to = 10000,
-  num.threads = 4,
-  seed = 1,
-  total.features = 500000,
-  filter.quantile = 0.995,
-  outlier.quantiles = c(0.02, 0.98),
-  binarize = TRUE
+    mae,
+    experiment.name = 'TileMatrix500',
+    embedding.name = 'iterativeLSI',
+    cell.depth.column = 'fragments',
+    col.subset = NULL,
+    rank = 30,
+    iterations = 2,
+    first.selection = "Top", # or "Var"
+    num.features = 25000,
+    lsi.method = 2,
+    cluster.method = "Seurat",
+    correlation.cutoff = 0.75,
+    scale.to = 10000,
+    num.threads = 4,
+    seed = 1,
+    total.features = 500000,
+    filter.quantile = 0.995,
+    outlier.quantiles = c(0.02, 0.98),
+    binarize = TRUE
 ) {
-
+  
   # Find the experiment result
   sce.list <- findSCE(mae,experiment.name)
   if(is.null(sce.list)) {
@@ -45,7 +45,7 @@ addIterativeLSI <- function(
   se <- sce.list$sce
   main.exp.name <- names(mae)[sce.list$sce.idx]
   alt.exp.name <- sce.list$alt.exp.name
-
+  
   if(embedding.name %in% reducedDimNames(se)) {
     stop(paste0('There is already a reduced dimension called ',embedding.name))
   }
@@ -84,8 +84,7 @@ addIterativeLSI <- function(
       binarize = binarize
     )
   } else {
-    message('in mem')
-    res <- iterativeLSI.sparse.in.mem(
+    res <- iterativeLSISparseInMem(
       x = x,
       cell.names = cell.names,
       sample.names = sample.names,

@@ -16,6 +16,7 @@ iterativeLSI(
   num.features = 25000,
   lsi.method = 2,
   cluster.method = "Seurat",
+  cluster.resolution = 2,
   correlation.cutoff = 0.75,
   scale.to = 10000,
   num.threads = 4,
@@ -49,6 +50,8 @@ iterativeLSI(
 \item{lsi.method}{Number or string indicating the order of operations in the TF-IDF normalization. Possible values are: 1 or "tf-logidf", 2 or "log(tf-idf)", and 3 or "logtf-logidf".}
 
 \item{cluster.method}{String containing cluster method. Current options: "seurat", "scran".}
+
+\item{cluster.resolution}{Numeric scalar specifying the resolution for Seurat::FindClusters. Use a value above (below) 1.0 if you want to obtain a larger (smaller) number of communities.}
 
 \item{correlation.cutoff}{Numeric scalar specifying the cutoff for the correlation of each dimension to the sequencing depth. If the dimension has a correlation to sequencing depth that is greater than the correlation.cutoff, it will be excluded from analysis.}
 
