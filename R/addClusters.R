@@ -127,7 +127,7 @@ addClusters <- function(
   }
   
   # save the new reduced dimensions to the MAE
-  for(i in 1:length(reduced.dim.list)) {
+  for(i in seq_len(length(reduced.dim.list))) {
     if(is.null(reduced.dim.list[[i]]$alt.exp.name)) {
       if(clusters.colname %in% colnames(colData(mae[[reduced.dim.list[[i]]$exp.idx]])) && !force) {
         stop(paste0(clusters.colname,' is already a column name in ',names(mae)[reduced.dim.list[[i]]$exp.idx],' experiment colData. Set force = TRUE if you want to overwrite it.'))

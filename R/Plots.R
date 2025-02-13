@@ -27,10 +27,14 @@ plotTSSenrichmentVsNumFragments <- function(mae, sample.name, tss.threshold = NU
     geom_pointdensity() + theme_classic() + ylab('TSS Enrichment') +
     xlab(bquote(log[10] ~ "Number of Fragments")) + scale_color_viridis() + ggtitle(sample.name)
   if(!is.null(tss.threshold)) {
-    plot <- plot + geom_hline(yintercept=tss.threshold, linetype="dashed")
+    for(i in tss.threshold) {
+      plot <- plot + geom_hline(yintercept=i, linetype="dashed")
+    }
   }
   if(!is.null(nfrag.threshold)) {
-    plot <- plot + geom_vline(xintercept=log10(nfrag.threshold), linetype="dashed")
+    for(i in nfrag.threshold) {
+      plot <- plot + geom_vline(xintercept=log10(i), linetype="dashed")
+    }
   }
   plot
 }
