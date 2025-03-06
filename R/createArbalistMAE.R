@@ -60,7 +60,11 @@ createArbalistMAE <- function(
   barcode.anno <- NULL
   for(i in seq_along(filtered.feature.matrix.files)) {
     filtered.file <- filtered.feature.matrix.files[i]
-    barcodes.list[[sample.names[i]]] <- h5read(filtered.feature.matrix.files[i],'/matrix/barcodes')
+    if(sample.names[i] %in% names(barcodes.list)) {
+      barcodes.list[[paste0(sample.names[i],'_',length(grep(sample.names[i],names(barcodes.list)))+1)]] <- h5read(filtered.feature.matrix.files[i],'/matrix/barcodes')
+    } else {
+      barcodes.list[[sample.names[i]]] <- h5read(filtered.feature.matrix.files[i],'/matrix/barcodes')
+    }
     barcode.anno.file <- barcode.annotation.files[i]
     if(!is.null(barcode.anno.file) && any(file.exists(barcode.anno.file))) {
       per.sample.barcodes <- read.csv(barcode.anno.file[file.exists(barcode.anno.file)])

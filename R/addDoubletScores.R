@@ -71,6 +71,7 @@ addDoubletScores <- function(
   
   # Calculate doublet scores per sample
   for(sample.name in selected.samples) {
+    gc()
     
     # Decide how many doublets to simulate and therefore how many iterations we will need to run
     num.synthetic.doublets <- num.trials * sum(colData(sce.list$sce)$Sample == sample.name)
@@ -234,4 +235,48 @@ addDoubletScores <- function(
   colnames(mat.lsi.doublet) <- paste0("LSI",seq_len(ncol(mat.lsi.doublet)))
 
   return(mat.lsi.doublet)
+}
+
+#' Combine colData on doublet results
+#'
+#' Combine doublet result colData into the first MAE in the list.
+#' 
+#' @param mae.list List of \linkS4class{MultiAssayExperiment}. They should be identical other than Each will be values for different DoubletScore and DoubletEnrichment colData of the specified experiment. The input MultiAssayExperiments can be created using addDoubletScores on the same MAE while specifying different samples to the selected.samples argument.
+#' @param experiment.name String containing the experiment name to calculate doublet scores.
+#' @author Natalie Fox
+#' @importFrom beachmat tatami.subset
+#' @export
+combineDoubletResults <- function(mae.list, experiment.name = 'TileMatrix500'){
+  
+  mae.res <- NULL;
+  res.sce.list <- NULL
+  
+  for(i in seq_along(mae.list)) {
+    mae <- mae.list[[i]]
+    # Find the experiment result in the MAE so we can retrieve the matrix, this accounts for using the main or alternative experiment
+    sce.list <- findSCE(mae, experiment.name)
+    if(is.null(sce.list)) {
+      stop(paste0(experiment.name,' is not found in mae'))
+    }
+  
+    # Add DoubletScore and DoubletEnrichment columns to the colData, if not already there
+    if(! 'DoubletScore' %in% colnames(colData(mae[[sce.list$sce.idx]]))) {
+      warning(paste0('Entry ',i,' in mae.list does not have a DoubletScore column'))
+    }
+    if(! 'DoubletEnrichment' %in% colnames(colData(mae[[sce.list$sce.idx]]))) {
+      warning(paste0('Entry ',i,' in mae.list does not have a DoubletEnrichment column'))
+    }
+    new.col.data <- colData(mae[[sce.list$sce.idx]])[,c('Sample','DoubletScore','DoubletEnrichment')]
+    new.col.data <- new.col.data[!is.na(new.col.data$DoubletScore) | !is.na(new.col.data$DoubletEnrichment),]
+    
+    if(is.null(mae.res)) {
+      mae.res <- mae
+      res.sce.list <- sce.list
+    } else {
+      colData(mae.res[[res.sce.list$sce.idx]])[rownames(new.col.data),'DoubletScore'] <- new.col.data$DoubletScore
+      colData(mae.res[[res.sce.list$sce.idx]])[rownames(new.col.data),'DoubletEnrichment'] <- new.col.data$DoubletEnrichment
+    }
+  }
+
+  return(mae.res)
 }
