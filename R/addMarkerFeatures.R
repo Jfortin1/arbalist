@@ -67,6 +67,7 @@ addMarkerFeatures <- function(
 
 #' @importFrom presto wilcoxauc
 #' @importFrom nabor knn
+#' @importFrom methods is as
 markerDiff <- function(mat, group.classification, num.threads = 4) {
   
   # set up a pointer to the data for profiling the columns for matching cells between groups

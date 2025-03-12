@@ -21,6 +21,7 @@
 #' @importFrom SummarizedExperiment SummarizedExperiment colData colData<- rowRanges rowRanges<- assay rowData<-
 #' @importFrom SingleCellExperiment mainExpName<-
 #' @importFrom Seurat DefaultAssay CreateSeuratObject NormalizeData
+#' @importFrom methods is as
 #' @export
 addGeneIntegrationMatrix <- function(
     mae,

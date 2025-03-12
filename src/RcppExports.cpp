@@ -20,55 +20,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// fragments_to_regions
-SEXP fragments_to_regions(std::string fragment_file, std::string output_file, std::string output_group, Rcpp::CharacterVector seqnames, Rcpp::List region_ids, Rcpp::List region_starts, Rcpp::List region_ends, Rcpp::Nullable<Rcpp::CharacterVector> cellnames, int num_regions, int deflate_level, int chunk_dim);
-RcppExport SEXP _arbalist_fragments_to_regions(SEXP fragment_fileSEXP, SEXP output_fileSEXP, SEXP output_groupSEXP, SEXP seqnamesSEXP, SEXP region_idsSEXP, SEXP region_startsSEXP, SEXP region_endsSEXP, SEXP cellnamesSEXP, SEXP num_regionsSEXP, SEXP deflate_levelSEXP, SEXP chunk_dimSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< std::string >::type fragment_file(fragment_fileSEXP);
-    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
-    Rcpp::traits::input_parameter< std::string >::type output_group(output_groupSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type seqnames(seqnamesSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type region_ids(region_idsSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type region_starts(region_startsSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type region_ends(region_endsSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type cellnames(cellnamesSEXP);
-    Rcpp::traits::input_parameter< int >::type num_regions(num_regionsSEXP);
-    Rcpp::traits::input_parameter< int >::type deflate_level(deflate_levelSEXP);
-    Rcpp::traits::input_parameter< int >::type chunk_dim(chunk_dimSEXP);
-    rcpp_result_gen = Rcpp::wrap(fragments_to_regions(fragment_file, output_file, output_group, seqnames, region_ids, region_starts, region_ends, cellnames, num_regions, deflate_level, chunk_dim));
-    return rcpp_result_gen;
-END_RCPP
-}
-// fragments_to_tiles
-SEXP fragments_to_tiles(std::string fragment_file, int tile_size, std::string output_file, std::string output_group, Rcpp::IntegerVector seqlengths, Rcpp::CharacterVector seqnames, Rcpp::Nullable<Rcpp::CharacterVector> cellnames, int deflate_level, int chunk_dim);
-RcppExport SEXP _arbalist_fragments_to_tiles(SEXP fragment_fileSEXP, SEXP tile_sizeSEXP, SEXP output_fileSEXP, SEXP output_groupSEXP, SEXP seqlengthsSEXP, SEXP seqnamesSEXP, SEXP cellnamesSEXP, SEXP deflate_levelSEXP, SEXP chunk_dimSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< std::string >::type fragment_file(fragment_fileSEXP);
-    Rcpp::traits::input_parameter< int >::type tile_size(tile_sizeSEXP);
-    Rcpp::traits::input_parameter< std::string >::type output_file(output_fileSEXP);
-    Rcpp::traits::input_parameter< std::string >::type output_group(output_groupSEXP);
-    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type seqlengths(seqlengthsSEXP);
-    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type seqnames(seqnamesSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::CharacterVector> >::type cellnames(cellnamesSEXP);
-    Rcpp::traits::input_parameter< int >::type deflate_level(deflate_levelSEXP);
-    Rcpp::traits::input_parameter< int >::type chunk_dim(chunk_dimSEXP);
-    rcpp_result_gen = Rcpp::wrap(fragments_to_tiles(fragment_file, tile_size, output_file, output_group, seqlengths, seqnames, cellnames, deflate_level, chunk_dim));
-    return rcpp_result_gen;
-END_RCPP
-}
-// lsi_matrix_stats
-Rcpp::List lsi_matrix_stats(SEXP mat, int nthreads);
-RcppExport SEXP _arbalist_lsi_matrix_stats(SEXP matSEXP, SEXP nthreadsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::traits::input_parameter< SEXP >::type mat(matSEXP);
-    Rcpp::traits::input_parameter< int >::type nthreads(nthreadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(lsi_matrix_stats(mat, nthreads));
-    return rcpp_result_gen;
-END_RCPP
-}
 // create_pseudobulk_file
 void create_pseudobulk_file(Rcpp::Nullable<Rcpp::CharacterVector> fragment_files, std::string output_file, Rcpp::Nullable<Rcpp::CharacterVector> cellnames);
 RcppExport SEXP _arbalist_create_pseudobulk_file(SEXP fragment_filesSEXP, SEXP output_fileSEXP, SEXP cellnamesSEXP) {
@@ -83,9 +34,6 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_arbalist_count_fragment_size_distributions", (DL_FUNC) &_arbalist_count_fragment_size_distributions, 1},
-    {"_arbalist_fragments_to_regions", (DL_FUNC) &_arbalist_fragments_to_regions, 11},
-    {"_arbalist_fragments_to_tiles", (DL_FUNC) &_arbalist_fragments_to_tiles, 9},
-    {"_arbalist_lsi_matrix_stats", (DL_FUNC) &_arbalist_lsi_matrix_stats, 2},
     {"_arbalist_create_pseudobulk_file", (DL_FUNC) &_arbalist_create_pseudobulk_file, 3},
     {NULL, NULL, 0}
 };

@@ -26,6 +26,7 @@
 #' @importFrom BiocParallel bptry bpparam bplapply
 #' @importFrom MACSr callpeak
 #' @importFrom data.table fread
+#' @importFrom arbalistIO saveRegionMatrix getSCEFromH5List
 #' @export
 addPeakMatrix <- function(
     mae,
@@ -133,7 +134,7 @@ addPeakMatrix <- function(
   peak.res.list <- bptry(bplapply(
     names(fragment.files),
     function(sample.name,fragment.files,output.file.names,regions) {
-      matrix.res <- saveRegionMatrix(
+      matrix.res <- arbalistIO::saveRegionMatrix(
         fragment.file = as.character(fragment.files[sample.name]),
         output.file = as.character(output.file.names[sample.name]),
         output.name = 'peak_matrix',
@@ -149,7 +150,7 @@ addPeakMatrix <- function(
   ))
   names(peak.res.list) <- names(fragment.files)
   
-  peak.sce <- .getSCEFromH5List(peak.res.list, res.peak.set)
+  peak.sce <- arbalistIO::getSCEFromH5List(peak.res.list, res.peak.set)
   mainExpName(peak.sce) <- 'PeakMatrix'
   
   new.mae <- c(mae, 'PeakMatrix'=peak.sce)

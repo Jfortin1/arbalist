@@ -77,6 +77,7 @@ addGeneScoreMatrix <- function(
 #' @importFrom BiocGenerics which
 #' @importFrom BiocParallel bpparam
 #' @importFrom beachmat tatami.multiply
+#' @importFrom methods is as
 #' @export
 calculateGeneScoreMatrix <- function(
     tile.matrix,

@@ -348,6 +348,7 @@ iterativeLSISparseInMem <- function(
 }
 
 #' @importFrom Matrix Diagonal
+#' @importFrom methods is as
 # num.col and row.sums might not match mat. For example, when normalizing for the projection, num.col and run.sums will match the LSI result instead of mat.
 .applyTFIDFNormalizationInMem <- function(mat, num.col, row.sums, scale.to = 10^4, lsi.method = 1) {
   

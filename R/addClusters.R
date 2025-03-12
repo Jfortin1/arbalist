@@ -22,6 +22,7 @@
 #' @importFrom SummarizedExperiment colData colData<-
 #' @importFrom stats rnorm
 #' @importFrom nabor knn
+#' @importFrom methods is
 addClusters <- function(
   mae,
   name.reduced.dim = "iterativeLSI",

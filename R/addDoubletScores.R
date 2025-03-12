@@ -25,6 +25,7 @@
 #' @importFrom BiocGenerics Reduce
 #' @importFrom stats p.adjust pbinom
 #' @importFrom scater calculateUMAP
+#' @importFrom methods is
 #' @export
 addDoubletScores <- function(
     mae,
@@ -182,6 +183,7 @@ addDoubletScores <- function(
 }
 
 #' @importFrom beachmat tatami.subset
+#' @importFrom methods is as
 .doubletSimulation <- function(
   i,
   mat,

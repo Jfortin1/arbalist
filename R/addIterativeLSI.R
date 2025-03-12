@@ -15,6 +15,7 @@
 #' @export
 #' @importFrom MultiAssayExperiment assay
 #' @importFrom SingleCellExperiment reducedDim<- reducedDimNames altExp
+#' @importFrom methods is
 addIterativeLSI <- function(
     mae,
     experiment.name = 'TileMatrix500',

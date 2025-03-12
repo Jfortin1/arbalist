@@ -7,6 +7,7 @@
 #'
 #' @importFrom SummarizedExperiment colData
 #' @importFrom SingleCellExperiment altExp
+#' @importFrom methods is
 #' @export
 findSCE <- function(mae, experiment.name) {
   # Find the experiment result
