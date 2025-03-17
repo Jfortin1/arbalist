@@ -77,7 +77,7 @@ info <- split(value, field)
 fai <- file.path(info$reference_path, "fasta", "genome.fa.fai")
 ```
 
-If the reference file exist, we can get the sequence lengths from there. However, in this case we are assuming that it's not available to you so we use the human sequence lengths provided by the package. 
+If the reference file exist, we can get the sequence lengths from there. However, in this case we are assuming that it's not available to you so we use the human sequence lengths provided by the arbalistIO package. 
 ```{r seq_lengths, eval=FALSE}
 if(file.exists(fai)) {
   fai.info <- read.delim(fai, sep="\t", header=FALSE)[,1:2]
@@ -93,7 +93,7 @@ if(file.exists(fai)) {
 To start our analysis, we need to create a `MultiAssayExperiment` (MAE). This MAE will contain a tile matrix for 500 bp tiles across the genome. Although we only use a single sample here, each of the arguments for sample name and the files can be a vector and their lengths should all be the same.
 
 ```{r, eval=FALSE}
-mae <- arbalist::createArbalistMAE(
+mae <- arbalistIO::createArbalistMAE(
   sample.names = "PBMC",
   fragment.files = fragment.file,
   filtered.feature.matrix.files = filtered.feature.matrix.file,
@@ -165,6 +165,21 @@ if(length(doublet.cells) > num.doublets.to.filter.out) {
 
 mae[['TileMatrix500']] <- mae[['TileMatrix500']][,-doublet.cells]
 ```
+
+During addDoubletScores, iterative LSI and UMAP embeddings are created per sample for simulating doublets and visualizing the results. Three plots are created per sample unless the `plot.out.dir` argument is set to `NULL`.
+
+1. UMAP plot showing simulated Doublets. TRUE are the simulated doublets and FALSE are all the cells from the sample.
+
+![](PBMC_doublet_umap_plot.png)
+
+2. UMAP plot showing doublet enrichment scores for the sample's cells.
+
+![](PBMC_doublet_enrichment_umap_plot.png)
+
+
+3. UMAP plot showing doublet scores for the sample's cells.
+
+![](PBMC_doublet_score_umap_plot.png)
 
 # Reduced dimensions using iterative LSI
 
@@ -252,5 +267,14 @@ Peak calling is performed with MACSr. MACS peak calling requires the effective g
 
 ```{r peaks, eval=FALSE}
 mae <- addPeakMatrix(mae, genome.size = 2.7e9, output.dir = '.')
+mae
+```
+
+# Marker feature selection
+
+Lastly, the `addMarkerFeatures` function identifies features, such as peaks, that are associated with the cell clusters.
+
+```{r markers, eval=FALSE}
+mae <- addMarkerFeatures(mae, experiment.name = 'PeakMatrix', group.colname = 'Clusters')
 mae
 ```
